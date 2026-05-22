@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bgC" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F1F5F9"/>
+    </linearGradient>
+    <linearGradient id="header3" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1E40AF"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M0 24 L24 24 M24 0 L24 24" stroke="#1E40AF" stroke-width="0.4" opacity="0.08"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" rx="14" fill="url(#bgC)"/>
+  <rect width="1000" height="700" rx="14" fill="url(#grid)"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1000" height="120" fill="url(#header3)"/>
+
+  <!-- Logo -->
+  <g transform="translate(40,28)">
+    <rect width="64" height="64" rx="12" fill="white"/>
+    <text x="32" y="42" font-size="34" font-weight="900" fill="#1E40AF" text-anchor="middle">INTT</text>
+  </g>
+  <g transform="translate(124,38)" fill="white">
+    <text font-size="14" font-weight="800" letter-spacing="2">REP�BLICA BOLIVARIANA DE VENEZUELA</text>
+    <text y="20" font-size="11" font-weight="700" opacity="0.9" letter-spacing="1.5">INSTITUTO NACIONAL DE TRANSPORTE TERRESTRE</text>
+    <text y="40" font-size="11" font-weight="700" opacity="0.9" letter-spacing="1.5">SISTEMA NACIONAL DE REGISTRO VEHICULAR</text>
+  </g>
+  <g transform="translate(820,40)" fill="white" text-anchor="end">
+    <text font-size="10" font-weight="700" opacity="0.85" letter-spacing="1.5">N� CERTIFICADO</text>
+    <text y="22" font-size="22" font-weight="900" font-family="'Courier New', monospace">07-A-22458</text>
+    <text y="42" font-size="9" font-weight="600" opacity="0.8" letter-spacing="1.5">EXPEDICI�N: 14/03/2024</text>
+  </g>
+
+  <!-- Title -->
+  <g transform="translate(40,160)">
+    <text font-size="30" font-weight="800" fill="#0F172A" letter-spacing="-0.5">CERTIFICADO DE REGISTRO DE VEH�CULO</text>
+    <rect y="12" width="80" height="3" fill="#1E40AF"/>
+  </g>
+
+  <!-- Vehicle info section -->
+  <g transform="translate(40,220)">
+    <rect width="920" height="220" rx="12" fill="#F8FAFC" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="20" y="28" font-size="11" font-weight="800" fill="#1E40AF" letter-spacing="1.5">DATOS DEL VEH�CULO</text>
+
+    <g transform="translate(20,52)" font-family="'Courier New', monospace">
+      <!-- Row 1 -->
+      <g>
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">PLACA</text>
+        <g transform="translate(0,8)">
+          <rect width="160" height="44" rx="6" fill="white" stroke="#0F172A" stroke-width="2.5"/>
+          <text x="80" y="32" font-size="26" font-weight="900" fill="#0F172A" text-anchor="middle" letter-spacing="2">AE123KT</text>
+        </g>
+      </g>
+      <g transform="translate(200,0)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">MARCA</text>
+        <text y="34" font-size="22" font-weight="700" fill="#0F172A">TOYOTA</text>
+      </g>
+      <g transform="translate(400,0)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">MODELO</text>
+        <text y="34" font-size="22" font-weight="700" fill="#0F172A">COROLLA</text>
+      </g>
+      <g transform="translate(620,0)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">A�O</text>
+        <text y="34" font-size="22" font-weight="700" fill="#0F172A">2020</text>
+      </g>
+      <g transform="translate(750,0)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">COLOR</text>
+        <g transform="translate(0,12)">
+          <circle cx="14" cy="14" r="14" fill="#94a3b8" stroke="#475569" stroke-width="1.5"/>
+          <text x="36" y="20" font-size="14" font-weight="700" fill="#0F172A">PLATEADO</text>
+        </g>
+      </g>
+
+      <!-- Row 2 -->
+      <g transform="translate(0,90)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">SERIAL DE CARROCER�A (VIN)</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">VIN20TOYCO2020001</text>
+      </g>
+      <g transform="translate(330,90)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">SERIAL DE MOTOR</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">2ZR-FE4567890</text>
+      </g>
+      <g transform="translate(620,90)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">USO</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">PARTICULAR</text>
+      </g>
+      <g transform="translate(0,140)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">CLASE</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">AUTOM�VIL</text>
+      </g>
+      <g transform="translate(180,140)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">TIPO</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">SED�N</text>
+      </g>
+      <g transform="translate(330,140)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">PUESTOS</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">5</text>
+      </g>
+      <g transform="translate(440,140)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">CILINDROS</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">4 � 1.8L</text>
+      </g>
+      <g transform="translate(620,140)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">COMBUSTIBLE</text>
+        <text y="22" font-size="16" font-weight="700" fill="#0F172A">GASOLINA</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Owner section -->
+  <g transform="translate(40,460)">
+    <rect width="920" height="120" rx="12" fill="#F8FAFC" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="20" y="28" font-size="11" font-weight="800" fill="#1E40AF" letter-spacing="1.5">DATOS DEL PROPIETARIO</text>
+
+    <g transform="translate(20,42)" font-family="'Courier New', monospace">
+      <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">NOMBRES Y APELLIDOS</text>
+      <text y="22" font-size="18" font-weight="700" fill="#0F172A">FERN�NDEZ GARC�A, MAR�A ALEJANDRA</text>
+      <g transform="translate(0,46)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">C�DULA</text>
+        <text y="22" font-size="14" font-weight="700" fill="#0F172A">V-18.456.329</text>
+      </g>
+      <g transform="translate(220,46)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">DIRECCI�N</text>
+        <text y="22" font-size="14" font-weight="700" fill="#0F172A">CARACAS, DISTRITO CAPITAL</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(40,610)">
+    <line x1="0" y1="0" x2="200" y2="0" stroke="#94a3b8"/>
+    <text y="14" font-size="9" font-weight="600" fill="#475569" letter-spacing="1.5">SELLO Y FIRMA INTT</text>
+  </g>
+  <g transform="translate(740,600)">
+    <rect width="80" height="80" fill="white" stroke="#cbd5e1"/>
+    <g fill="#0F172A" transform="translate(4,4)">
+      <rect x="0" y="0" width="20" height="20"/>
+      <rect x="52" y="0" width="20" height="20"/>
+      <rect x="0" y="52" width="20" height="20"/>
+      <rect x="6" y="6" width="8" height="8" fill="white"/>
+      <rect x="58" y="6" width="8" height="8" fill="white"/>
+      <rect x="6" y="58" width="8" height="8" fill="white"/>
+      <rect x="28" y="4" width="4" height="4"/>
+      <rect x="36" y="12" width="4" height="4"/>
+      <rect x="44" y="6" width="4" height="4"/>
+      <rect x="32" y="32" width="6" height="6"/>
+      <rect x="44" y="36" width="4" height="4"/>
+      <rect x="56" y="40" width="4" height="4"/>
+      <rect x="36" y="48" width="4" height="4"/>
+      <rect x="48" y="56" width="4" height="4"/>
+      <rect x="60" y="64" width="4" height="4"/>
+      <rect x="28" y="60" width="4" height="4"/>
+      <rect x="40" y="68" width="4" height="4"/>
+    </g>
+  </g>
+  <g transform="translate(840,650)" fill="#475569">
+    <text font-size="9" font-weight="600" letter-spacing="1.5" text-anchor="end">VERIFICAR EN INTT.GOB.VE</text>
+  </g>
+
+  <!-- DEMO watermark -->
+  <g transform="translate(500,360) rotate(-22)" opacity="0.08">
+    <text font-size="140" font-weight="900" fill="#1E40AF" text-anchor="middle" font-family="Arial, sans-serif" letter-spacing="10">DEMO</text>
+  </g>
+
+  <!-- Border -->
+  <rect x="1" y="1" width="998" height="698" rx="14" fill="none" stroke="#1E40AF" stroke-width="2"/>
+</svg>

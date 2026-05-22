@@ -1,0 +1,56 @@
+﻿# Dependencias
+node_modules/
+**/node_modules/
+
+# Variables de entorno (NUNCA versionar)
+.env
+.env.local
+.env.*.local
+server/.env
+frontend/.env
+
+# Build / dist
+frontend/dist/
+frontend/build/
+server/dist/
+server/build/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# PM2
+.pm2/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Tests / Coverage
+coverage/
+.nyc_output/
+
+# TypeScript
+*.tsbuildinfo
+
+# Uploads / archivos temporales del servidor
+server/uploads/
+
+# Misc
+.cache/
+tmp/
+temp/
+

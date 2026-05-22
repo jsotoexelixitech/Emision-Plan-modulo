@@ -1,0 +1,29 @@
+{
+  "name": "La Mundial de Seguros · Suscripción RCV",
+  "short_name": "La Mundial",
+  "description": "Suscripción digital de pólizas RCV — La Mundial de Seguros.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F1A5A",
+  "theme_color": "#0F1A5A",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

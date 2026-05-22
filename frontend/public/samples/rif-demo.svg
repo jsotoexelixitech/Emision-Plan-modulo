@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bgR" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FEF2F2"/>
+    </linearGradient>
+    <linearGradient id="header4" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#7F1D1D"/>
+      <stop offset="100%" stop-color="#991B1B"/>
+    </linearGradient>
+    <pattern id="grid2" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M0 24 L24 24 M24 0 L24 24" stroke="#7F1D1D" stroke-width="0.4" opacity="0.06"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" rx="14" fill="url(#bgR)"/>
+  <rect width="1000" height="700" rx="14" fill="url(#grid2)"/>
+
+  <!-- Header -->
+  <rect x="0" y="0" width="1000" height="120" fill="url(#header4)"/>
+
+  <!-- Logo -->
+  <g transform="translate(40,28)">
+    <rect width="64" height="64" rx="12" fill="white"/>
+    <text x="32" y="38" font-size="22" font-weight="900" fill="#7F1D1D" text-anchor="middle">SENIAT</text>
+    <text x="32" y="54" font-size="9" font-weight="700" fill="#7F1D1D" text-anchor="middle">VENEZUELA</text>
+  </g>
+  <g transform="translate(124,38)" fill="white">
+    <text font-size="14" font-weight="800" letter-spacing="2">REP�BLICA BOLIVARIANA DE VENEZUELA</text>
+    <text y="20" font-size="11" font-weight="700" opacity="0.9" letter-spacing="1.5">SERVICIO NACIONAL INTEGRADO DE ADMINISTRACI�N ADUANERA Y TRIBUTARIA</text>
+    <text y="40" font-size="11" font-weight="700" opacity="0.9" letter-spacing="1.5">REGISTRO �NICO DE INFORMACI�N FISCAL</text>
+  </g>
+  <g transform="translate(960,40)" fill="white" text-anchor="end">
+    <text font-size="10" font-weight="700" opacity="0.85" letter-spacing="1.5">FECHA DE EMISI�N</text>
+    <text y="22" font-size="14" font-weight="800" font-family="'Courier New', monospace">22/02/2024</text>
+  </g>
+
+  <!-- Title -->
+  <g transform="translate(40,160)">
+    <text font-size="34" font-weight="800" fill="#0F172A" letter-spacing="-0.5">CERTIFICADO RIF</text>
+    <rect y="14" width="80" height="3" fill="#7F1D1D"/>
+    <text y="42" font-size="13" font-weight="600" fill="#475569" letter-spacing="1">PERSONA JUR�DICA � ACTIVO</text>
+  </g>
+
+  <!-- RIF Number Card -->
+  <g transform="translate(40,230)">
+    <rect width="920" height="120" rx="14" fill="#1F2937"/>
+    <g transform="translate(40,32)" fill="white">
+      <text font-size="11" font-weight="700" opacity="0.7" letter-spacing="2">N�MERO DE RIF</text>
+      <text y="60" font-size="56" font-weight="900" font-family="'Courier New', monospace" letter-spacing="4">J-40123456-7</text>
+    </g>
+    <!-- Right: barcode + status -->
+    <g transform="translate(620,30)">
+      <rect width="260" height="56" fill="white" rx="6"/>
+      <g fill="#0F172A" transform="translate(8,4)">
+        <rect x="0" y="0" width="3" height="48"/>
+        <rect x="6" y="0" width="2" height="48"/>
+        <rect x="11" y="0" width="4" height="48"/>
+        <rect x="18" y="0" width="2" height="48"/>
+        <rect x="23" y="0" width="3" height="48"/>
+        <rect x="29" y="0" width="2" height="48"/>
+        <rect x="34" y="0" width="5" height="48"/>
+        <rect x="42" y="0" width="2" height="48"/>
+        <rect x="47" y="0" width="3" height="48"/>
+        <rect x="53" y="0" width="1" height="48"/>
+        <rect x="57" y="0" width="4" height="48"/>
+        <rect x="64" y="0" width="2" height="48"/>
+        <rect x="69" y="0" width="3" height="48"/>
+        <rect x="75" y="0" width="2" height="48"/>
+        <rect x="80" y="0" width="5" height="48"/>
+        <rect x="88" y="0" width="2" height="48"/>
+        <rect x="93" y="0" width="3" height="48"/>
+        <rect x="99" y="0" width="1" height="48"/>
+        <rect x="103" y="0" width="4" height="48"/>
+        <rect x="110" y="0" width="2" height="48"/>
+        <rect x="115" y="0" width="3" height="48"/>
+        <rect x="121" y="0" width="2" height="48"/>
+        <rect x="126" y="0" width="5" height="48"/>
+        <rect x="134" y="0" width="2" height="48"/>
+        <rect x="139" y="0" width="3" height="48"/>
+        <rect x="145" y="0" width="1" height="48"/>
+        <rect x="149" y="0" width="3" height="48"/>
+        <rect x="155" y="0" width="2" height="48"/>
+        <rect x="160" y="0" width="4" height="48"/>
+        <rect x="167" y="0" width="2" height="48"/>
+        <rect x="172" y="0" width="3" height="48"/>
+        <rect x="178" y="0" width="1" height="48"/>
+        <rect x="182" y="0" width="5" height="48"/>
+        <rect x="190" y="0" width="2" height="48"/>
+        <rect x="195" y="0" width="3" height="48"/>
+        <rect x="201" y="0" width="2" height="48"/>
+        <rect x="206" y="0" width="4" height="48"/>
+        <rect x="213" y="0" width="2" height="48"/>
+        <rect x="218" y="0" width="3" height="48"/>
+        <rect x="224" y="0" width="1" height="48"/>
+        <rect x="228" y="0" width="3" height="48"/>
+        <rect x="234" y="0" width="2" height="48"/>
+        <rect x="239" y="0" width="4" height="48"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Razon Social section -->
+  <g transform="translate(40,380)">
+    <rect width="920" height="200" rx="12" fill="#F8FAFC" stroke="#cbd5e1" stroke-width="1.5"/>
+    <g transform="translate(20,28)">
+      <text font-size="11" font-weight="800" fill="#7F1D1D" letter-spacing="1.5">DATOS DEL CONTRIBUYENTE</text>
+    </g>
+
+    <g transform="translate(20,52)" font-family="'Courier New', monospace">
+      <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">RAZ�N SOCIAL</text>
+      <text y="22" font-size="20" font-weight="700" fill="#0F172A">FERN�NDEZ &amp; ASOCIADOS, C.A.</text>
+
+      <g transform="translate(0,52)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">NOMBRE COMERCIAL</text>
+        <text y="22" font-size="14" font-weight="700" fill="#0F172A">FAMA CONSULTORES</text>
+      </g>
+      <g transform="translate(420,52)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">ACTIVIDAD ECON�MICA PRINCIPAL</text>
+        <text y="22" font-size="14" font-weight="700" fill="#0F172A">SERVICIOS PROFESIONALES</text>
+      </g>
+
+      <g transform="translate(0,98)">
+        <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">DOMICILIO FISCAL</text>
+        <text y="22" font-size="14" font-weight="700" fill="#0F172A">AV. PRINCIPAL DE LAS MERCEDES, EDF. CENTRAL, PISO 5, OF. 5-A</text>
+        <text y="42" font-size="14" font-weight="700" fill="#0F172A">CARACAS � DISTRITO CAPITAL � 1080</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Bottom area: status + sello -->
+  <g transform="translate(40,610)">
+    <rect width="380" height="64" rx="10" fill="#ECFDF5" stroke="#10B981" stroke-width="1.5"/>
+    <g transform="translate(20,20)">
+      <circle cx="14" cy="14" r="14" fill="#10B981"/>
+      <path d="M8 14 L13 19 L20 10" stroke="white" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <g transform="translate(50,20)">
+      <text font-size="9" font-weight="700" fill="#065F46" letter-spacing="1.5">ESTADO</text>
+      <text y="20" font-size="20" font-weight="800" fill="#065F46">ACTIVO Y AL D�A</text>
+    </g>
+  </g>
+
+  <!-- QR right -->
+  <g transform="translate(840,610)">
+    <rect width="80" height="80" fill="white" stroke="#cbd5e1"/>
+    <g fill="#0F172A" transform="translate(4,4)">
+      <rect x="0" y="0" width="20" height="20"/>
+      <rect x="52" y="0" width="20" height="20"/>
+      <rect x="0" y="52" width="20" height="20"/>
+      <rect x="6" y="6" width="8" height="8" fill="white"/>
+      <rect x="58" y="6" width="8" height="8" fill="white"/>
+      <rect x="6" y="58" width="8" height="8" fill="white"/>
+      <rect x="28" y="4" width="4" height="4"/>
+      <rect x="40" y="8" width="4" height="4"/>
+      <rect x="32" y="20" width="4" height="4"/>
+      <rect x="44" y="28" width="4" height="4"/>
+      <rect x="56" y="32" width="4" height="4"/>
+      <rect x="36" y="40" width="6" height="6"/>
+      <rect x="48" y="48" width="4" height="4"/>
+      <rect x="60" y="56" width="4" height="4"/>
+      <rect x="28" y="60" width="4" height="4"/>
+      <rect x="40" y="68" width="6" height="4"/>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(440,665)" fill="#475569">
+    <text font-size="9" font-weight="600" letter-spacing="1.5">VERIFICAR EN WWW.SENIAT.GOB.VE</text>
+  </g>
+
+  <!-- DEMO watermark -->
+  <g transform="translate(500,360) rotate(-22)" opacity="0.08">
+    <text font-size="140" font-weight="900" fill="#7F1D1D" text-anchor="middle" font-family="Arial, sans-serif" letter-spacing="10">DEMO</text>
+  </g>
+
+  <!-- Border -->
+  <rect x="1" y="1" width="998" height="698" rx="14" fill="none" stroke="#7F1D1D" stroke-width="2"/>
+</svg>

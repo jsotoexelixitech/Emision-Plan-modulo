@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bgL" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ECFDF5"/>
+      <stop offset="100%" stop-color="#D1FAE5"/>
+    </linearGradient>
+    <linearGradient id="header2" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#065F46"/>
+      <stop offset="100%" stop-color="#047857"/>
+    </linearGradient>
+    <pattern id="lines" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M0 20 L20 0" stroke="#10B981" stroke-width="0.4" opacity="0.18"/>
+    </pattern>
+    <linearGradient id="photoBgL" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bbf7d0"/>
+      <stop offset="100%" stop-color="#86efac"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="630" rx="20" fill="url(#bgL)"/>
+  <rect width="1000" height="630" rx="20" fill="url(#lines)"/>
+
+  <!-- Top header bar -->
+  <rect x="0" y="0" width="1000" height="78" fill="url(#header2)"/>
+
+  <!-- Logo placeholder -->
+  <g transform="translate(40,18)">
+    <circle cx="22" cy="22" r="22" fill="white" opacity="0.95"/>
+    <text x="22" y="28" font-size="22" font-weight="900" fill="#065F46" text-anchor="middle">+</text>
+  </g>
+  <g transform="translate(96,28)" fill="white">
+    <text font-size="14" font-weight="800" letter-spacing="1.8">REP�BLICA BOLIVARIANA DE VENEZUELA</text>
+    <text y="20" font-size="11" font-weight="600" opacity="0.9" letter-spacing="1.5">INSTITUTO NACIONAL DE TRANSPORTE TERRESTRE � INTT</text>
+  </g>
+
+  <!-- Title bar -->
+  <g transform="translate(40,108)">
+    <text font-size="32" font-weight="800" fill="#0F172A" letter-spacing="-0.5">LICENCIA DE CONDUCIR</text>
+    <rect y="16" width="80" height="3" fill="#10B981"/>
+    <text y="42" font-size="13" font-weight="600" fill="#475569" letter-spacing="1">CATEGOR�A B � TRANSPORTE PARTICULAR</text>
+  </g>
+
+  <!-- Photo area -->
+  <g transform="translate(40,200)">
+    <rect width="200" height="260" rx="6" fill="url(#photoBgL)" stroke="#10B981" stroke-width="2"/>
+    <circle cx="100" cy="100" r="38" fill="#065F46" opacity="0.45"/>
+    <path d="M40 230 Q40 165 100 165 Q160 165 160 230 L160 260 L40 260 Z" fill="#065F46" opacity="0.45"/>
+    <text x="100" y="248" font-size="9" font-weight="700" fill="#064E3B" text-anchor="middle" letter-spacing="1.5">FOTOGRAF�A</text>
+  </g>
+
+  <!-- Data fields -->
+  <g transform="translate(280,210)" font-family="'Courier New', monospace">
+    <g>
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">N� DE LICENCIA</text>
+      <text y="28" font-size="26" font-weight="800" fill="#065F46">LIC-0234567</text>
+    </g>
+    <g transform="translate(0,68)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">TITULAR</text>
+      <text y="24" font-size="20" font-weight="700" fill="#0F172A">FERN�NDEZ GARC�A, MAR�A A.</text>
+    </g>
+    <g transform="translate(0,120)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">C�DULA</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">V-18.456.329</text>
+    </g>
+    <g transform="translate(220,120)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">CATEGOR�A</text>
+      <g transform="translate(0,4)">
+        <rect width="40" height="32" rx="4" fill="#065F46"/>
+        <text x="20" y="24" font-size="22" font-weight="900" fill="white" text-anchor="middle">B</text>
+      </g>
+    </g>
+    <g transform="translate(0,170)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">FECHA DE EMISI�N</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">12/06/2022</text>
+    </g>
+    <g transform="translate(220,170)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">VENCIMIENTO</text>
+      <text y="22" font-size="16" font-weight="700" fill="#CF142B">30/06/2027</text>
+    </g>
+    <g transform="translate(0,220)">
+      <text font-size="10" font-weight="700" fill="#065F46" letter-spacing="1.5">RESTRICCIONES</text>
+      <text y="22" font-size="14" font-weight="700" fill="#0F172A">NINGUNA</text>
+    </g>
+  </g>
+
+  <!-- Right side: barcode + signature -->
+  <g transform="translate(680,200)">
+    <rect width="240" height="40" fill="white" stroke="#cbd5e1"/>
+    <g fill="#0F172A">
+      <rect x="6" y="4" width="2" height="32"/>
+      <rect x="11" y="4" width="4" height="32"/>
+      <rect x="18" y="4" width="1" height="32"/>
+      <rect x="22" y="4" width="3" height="32"/>
+      <rect x="28" y="4" width="2" height="32"/>
+      <rect x="33" y="4" width="5" height="32"/>
+      <rect x="41" y="4" width="2" height="32"/>
+      <rect x="46" y="4" width="3" height="32"/>
+      <rect x="52" y="4" width="1" height="32"/>
+      <rect x="56" y="4" width="2" height="32"/>
+      <rect x="61" y="4" width="4" height="32"/>
+      <rect x="68" y="4" width="2" height="32"/>
+      <rect x="73" y="4" width="3" height="32"/>
+      <rect x="79" y="4" width="1" height="32"/>
+      <rect x="83" y="4" width="5" height="32"/>
+      <rect x="91" y="4" width="2" height="32"/>
+      <rect x="96" y="4" width="3" height="32"/>
+      <rect x="102" y="4" width="2" height="32"/>
+      <rect x="107" y="4" width="4" height="32"/>
+      <rect x="114" y="4" width="2" height="32"/>
+      <rect x="119" y="4" width="3" height="32"/>
+      <rect x="125" y="4" width="1" height="32"/>
+      <rect x="129" y="4" width="2" height="32"/>
+      <rect x="134" y="4" width="5" height="32"/>
+      <rect x="142" y="4" width="2" height="32"/>
+      <rect x="147" y="4" width="4" height="32"/>
+      <rect x="154" y="4" width="2" height="32"/>
+      <rect x="159" y="4" width="3" height="32"/>
+      <rect x="165" y="4" width="1" height="32"/>
+      <rect x="169" y="4" width="3" height="32"/>
+      <rect x="175" y="4" width="2" height="32"/>
+      <rect x="180" y="4" width="4" height="32"/>
+      <rect x="187" y="4" width="2" height="32"/>
+      <rect x="192" y="4" width="3" height="32"/>
+      <rect x="198" y="4" width="1" height="32"/>
+      <rect x="202" y="4" width="5" height="32"/>
+      <rect x="210" y="4" width="2" height="32"/>
+      <rect x="215" y="4" width="3" height="32"/>
+      <rect x="221" y="4" width="2" height="32"/>
+      <rect x="226" y="4" width="4" height="32"/>
+      <rect x="233" y="4" width="2" height="32"/>
+    </g>
+    <text y="56" font-size="10" font-weight="700" fill="#0F172A" font-family="'Courier New', monospace">LIC0234567V18456329</text>
+  </g>
+
+  <!-- Signature -->
+  <g transform="translate(680,310)">
+    <line x1="0" y1="0" x2="240" y2="0" stroke="#94a3b8"/>
+    <text y="14" font-size="9" font-weight="600" fill="#475569" letter-spacing="1.5">FIRMA TITULAR</text>
+    <path d="M30 -10 Q60 -28 90 -14 T160 -10 Q190 -22 220 -10" stroke="#065F46" stroke-width="1.4" fill="none" opacity="0.6"/>
+  </g>
+
+  <!-- Authority signature -->
+  <g transform="translate(680,400)">
+    <line x1="0" y1="0" x2="240" y2="0" stroke="#94a3b8"/>
+    <text y="14" font-size="9" font-weight="600" fill="#475569" letter-spacing="1.5">PRESIDENTE INTT</text>
+  </g>
+
+  <!-- Footer -->
+  <g transform="translate(40,560)">
+    <text font-size="9" font-weight="600" fill="#475569" letter-spacing="1.5">DOCUMENTO ELECTR�NICO � V�LIDO EN TODO EL TERRITORIO NACIONAL � WWW.INTT.GOB.VE</text>
+  </g>
+
+  <!-- DEMO watermark -->
+  <g transform="translate(500,315) rotate(-25)" opacity="0.10">
+    <text font-size="120" font-weight="900" fill="#065F46" text-anchor="middle" font-family="Arial, sans-serif" letter-spacing="8">DEMO</text>
+  </g>
+
+  <!-- Border -->
+  <rect x="1" y="1" width="998" height="628" rx="20" fill="none" stroke="#10B981" stroke-width="2"/>
+</svg>

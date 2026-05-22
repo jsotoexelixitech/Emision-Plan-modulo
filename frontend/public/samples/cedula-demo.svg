@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 630" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#FAFBFD"/>
+      <stop offset="100%" stop-color="#EEF2F7"/>
+    </linearGradient>
+    <linearGradient id="header" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FFCC00"/>
+      <stop offset="33%" stop-color="#FFCC00"/>
+      <stop offset="33%" stop-color="#003DA5"/>
+      <stop offset="66%" stop-color="#003DA5"/>
+      <stop offset="66%" stop-color="#CF142B"/>
+      <stop offset="100%" stop-color="#CF142B"/>
+    </linearGradient>
+    <pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="0.4" fill="#003DA5" opacity="0.08"/>
+    </pattern>
+    <linearGradient id="photoBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dbeafe"/>
+      <stop offset="100%" stop-color="#bfdbfe"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="630" rx="20" fill="url(#bg)"/>
+  <rect width="1000" height="630" rx="20" fill="url(#dots)"/>
+
+  <!-- Top flag stripe -->
+  <rect x="0" y="0" width="1000" height="38" fill="url(#header)"/>
+
+  <!-- Header text -->
+  <g transform="translate(40,75)">
+    <text font-size="14" font-weight="700" fill="#003DA5" letter-spacing="2">REP�BLICA BOLIVARIANA DE VENEZUELA</text>
+    <text y="22" font-size="11" font-weight="600" fill="#475569" letter-spacing="1.5">SERVICIO ADMINISTRATIVO DE IDENTIFICACI�N, MIGRACI�N Y EXTRANJER�A</text>
+  </g>
+
+  <!-- Title -->
+  <g transform="translate(40,140)">
+    <text font-size="34" font-weight="800" fill="#0F172A" letter-spacing="-0.5">C�DULA DE IDENTIDAD</text>
+    <rect y="14" width="80" height="3" fill="#CF142B"/>
+  </g>
+
+  <!-- Photo area -->
+  <g transform="translate(40,200)">
+    <rect width="220" height="280" rx="6" fill="url(#photoBg)" stroke="#cbd5e1" stroke-width="2"/>
+    <!-- Silhouette -->
+    <circle cx="110" cy="105" r="42" fill="#94a3b8" opacity="0.55"/>
+    <path d="M40 250 Q40 175 110 175 Q180 175 180 250 L180 280 L40 280 Z" fill="#94a3b8" opacity="0.55"/>
+    <text x="110" y="265" font-size="9" font-weight="700" fill="#475569" text-anchor="middle" letter-spacing="1.5">FOTOGRAF�A</text>
+  </g>
+
+  <!-- Data fields -->
+  <g transform="translate(300,210)" font-family="'Courier New', monospace">
+    <g>
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">APELLIDOS</text>
+      <text y="28" font-size="22" font-weight="700" fill="#0F172A">FERN�NDEZ GARC�A</text>
+    </g>
+    <g transform="translate(0,60)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">NOMBRES</text>
+      <text y="28" font-size="22" font-weight="700" fill="#0F172A">MAR�A ALEJANDRA</text>
+    </g>
+    <g transform="translate(0,120)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">C�DULA DE IDENTIDAD</text>
+      <text y="28" font-size="26" font-weight="800" fill="#CF142B">V-18.456.329</text>
+    </g>
+    <g transform="translate(0,185)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">FECHA DE NACIMIENTO</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">15/04/1990</text>
+    </g>
+    <g transform="translate(220,185)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">SEXO</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">FEMENINO</text>
+    </g>
+    <g transform="translate(0,235)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">ESTADO CIVIL</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">SOLTERA</text>
+    </g>
+    <g transform="translate(220,235)">
+      <text font-size="10" font-weight="700" fill="#64748b" letter-spacing="1.5">VENCIMIENTO</text>
+      <text y="22" font-size="16" font-weight="700" fill="#0F172A">15/04/2030</text>
+    </g>
+  </g>
+
+  <!-- Signature area -->
+  <g transform="translate(300,510)">
+    <line x1="0" y1="0" x2="280" y2="0" stroke="#94a3b8" stroke-width="1"/>
+    <text y="14" font-size="9" font-weight="600" fill="#64748b" letter-spacing="1.5">FIRMA DEL TITULAR</text>
+    <path d="M30 -8 Q60 -22 90 -10 T160 -8 Q190 -18 220 -8" stroke="#1e3a8a" stroke-width="1.4" fill="none" opacity="0.55"/>
+  </g>
+
+  <!-- Bottom QR + barcode -->
+  <g transform="translate(630,200)">
+    <rect width="120" height="120" fill="white" stroke="#cbd5e1" stroke-width="1.5"/>
+    <g fill="#0F172A">
+      <rect x="6" y="6" width="30" height="30"/>
+      <rect x="84" y="6" width="30" height="30"/>
+      <rect x="6" y="84" width="30" height="30"/>
+      <rect x="14" y="14" width="14" height="14" fill="white"/>
+      <rect x="92" y="14" width="14" height="14" fill="white"/>
+      <rect x="14" y="92" width="14" height="14" fill="white"/>
+      <rect x="42" y="6" width="6" height="6"/><rect x="54" y="6" width="6" height="6"/>
+      <rect x="48" y="42" width="8" height="8"/><rect x="60" y="48" width="8" height="8"/>
+      <rect x="72" y="42" width="6" height="6"/><rect x="42" y="54" width="6" height="6"/>
+      <rect x="84" y="60" width="8" height="6"/><rect x="96" y="72" width="6" height="6"/>
+      <rect x="42" y="84" width="8" height="8"/><rect x="60" y="90" width="6" height="6"/>
+      <rect x="78" y="84" width="6" height="8"/><rect x="90" y="96" width="8" height="6"/>
+      <rect x="102" y="90" width="6" height="6"/>
+    </g>
+  </g>
+  <g transform="translate(630,340)">
+    <text font-size="9" font-weight="700" fill="#64748b" letter-spacing="1.5">C�DIGO DE VERIFICACI�N</text>
+    <text y="20" font-size="14" font-weight="700" fill="#0F172A" font-family="'Courier New', monospace">V18456329-2030</text>
+  </g>
+
+  <!-- Bottom stripes -->
+  <g transform="translate(40,560)">
+    <text font-size="9" font-weight="600" fill="#64748b" letter-spacing="1.5">DOCUMENTO ELECTR�NICO � VERIFICAR EN WWW.SAIME.GOB.VE</text>
+  </g>
+
+  <!-- DEMO watermark -->
+  <g transform="translate(500,315) rotate(-25)" opacity="0.10">
+    <text font-size="120" font-weight="900" fill="#CF142B" text-anchor="middle" font-family="Arial, sans-serif" letter-spacing="8">DEMO</text>
+  </g>
+
+  <!-- Border -->
+  <rect x="1" y="1" width="998" height="628" rx="20" fill="none" stroke="#cbd5e1" stroke-width="2"/>
+</svg>
