@@ -27,8 +27,9 @@ const PORT_TO_ORDER: Record<string, number> = {
   '5184': 4, // Pagos
 };
 
-const BRIDGE_HOST   = 'http://localhost:3091';
-const QUERY_KEY     = 'sid';
+const BRIDGE_HOST = (import.meta.env?.VITE_NEXUS_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:3092';
+const BRIDGE_KEY  = (import.meta.env?.VITE_NEXUS_API_KEY as string | undefined) ?? '';
+const QUERY_KEY   = 'sid';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function getSidFromUrl(): string | null {
@@ -43,10 +44,12 @@ function moduleOrder(): number | null {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const r = await fetch(url, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
-  });
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init?.headers as Record<string, string> || {}),
+  };
+  if (BRIDGE_KEY) headers['x-api-key'] = BRIDGE_KEY;
+  const r = await fetch(url, { ...init, headers });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return (await r.json()) as T;
 }
