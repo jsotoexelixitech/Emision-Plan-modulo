@@ -16,6 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 
 const emisionRoutes = require('./routes/emision');
+const nexusAuth     = require('./middleware/nexusAuth');
 
 const app = express();
 
@@ -42,10 +43,12 @@ app.get('/api/health', (_req, res) => {
     upstream: process.env.LAMUNDIAL_BASE_URL || 'no configurado',
     productor: process.env.LAMUNDIAL_PRODUCTOR || null,
     ramo: process.env.LAMUNDIAL_RAMO || null,
+    nexusAuth: process.env.NEXUS_AUTH_ENABLED === 'true',
   });
 });
 
-app.use('/api', emisionRoutes);
+// Multi-tenant: cotizaciones y emisiones requieren nexus_token
+app.use('/api', nexusAuth, emisionRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error('[modulo-emision] error:', err);
