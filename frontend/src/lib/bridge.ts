@@ -75,7 +75,7 @@ function makeBridge(): BridgeAPI {
   const active = Boolean(sid && order);
 
   const collectState = (): Record<string, unknown> => {
-    const s = useWizardStore.getState() as Record<string, unknown>;
+    const s = useWizardStore.getState() as unknown as Record<string, unknown>;
     // Excluye actions del store; sólo persiste data
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(s)) {

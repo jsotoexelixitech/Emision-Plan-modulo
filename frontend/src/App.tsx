@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useWizardStore } from './store/wizardStore';
-import { publish } from '../../../shared/src/index';
 import { SidebarNav } from './components/SidebarNav';
 import { TopProgressBar } from './components/TopProgressBar';
 import { AuroraBackground } from './components/AuroraBackground';
@@ -29,17 +28,6 @@ export default function App() {
       '¡Plan seleccionado!',
       `Categoría ${category} · Plan ${selectedPlan.name} listo para emitir.`,
     );
-    // Publicar evento para módulos activos en el mismo contexto
-    const s = useWizardStore.getState();
-    publish({
-      source: 'emision',
-      type: 'emision:quote-ready',
-      payload: {
-        mprima    : s.quote?.mprima    ?? selectedPlan.priceNum,
-        mprimaext : s.quote?.mprimaext ?? undefined,
-        ptasa     : s.quote?.ptasa     ?? undefined,
-      },
-    });
     // Si el bridge está activo (flujo completo en cadena), avanzar al siguiente módulo
     window.__bridgeAdvance?.();
   }
