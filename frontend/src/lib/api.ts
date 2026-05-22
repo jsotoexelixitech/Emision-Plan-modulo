@@ -9,8 +9,7 @@ api.interceptors.request.use((config) => {
     sessionStorage.getItem('nexus_access_token_emision') ||
     new URLSearchParams(window.location.search).get('nexus_token');
   if (token) {
-    config.headers = config.headers ?? {};
-    (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
+    config.headers.set('Authorization', `Bearer ${token}`);
   }
   return config;
 });
