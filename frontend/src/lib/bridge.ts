@@ -38,9 +38,58 @@ function getSidFromUrl(): string | null {
   } catch { return null; }
 }
 
+function getNexusTokenFromUrl(): string | null {
+  try {
+    return new URL(window.location.href).searchParams.get('nexus_token');
+  } catch { return null; }
+}
+
 function moduleOrder(): number | null {
   const port = window.location.port || '';
   return PORT_TO_ORDER[port] ?? null;
+}
+
+/**
+ * Auto-arranque: si hay nexus_token pero no sid, intenta iniciar el flujo
+ * encadenado llamando a /api/flow/start-from-token.
+ * Si el servidor responde 409 (módulo standalone o no es punto de entrada),
+ * simplemente se ignora y el módulo corre solo.
+ * Si tiene éxito, agrega ?sid=... a la URL con replaceState (sin recarga)
+ * y devuelve el sid para que el bridge se active.
+ */
+async function tryAutoStart(nexusToken: string): Promise<string | null> {
+  try {
+    const r = await fetch(`${BRIDGE_HOST}/api/flow/start-from-token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nexus_token: nexusToken }),
+    });
+
+    if (r.status === 409) {
+      // Flujo standalone; no hay encadenamiento que hacer
+      console.info('[bridge] standalone mode — no chaining needed');
+      return null;
+    }
+
+    if (!r.ok) return null;
+
+    const data = await r.json() as { success: boolean; data?: { sid: string; firstUrl: string } };
+    if (!data.success || !data.data?.sid) return null;
+
+    const sid = data.data.sid;
+    // Añadir sid a la URL actual sin recargar la página
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('sid', sid);
+      window.history.replaceState({}, '', url.toString());
+    } catch { /* ignore */ }
+
+    console.info('[bridge] auto-start — sid=' + sid + ' totalActive=' + (data.data as unknown as { totalActive?: number })?.totalActive);
+    return sid;
+  } catch (e) {
+    console.warn('[bridge] auto-start failed', e);
+    return null;
+  }
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -157,14 +206,28 @@ function makeBridge(): BridgeAPI {
 }
 
 // ── Auto-init ───────────────────────────────────────────────────────────────
-const bridge = makeBridge();
 
-if (bridge.active && typeof window !== 'undefined') {
-  window.__bridge        = bridge;
-  window.__bridgeAdvance = (extra) => bridge.advance(extra ?? {}).then(() => undefined);
+async function init() {
+  let bridge = makeBridge();
 
-  // Hidrata al cargar
-  bridge.hydrate();
+  // Si no hay sid pero hay nexus_token, intentar auto-arranque del flujo
+  if (!bridge.active && typeof window !== 'undefined') {
+    const nexusToken = getNexusTokenFromUrl();
+    if (nexusToken) {
+      const autoSid = await tryAutoStart(nexusToken);
+      if (autoSid) {
+        // Re-crear el bridge ahora que el sid está en la URL
+        bridge = makeBridge();
+      }
+    }
+  }
+
+  if (bridge.active && typeof window !== 'undefined') {
+    window.__bridge        = bridge;
+    window.__bridgeAdvance = (extra) => bridge.advance(extra ?? {}).then(() => undefined);
+
+    // Hidrata al cargar
+    bridge.hydrate();
 
   // Auto-advance para módulos cuyo "fin" es un cambio de step en el store:
   //   OCR (1):    step 1 → 2
@@ -189,8 +252,14 @@ if (bridge.active && typeof window !== 'undefined') {
     }
   });
 
-  // eslint-disable-next-line no-console
-  console.info('[bridge] active — sid=' + bridge.sid + ' order=' + bridge.order);
+    // eslint-disable-next-line no-console
+    console.info('[bridge] active — sid=' + bridge.sid + ' order=' + bridge.order);
+  }
+
+  return bridge;
 }
 
-export default bridge;
+// Exportamos una promesa; los consumidores que necesiten el bridge esperan a que
+// el auto-start se resuelva. El import './lib/bridge' sigue siendo suficiente.
+const bridgePromise = init();
+export default bridgePromise;
