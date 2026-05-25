@@ -71,12 +71,26 @@ function getClient() {
  */
 function extractErrorMessage(data) {
   if (!data) return 'Sin respuesta';
+  if (typeof data === 'string') {
+    const s = data.trim();
+    if (s.startsWith('<')) return 'La Mundial devolvió HTML (endpoint no encontrado o error de proxy)';
+    return s.slice(0, 300);
+  }
   const inner = data.result?.result?.error;
   if (typeof inner === 'string' && inner.trim()) return inner.trim();
+  if (typeof inner === 'number' || typeof inner === 'boolean') {
+    return String(data.result?.result?.message || data.result?.message || inner);
+  }
   const mid = data.result?.error;
   if (typeof mid === 'string' && mid.trim()) return mid.trim();
+  if (typeof mid === 'object' && mid?.message) return String(mid.message);
   if (data.result?.message) return String(data.result.message);
   if (data.message) return String(data.message);
+  if (data.error && typeof data.error === 'string') return data.error;
+  try {
+    const snippet = JSON.stringify(data).slice(0, 400);
+    if (snippet && snippet !== '{}') return `Respuesta La Mundial: ${snippet}`;
+  } catch (_) { /* ignore */ }
   return 'Error desconocido La Mundial';
 }
 
@@ -127,9 +141,14 @@ function logResponse(endpoint, httpStatus, durationMs, data) {
   if (ok) {
     console.log(`[LaMundial][${ts}] <- ${endpoint} ${httpStatus} ok in ${durationMs}ms`);
   } else {
+    const bodyPreview =
+      typeof data === 'string'
+        ? data.slice(0, 500)
+        : JSON.stringify(data)?.slice(0, 800);
     console.warn(
-      `[LaMundial][${ts}] <- ${endpoint} ${httpStatus} FAIL in ${durationMs}ms: ${extractErrorMessage(data)}`
+      `[LaMundial][${ts}] <- ${endpoint} ${httpStatus} FAIL in ${durationMs}ms: ${extractErrorMessage(data)}`,
     );
+    if (bodyPreview) console.warn(`[LaMundial][${ts}] body: ${bodyPreview}`);
   }
 }
 

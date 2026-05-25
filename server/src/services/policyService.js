@@ -15,6 +15,7 @@
  */
 const { getCotizacionAuto, createEmissionAuto } = require('./lamundialClient');
 const { buildQuoteRequest, buildEmissionRequest } = require('./policyMapper');
+const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
 
 function getMode() {
@@ -43,7 +44,28 @@ async function quote(state, overrides = {}) {
     };
   }
 
-  const { payload, metadata } = buildQuoteRequest(state, overrides);
+  const v = state.vehicle || {};
+  let enrichedState = state;
+  const fano = parseInt(String(v.año || v.ano || ''), 10);
+  const needsCategoria =
+    (v.ccategoria_uso == null || v.ccategoria_uso === '') &&
+    fano && v.cmarca && v.cmodelo && v.cversion;
+  if (needsCategoria) {
+    const fromVinma = await resolveCategoriaUsoFromVinma(fano, v.cmarca, v.cmodelo, v.cversion);
+    const ccategoria_uso = fromVinma ?? resolveUsageCategory(v.uso);
+    enrichedState = {
+      ...state,
+      vehicle: { ...v, ccategoria_uso },
+    };
+    if (fromVinma == null) {
+      console.warn(
+        `[Policy][quote] ccategoria_uso no encontrada en VInma; usando fallback uso="${v.uso}" -> ${ccategoria_uso}`,
+      );
+    }
+  }
+
+  const { payload, metadata } = buildQuoteRequest(enrichedState, overrides);
+  console.log('[Policy][quote] payload La Mundial:', JSON.stringify(payload));
   try {
     const result = await getCotizacionAuto(payload);
     return {

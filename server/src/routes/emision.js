@@ -173,10 +173,16 @@ function _send(res, err, stage) {
   }
 
   console.warn(`[modulo-emision/${stage}] ${code} ${httpStatus} ${err.message}`);
+  const detail =
+    err.raw != null
+      ? (typeof err.raw === 'string' ? err.raw.slice(0, 500) : err.raw)
+      : undefined;
   return res.status(httpStatus).json({
     success: false, code, message: err.message,
     ...(err.details ? { details: err.details } : {}),
     ...(err.internalPolicyId ? { internalPolicyId: err.internalPolicyId } : {}),
+    ...(detail ? { detail } : {}),
+    ...(err.endpoint ? { endpoint: err.endpoint } : {}),
     stage,
   });
 }

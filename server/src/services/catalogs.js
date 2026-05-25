@@ -15,6 +15,7 @@
  */
 
 const lamundialClient = require('./lamundialClient');
+const { getSis2000Pool, sql } = require('./sis2000Pool');
 
 // ── Catálogo estático corregido ────────────────────────────────────────────
 // cmarca / cmodelo / cversion → confirmados via POST /api/v1/inma/*
@@ -197,6 +198,33 @@ function resolveUsageCategory(usoTexto) {
   return USAGE_CATEGORIES.PARTICULAR;
 }
 
+/**
+ * Obtiene ccategotr real desde VInma (Sis2000) para la combinación año/marca/modelo/versión.
+ * La Mundial exige el código de categoría que corresponde al vehículo en INMA, no un default genérico.
+ */
+async function resolveCategoriaUsoFromVinma(fano, cmarca, cmodelo, cversion) {
+  try {
+    const pool = await getSis2000Pool();
+    const req  = pool.request();
+    req.input('fano',     sql.Int,         fano);
+    req.input('cmarca',   sql.VarChar(20), String(cmarca));
+    req.input('cmodelo',  sql.VarChar(20), String(cmodelo));
+    req.input('cversion', sql.VarChar(20), String(cversion));
+    const result = await req.query(`
+      SELECT DISTINCT ccategotr
+      FROM   VInma
+      WHERE  cano = @fano AND cmarca = @cmarca AND cmodelo = @cmodelo AND cversion = @cversion
+    `);
+    const row = result.recordset?.[0];
+    if (row?.ccategotr != null && row.ccategotr !== '') {
+      return parseInt(String(row.ccategotr), 10);
+    }
+  } catch (err) {
+    console.warn('[Catalogs] resolveCategoriaUsoFromVinma falló:', err.message);
+  }
+  return null;
+}
+
 function resolveStateCode(estadoTexto) {
   const k = norm(estadoTexto);
   if (STATE_CODES[k] != null) return STATE_CODES[k];
@@ -211,6 +239,7 @@ module.exports = {
   resolveVehicleCodes,
   resolveVehicleCodesLive,
   resolveUsageCategory,
+  resolveCategoriaUsoFromVinma,
   resolveStateCode,
   resolveCityCode,
   DEFAULT_BRAND,
