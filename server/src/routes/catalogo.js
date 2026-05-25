@@ -75,7 +75,7 @@ async function inmaCategoriasUso(fano, cmarca, cmodelo, cversion) {
     `SELECT DISTINCT ccategotr AS ccategoria_uso, TRIM(xclasificacion) AS xcategoria_uso
      FROM VInma
      WHERE cano = @fano AND cmarca = @cmarca AND cmodelo = @cmodelo AND cversion = @cversion
-     ORDER BY xclasificacion`
+     ORDER BY xcategoria_uso`
   );
   return result.recordset;
 }
