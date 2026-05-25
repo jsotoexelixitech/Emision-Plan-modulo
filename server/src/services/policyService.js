@@ -14,6 +14,7 @@
  *      el log permite al operador escalar a La Mundial con la placa).
  */
 const { getCotizacionAuto, createEmissionAuto } = require('./lamundialClient');
+const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const { buildQuoteRequest, buildEmissionRequest } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
@@ -65,9 +66,21 @@ async function quote(state, overrides = {}) {
   }
 
   const { payload, metadata } = buildQuoteRequest(enrichedState, overrides);
-  console.log('[Policy][quote] payload La Mundial:', JSON.stringify(payload));
+  const quoteSource = (process.env.QUOTE_SOURCE || 'sis2000').toLowerCase();
+  console.log(`[Policy][quote] source=${quoteSource} payload:`, JSON.stringify(payload));
+
   try {
-    const result = await getCotizacionAuto(payload);
+    let result;
+    if (quoteSource === 'lamundial_api') {
+      result = await getCotizacionAuto(payload);
+    } else {
+      result = await getCotizacionFromSis2000({
+        ...payload,
+        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10) || 18,
+        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+      });
+      metadata.quoteSource = 'sis2000';
+    }
     return {
       mprima: result.mprima,
       mprimaext: result.mprimaext,
@@ -75,6 +88,9 @@ async function quote(state, overrides = {}) {
       metadata,
     };
   } catch (err) {
+    if (err.code === 'SIS2000_QUOTE_ZERO' || err.code === 'SIS2000_QUOTE_ERROR') {
+      throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
+    }
     throw mapClientError(err, 'quote');
   }
 }
