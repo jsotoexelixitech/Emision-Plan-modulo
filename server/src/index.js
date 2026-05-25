@@ -15,8 +15,10 @@ const express = require('express');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 
-const emisionRoutes = require('./routes/emision');
-const nexusAuth     = require('./middleware/nexusAuth');
+const emisionRoutes  = require('./routes/emision');
+const valrepRoutes   = require('./routes/valrep');
+const catalogoRoutes = require('./routes/catalogo');
+const nexusAuth      = require('./middleware/nexusAuth');
 
 const app = express();
 
@@ -47,7 +49,11 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// Multi-tenant: cotizaciones y emisiones requieren nexus_token
+// Multi-tenant: todas las rutas /api requieren nexus_token
+// Catálogos (valrep + INMA) consultados directamente desde Sis2000.
+app.use('/api/valrep',   nexusAuth, valrepRoutes);
+app.use('/api/catalogo', nexusAuth, catalogoRoutes);
+// Cotizaciones y emisiones
 app.use('/api', nexusAuth, emisionRoutes);
 
 app.use((err, _req, res, _next) => {
