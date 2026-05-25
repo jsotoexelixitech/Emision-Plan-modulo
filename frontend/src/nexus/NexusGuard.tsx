@@ -104,8 +104,19 @@ interface GuardState {
   reason?: string;
 }
 
+/** Detecta si venimos de un flujo encadenado (bridge ya validó el token). */
+function isChainedFlow(): boolean {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return Boolean(params.get('sid') && params.get('nexus_token'));
+  } catch { return false; }
+}
+
 export function NexusGuard({ children, recheckInterval = 30 }: NexusGuardProps) {
-  const [state, setState] = useState<GuardState>({ status: 'loading' });
+  // Si venimos del bridge (hay sid + nexus_token), mostramos el contenido
+  // de inmediato y verificamos en background para no interrumpir la UX.
+  const chained = isChainedFlow();
+  const [state, setState] = useState<GuardState>({ status: chained ? 'active' : 'loading' });
   const nexusApiUrl = import.meta.env.VITE_NEXUS_API_URL as string;
   const isMounted = useRef(true);
 
