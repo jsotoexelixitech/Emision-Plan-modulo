@@ -14,8 +14,16 @@ const BRAND = {
   redLight: '#FF6675', // Rojo Imperial (claro)
 };
 
+/** No mostrar splash cuando el módulo se carga desde un flujo encadenado (bridge). */
+function isChainedFlow(): boolean {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    return Boolean(p.get('sid') && p.get('nexus_token'));
+  } catch { return false; }
+}
+
 export function WelcomeSplash() {
-  const [show, setShow] = useState(true);
+  const [show, setShow] = useState(() => !isChainedFlow());
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
