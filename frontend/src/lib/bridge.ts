@@ -27,6 +27,17 @@ const PORT_TO_ORDER: Record<string, number> = {
   '5184': 4, // Pagos
 };
 
+const PORT_TO_TOKEN_KEY: Record<string, string> = {
+  '5181': 'nexus_access_token_ocr',
+  '5182': 'nexus_access_token_formulario',
+  '5183': 'nexus_access_token_emision',
+  '5184': 'nexus_access_token_pagos',
+};
+
+function getModuleTokenKey(): string {
+  return PORT_TO_TOKEN_KEY[window.location.port ?? ''] ?? 'nexus_access_token';
+}
+
 const BRIDGE_HOST = (import.meta.env?.VITE_NEXUS_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:3092';
 const BRIDGE_KEY  = (import.meta.env?.VITE_NEXUS_API_KEY as string | undefined) ?? '';
 const QUERY_KEY   = 'sid';
@@ -133,6 +144,11 @@ function makeBridge(): BridgeAPI {
     for (const [k, v] of Object.entries(s)) {
       if (typeof v !== 'function') out[k] = v;
     }
+    // Incluye nexus_token para que módulos posteriores puedan autenticarse
+    const nexusToken =
+      getNexusTokenFromUrl() ||
+      sessionStorage.getItem(getModuleTokenKey());
+    if (nexusToken) out.nexus_token = nexusToken;
     return out;
   };
 
@@ -161,7 +177,13 @@ function makeBridge(): BridgeAPI {
       const r = await fetchJson<{ success: boolean; data: { data: Record<string, unknown> } }>(
         `${BRIDGE_HOST}/api/flow/session/${sid}`,
       );
-      if (r?.data?.data) applyHydration(r.data.data);
+      if (r?.data?.data) {
+        applyHydration(r.data.data);
+        const token = r.data.data.nexus_token;
+        if (token && typeof token === 'string') {
+          sessionStorage.setItem(getModuleTokenKey(), token);
+        }
+      }
       // eslint-disable-next-line no-console
       console.info('[bridge] hydrated session', sid);
     } catch (e) {
