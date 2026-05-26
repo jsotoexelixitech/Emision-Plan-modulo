@@ -32,53 +32,40 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
   // Calcular fechas de vigencia (emisión + 1 año)
   const femision = payload.fecha_emision || new Date().toISOString().slice(0, 10);
   const fdesde   = femision;
-  const dHasta   = new Date(femision);
-  dHasta.setFullYear(dHasta.getFullYear() + 1);
-  dHasta.setDate(dHasta.getDate() - 1);
+  const dHasta   = new Date(femision + 'T00:00:00Z');
+  dHasta.setUTCFullYear(dHasta.getUTCFullYear() + 1);
+  dHasta.setUTCDate(dHasta.getUTCDate() - 1);
   const fhasta   = dHasta.toISOString().slice(0, 10);
 
-  // Mapeo de campos al formato que espera sysip-nest-api
+  // El DTO de sysip-nest-api valida los mismos nombres que buildEmissionRequest produce.
+  // Solo hay que: convertir rif a número, añadir alias x* que el service lee directamente,
+  // y añadir las fechas femision/fdesde/fhasta que el service escribe en la BD.
   const sysipPayload = {
-    // Identificadores
-    cramo:    payload.cramo,
-    cplan:    payload.plan,
-    femision,
-    fdesde,
-    fhasta,
-    // Tomador (prefijo x para sysip)
-    xrif_tomador:          payload.rif_tomador,
-    xnombre_tomador:       payload.nombre_tomador,
-    xapellido_tomador:     payload.apellido_tomador,
-    isexo_tomador:         payload.sexo_tomador,
-    fnac_tomador:          payload.fnac_tomador,
-    iestado_civil_tomador: null,
-    // Titular
-    xrif_titular:          payload.rif_titular,
-    xnombre_titular:       payload.nombre_titular,
-    xapellido_titular:     payload.apellido_titular,
-    isexo_titular:         payload.sexo_titular,
-    fnac_titular:          payload.fnac_titular,
-    // Vehículo
-    cmarca:       payload.marca,
-    cmodelo:      payload.modelo,
-    cversion:     payload.version,
-    cano:         payload.fano,
-    xplaca:       payload.placa,
-    xsercar:      payload.serial_carroceria,
-    xsermot:      payload.serial_motor || '',
-    xcolor:       payload.color,
-    ccategoria_uso: payload.ccategoria_uso,
-    // Financiero
+    // Pasa TODO el payload original (DTO acepta los mismos nombres)
+    ...payload,
+    // rif como número (@IsNumber en DTO); cusuario como string (@IsString en DTO)
+    rif_tomador: parseInt(String(payload.rif_tomador).replace(/\D/g, ''), 10),
+    rif_titular: parseInt(String(payload.rif_titular).replace(/\D/g, ''), 10),
+    cusuario: payload.cusuario != null ? String(payload.cusuario) : undefined,
+    // Alias que el service lee directamente (sin fallback a nombres sin prefijo)
+    femision,               // service: b.femision
+    fdesde,                 // service: b.fdesde
+    fhasta,                 // service: b.fhasta
+    xnombre_tomador:    payload.nombre_tomador,
+    xapellido_tomador:  payload.apellido_tomador,
+    isexo_tomador:      payload.sexo_tomador,
+    xnombre_titular:    payload.nombre_titular,
+    xapellido_titular:  payload.apellido_titular,
+    isexo_titular:      payload.sexo_titular,
+    // Campos financieros (la BD los necesita pero no están en el DTO)
     mprima:     cotizacion.mprima,
     mprima_ext: cotizacion.mprimaext,
     ptasa:      cotizacion.ptasa,
-    // Origen
-    ifuente: 'API',
-    method:  'POST',
   };
 
   const ts = new Date().toISOString();
-  console.log(`[sysip][${ts}] -> createEmissionAuto placa=${sysipPayload.xplaca} plan=${sysipPayload.cplan}`);
+  console.log(`[sysip][${ts}] -> createEmissionAuto placa=${sysipPayload.placa} plan=${sysipPayload.plan}`);
+  console.log('[sysip] payload completo:', JSON.stringify(sysipPayload));
 
   let response;
   try {
