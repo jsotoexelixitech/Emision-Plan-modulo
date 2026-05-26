@@ -10,6 +10,7 @@ import {
 import { toast } from '../../store/toastStore';
 import { cn } from '../../lib/utils';
 import { catalogoApi, type InmaMarca, type InmaModelo, type InmaVersion, type CategoriaUso } from '../../lib/api';
+import type { VehicleData } from '../../types';
 
 const COLOR_SWATCHES: Record<string, string> = {
   blanco: '#F8FAFC', negro: '#0F172A', gris: '#94A3B8', plateado: '#CBD5E1',
@@ -130,6 +131,9 @@ export function VehicleStep() {
   const ocrCert     = documents.certificado.ocr;
   const hasOcr      = !!(ocrCert?.marca || ocrCert?.modelo || ocrCert?.placa);
   const hasOcrCodes = !!(vehicle.cmarca && vehicle.cmodelo);
+  // Disparador de auto-resolución por texto (cuando venimos de un estado guardado
+  // o del bridge sin códigos INMA pero con marca/modelo escritos).
+  const [resolvingText, setResolvingText] = useState(false);
 
   // ── Cargar rango de años al montar ────────────────────────────────────────
   useEffect(() => {
@@ -209,6 +213,46 @@ export function VehicleStep() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelos]);
+
+  // ── Resolver por texto (marca/modelo) si tenemos valores pero no códigos INMA ──
+  useEffect(() => {
+    const y = parseInt(vehicle.año, 10);
+    if (!y || y < 1990) return;
+    if (!vehicle.marca || !vehicle.modelo) return;
+    if (vehicle.cmarca && vehicle.cmodelo) return; // ya tenemos códigos
+
+    let cancelled = false;
+    setResolvingText(true);
+    catalogoApi.resolver(y, vehicle.marca, vehicle.modelo)
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (!data?.success) return;
+        const updates: Partial<VehicleData> = {};
+        if (data.cmarca) {
+          updates.cmarca = data.cmarca;
+          updates.marca = data.xmarca ?? vehicle.marca;
+        }
+        if (data.cmodelo) {
+          updates.cmodelo = data.cmodelo;
+          updates.modelo = data.xmodelo ?? vehicle.modelo;
+        }
+        if (Object.keys(updates).length > 0) {
+          // Limpia selección dependiente para forzar carga de modelos/versiones con códigos reales
+          setVehicle({
+            ...updates,
+            cversion: '',
+            ccategoria_uso: undefined,
+            xcategoria_uso: '',
+            uso: vehicle.uso,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setResolvingText(false); });
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vehicle.año, vehicle.marca, vehicle.modelo]);
 
   // ── Cuando cambia cmodelo: cargar versiones ───────────────────────────────
   useEffect(() => {
