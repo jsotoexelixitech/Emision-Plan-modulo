@@ -115,6 +115,8 @@ export interface VehicleData {
   ctipo?: number;
   /** Serial del motor — opcional, máx. 60 caracteres. Aparece en el documento del vehículo. */
   serialMotor?: string;
+  /** Peso del vehículo en toneladas (nullable; default 60 en backend si no se envía). */
+  ntoneladas?: number;
 }
 
 export interface PolicyQuote {

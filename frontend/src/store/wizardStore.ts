@@ -160,7 +160,7 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
       const next = { ...s.vehicle, ...data };
       // Invalidamos quote si cambian datos relevantes para la cotizacion.
       // Incluimos cmarca/cmodelo/cversion para que el cambio de selector INMA tambiÃ©n invalide.
-      const sigKeys: (keyof VehicleData)[] = ['placa', 'marca', 'modelo', 'aÃ±o', 'uso', 'cmarca', 'cmodelo', 'cversion', 'ccategoria_uso'];
+      const sigKeys: (keyof VehicleData)[] = ['placa', 'marca', 'modelo', 'año', 'uso', 'cmarca', 'cmodelo', 'cversion', 'ccategoria_uso'];
       const changed = sigKeys.some((k) => s.vehicle[k] !== next[k]);
       if (changed && s.quote) {
         return {

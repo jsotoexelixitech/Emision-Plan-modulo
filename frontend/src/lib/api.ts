@@ -214,7 +214,8 @@ export async function emitPolicy(payload: EmitPolicyPayload): Promise<EmitPolicy
 
 export interface QuotePolicyPayload {
   state: unknown;
-  plan?: 'RCVBAS' | 'RUSPAT';
+  /** Código de plan en Sis2000/La Mundial (ej. RCVBAS, RUSPAT, Auto, etc.). */
+  plan?: string;
 }
 
 export interface QuotePolicyResponse {

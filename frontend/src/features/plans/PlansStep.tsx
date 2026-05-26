@@ -228,7 +228,6 @@ export function PlansStep() {
       {selectedPlan ? (
         <PlanDetailCard
           plan={selectedPlan}
-          billing={billing}
           displayPrice={displayPrice}
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
@@ -258,13 +257,12 @@ export function PlansStep() {
 }
 
 function PlanDetailCard({
-  plan, billing, displayPrice,
+  plan, displayPrice,
   isLoadingQuote, hasRealQuote, quoteVes, ptasa,
   vehicleLabel, vehicleFallback, quoteError,
   quote,
 }: {
   plan: Plan;
-  billing: 'monthly' | 'annual';
   displayPrice: number;
   isLoadingQuote: boolean;
   hasRealQuote: boolean;
