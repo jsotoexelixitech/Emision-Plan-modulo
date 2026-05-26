@@ -131,9 +131,6 @@ export function VehicleStep() {
   const ocrCert     = documents.certificado.ocr;
   const hasOcr      = !!(ocrCert?.marca || ocrCert?.modelo || ocrCert?.placa);
   const hasOcrCodes = !!(vehicle.cmarca && vehicle.cmodelo);
-  // Disparador de auto-resolución por texto (cuando venimos de un estado guardado
-  // o del bridge sin códigos INMA pero con marca/modelo escritos).
-  const [resolvingText, setResolvingText] = useState(false);
 
   // ── Cargar rango de años al montar ────────────────────────────────────────
   useEffect(() => {
@@ -222,7 +219,6 @@ export function VehicleStep() {
     if (vehicle.cmarca && vehicle.cmodelo) return; // ya tenemos códigos
 
     let cancelled = false;
-    setResolvingText(true);
     catalogoApi.resolver(y, vehicle.marca, vehicle.modelo)
       .then(({ data }) => {
         if (cancelled) return;
@@ -248,7 +244,7 @@ export function VehicleStep() {
         }
       })
       .catch(() => {})
-      .finally(() => { if (!cancelled) setResolvingText(false); });
+      .finally(() => {});
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
