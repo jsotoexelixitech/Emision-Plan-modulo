@@ -50,7 +50,7 @@ const defaultVehicle = (): VehicleData => ({
   tipoPlaca: 'nacional',
   marca: '',
   modelo: '',
-  aÃ±o: '',
+  año: '',
   color: '',
   serial: '',
   serialMotor: '',
