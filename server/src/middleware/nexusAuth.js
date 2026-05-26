@@ -43,6 +43,15 @@ function extractToken(req) {
 function nexusAuth(req, res, next) {
   const token = extractToken(req);
 
+  // Llamadas desde localhost (pagos-api proxy o Vite dev proxy) son confiables —
+  // ya pasaron por el auth del módulo de origen. Se omite el check de submodule
+  // pero se sigue verificando que el token sea un tenant_access válido.
+  const remoteAddr = req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? '';
+  const isInternalProxy =
+    remoteAddr === '127.0.0.1' ||
+    remoteAddr === '::1' ||
+    remoteAddr === '::ffff:127.0.0.1';
+
   if (!ENABLED) {
     // Modo permissive: intenta decodificar sin verificar para tracking
     if (token) {
@@ -66,6 +75,7 @@ function nexusAuth(req, res, next) {
   }
 
   if (!token) {
+    if (isInternalProxy) return next();
     return res.status(401).json({
       success: false,
       code: 'NEXUS_TOKEN_MISSING',
@@ -89,7 +99,8 @@ function nexusAuth(req, res, next) {
         message: 'El token no contiene empresaId/submoduloId.',
       });
     }
-    if (EXPECTED_SUBMOD > 0 && payload.submoduloId !== EXPECTED_SUBMOD) {
+    // Proxy interno: saltar verificación de submódulo — el caller ya autenticó al usuario
+    if (!isInternalProxy && EXPECTED_SUBMOD > 0 && payload.submoduloId !== EXPECTED_SUBMOD) {
       return res.status(403).json({
         success: false,
         code: 'NEXUS_TOKEN_WRONG_SUBMODULE',

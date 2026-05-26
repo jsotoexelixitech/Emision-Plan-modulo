@@ -66,18 +66,33 @@ async function inmaVersiones(fano, cmarca, cmodelo) {
 
 async function inmaCategoriasUso(fano, cmarca, cmodelo, cversion) {
   const pool = await getSis2000Pool();
-  const req  = pool.request();
-  req.input('fano',     sql.Int,         fano);
-  req.input('cmarca',   sql.VarChar(20), String(cmarca));
-  req.input('cmodelo',  sql.VarChar(20), String(cmodelo));
-  req.input('cversion', sql.VarChar(20), String(cversion));
-  const result = await req.query(
-    `SELECT DISTINCT ccategotr AS ccategoria_uso, TRIM(xclasificacion) AS xcategoria_uso
+
+  // Paso 1: obtener ctipo desde VInma (igual que el monolito backend-api-sys)
+  const reqTipo = pool.request();
+  reqTipo.input('fano',     sql.Int,         fano);
+  reqTipo.input('cmarca',   sql.VarChar(20), String(cmarca).trim().toUpperCase());
+  reqTipo.input('cmodelo',  sql.VarChar(20), String(cmodelo).trim().toUpperCase());
+  reqTipo.input('cversion', sql.VarChar(20), String(cversion).trim().toUpperCase());
+  const tipoResult = await reqTipo.query(
+    `SELECT TOP 1 ctipo, npasajero
      FROM VInma
-     WHERE cano = @fano AND cmarca = @cmarca AND cmodelo = @cmodelo AND cversion = @cversion
-     ORDER BY xcategoria_uso`
+     WHERE cmarca = @cmarca AND cmodelo = @cmodelo AND cversion = @cversion AND cano = @fano`
   );
-  return result.recordset;
+  const tipoRow = tipoResult.recordset?.[0];
+  if (!tipoRow || tipoRow.ctipo == null) return [];
+
+  const ctipo = String(tipoRow.ctipo);
+
+  // Paso 2: obtener categorías de uso de la tabla macategtr con nombre completo
+  const reqCat = pool.request();
+  reqCat.input('ctipo', sql.VarChar(10), ctipo);
+  const catResult = await reqCat.query(
+    `SELECT ccategotr AS ccategoria_uso, TRIM(xcategoria) AS xcategoria_uso
+     FROM macategtr
+     WHERE ctipo = @ctipo
+     ORDER BY xcategoria`
+  );
+  return catResult.recordset ?? [];
 }
 
 // ── Rutas ──────────────────────────────────────────────────────────────────────
