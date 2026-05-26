@@ -93,7 +93,7 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
     );
   } catch (netErr) {
     const err = new Error(`Red no disponible llamando sysip-nest-api: ${netErr.message}`);
-    err.code = 'SYSIP_NETWORK';
+    err.code = 'LAMUNDIAL_NETWORK';
     throw err;
   }
 
@@ -134,6 +134,7 @@ function getMode() {
 class PolicyError extends Error {
   constructor(code, message, httpStatus = 400, extra = {}) {
     super(message);
+    this.name = 'PolicyError';
     this.code = code;
     this.httpStatus = httpStatus;
     Object.assign(this, extra);
