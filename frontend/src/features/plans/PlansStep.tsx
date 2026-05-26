@@ -38,9 +38,6 @@ export function PlansStep() {
     vehicle, quote, quoteState,
   } = useWizardStore();
 
-  // RCV es siempre anual — pago mensual no aplica en este ramo.
-  const billing = 'annual' as const;
-
   // ── Planes reales desde backend-api-sys vía modulo-emision server ─────────
   const [apiPlans, setApiPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
