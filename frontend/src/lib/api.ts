@@ -6,8 +6,8 @@ const api = axios.create({ baseURL: '/api' });
 // Inyecta el nexus_token (multi-tenant) en cada request al backend del módulo.
 api.interceptors.request.use((config) => {
   const token =
-    sessionStorage.getItem('nexus_access_token_emision') ||
-    new URLSearchParams(window.location.search).get('nexus_token');
+    new URLSearchParams(window.location.search).get('nexus_token') ||
+    sessionStorage.getItem('nexus_access_token_emision');
   if (token) {
     config.headers.set('Authorization', `Bearer ${token}`);
   }

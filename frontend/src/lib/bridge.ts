@@ -179,9 +179,10 @@ function makeBridge(): BridgeAPI {
       );
       if (r?.data?.data) {
         applyHydration(r.data.data);
-        const token = r.data.data.nexus_token;
-        if (token && typeof token === 'string') {
-          sessionStorage.setItem(getModuleTokenKey(), token);
+        const urlToken = getNexusTokenFromUrl();
+        const sessionToken = r.data.data.nexus_token;
+        if (!urlToken && sessionToken && typeof sessionToken === 'string') {
+          sessionStorage.setItem(getModuleTokenKey(), sessionToken);
         }
       }
       // eslint-disable-next-line no-console
