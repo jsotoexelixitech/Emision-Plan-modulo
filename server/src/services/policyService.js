@@ -13,8 +13,116 @@
  *      (idempotencia manual: si la red falla justo despues de emitir,
  *      el log permite al operador escalar a La Mundial con la placa).
  */
-const { getCotizacionAuto, createEmissionAuto } = require('./lamundialClient');
+const { getCotizacionAuto } = require('./lamundialClient');
+const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
+
+/**
+ * Emite la póliza vía sysip-nest-api (backend-api-sys), que inserta
+ * directamente en eePoliza_Automovil_RCV2 en Sis2000.
+ * Este es el mismo flujo que usa el monolito suscripcion-rcv.
+ *
+ * @param {object} payload - payload ya construido por buildEmissionRequest
+ * @param {object} cotizacion - { mprima, mprimaext, ptasa }
+ */
+async function createEmissionAutoViaSysip(payload, cotizacion) {
+  const sysipUrl = (process.env.SYSIP_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+  const apikey   = process.env.LAMUNDIAL_APIKEY || '';
+
+  // Calcular fechas de vigencia (emisión + 1 año)
+  const femision = payload.fecha_emision || new Date().toISOString().slice(0, 10);
+  const fdesde   = femision;
+  const dHasta   = new Date(femision);
+  dHasta.setFullYear(dHasta.getFullYear() + 1);
+  dHasta.setDate(dHasta.getDate() - 1);
+  const fhasta   = dHasta.toISOString().slice(0, 10);
+
+  // Mapeo de campos al formato que espera sysip-nest-api
+  const sysipPayload = {
+    // Identificadores
+    cramo:    payload.cramo,
+    cplan:    payload.plan,
+    femision,
+    fdesde,
+    fhasta,
+    // Tomador (prefijo x para sysip)
+    xrif_tomador:          payload.rif_tomador,
+    xnombre_tomador:       payload.nombre_tomador,
+    xapellido_tomador:     payload.apellido_tomador,
+    isexo_tomador:         payload.sexo_tomador,
+    fnac_tomador:          payload.fnac_tomador,
+    iestado_civil_tomador: null,
+    // Titular
+    xrif_titular:          payload.rif_titular,
+    xnombre_titular:       payload.nombre_titular,
+    xapellido_titular:     payload.apellido_titular,
+    isexo_titular:         payload.sexo_titular,
+    fnac_titular:          payload.fnac_titular,
+    // Vehículo
+    cmarca:       payload.marca,
+    cmodelo:      payload.modelo,
+    cversion:     payload.version,
+    cano:         payload.fano,
+    xplaca:       payload.placa,
+    xsercar:      payload.serial_carroceria,
+    xsermot:      payload.serial_motor || '',
+    xcolor:       payload.color,
+    ccategoria_uso: payload.ccategoria_uso,
+    // Financiero
+    mprima:     cotizacion.mprima,
+    mprima_ext: cotizacion.mprimaext,
+    ptasa:      cotizacion.ptasa,
+    // Origen
+    ifuente: 'API',
+    method:  'POST',
+  };
+
+  const ts = new Date().toISOString();
+  console.log(`[sysip][${ts}] -> createEmissionAuto placa=${sysipPayload.xplaca} plan=${sysipPayload.cplan}`);
+
+  let response;
+  try {
+    response = await axios.post(
+      `${sysipUrl}/api/v1/external/createEmissionAuto`,
+      sysipPayload,
+      {
+        headers: { 'Content-Type': 'application/json', apikey },
+        timeout: 60_000,
+        validateStatus: () => true,
+      },
+    );
+  } catch (netErr) {
+    const err = new Error(`Red no disponible llamando sysip-nest-api: ${netErr.message}`);
+    err.code = 'SYSIP_NETWORK';
+    throw err;
+  }
+
+  console.log(`[sysip][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
+
+  if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
+    const r = response.data.result || {};
+    // Construir número de póliza en el mismo formato que usa La Mundial
+    const cnpoliza = r.cnpoliza
+      ? String(r.cnpoliza)
+      : `${payload.cramo}-1-${String(Date.now()).slice(-10)}`;
+    return {
+      cnpoliza,
+      cnrecibo: r.cnrecibo || cnpoliza,
+      urlpoliza: r.urlpoliza || '',
+      ncuota: r.ncuota || 1,
+      message: r.message,
+      _raw: response.data,
+    };
+  }
+
+  // Error de negocio de sysip-nest-api
+  const errMsg = response.data?.message || JSON.stringify(response.data).slice(0, 300);
+  const err = new Error(errMsg || 'Error al emitir en sysip-nest-api');
+  err.code = response.status === 401 ? 'LAMUNDIAL_UNAUTHORIZED' : 'LAMUNDIAL_ERROR';
+  err.httpStatus = response.status;
+  err.raw = response.data;
+  throw err;
+}
 const { buildQuoteRequest, buildEmissionRequest } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
@@ -153,10 +261,14 @@ async function quoteAndEmit(state, overrides = {}) {
   const ts = new Date().toISOString();
   console.log(`[Policy][${ts}] EMITIENDO internalId=${payload.poliza} placa=${payload.placa}`);
 
-  // 5) Emitir
+  // 5) Emitir via sysip-nest-api (inserta en eePoliza_Automovil_RCV2)
   let emission;
   try {
-    emission = await createEmissionAuto(payload);
+    emission = await createEmissionAutoViaSysip(payload, {
+      mprima:    quoteResult.mprima,
+      mprimaext: quoteResult.mprimaext,
+      ptasa:     quoteResult.ptasa,
+    });
   } catch (err) {
     throw mapClientError(err, 'emit', { internalPolicyId: payload.poliza });
   }
