@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import { Field, Input } from '../../components/ui/FormField';
 import { BankSearchSelect } from '../../components/ui/BankSearchSelect';
@@ -19,14 +19,14 @@ import {
   SypagoError,
 } from '../../lib/api';
 
-// â”€â”€ Lista completa de 26 bancos venezolanos (fuente: sudeban / notilogia 2026)
-// Ordenados alfabÃ©ticamente. Etiquetas cortas para que no desborden el <select>.
+// ── Lista completa de 26 bancos venezolanos (fuente: sudeban / notilogia 2026)
+// Ordenados alfabéticamente. Etiquetas cortas para que no desborden el <select>.
 const BANCOS_MOVIL: { code: string; label: string }[] = [
   { code: '0156', label: '100% Banco'                    },
   { code: '0171', label: 'Banco Activo'                  },
-  { code: '0166', label: 'Banco AgrÃ­cola de Venezuela'   },
+  { code: '0166', label: 'Banco Agrícola de Venezuela'   },
   { code: '0175', label: 'Banco Bicentenario del Pueblo' },
-  { code: '0128', label: 'Banco CaronÃ­'                  },
+  { code: '0128', label: 'Banco Caroní'                  },
   { code: '0114', label: 'Bancaribe'                     },
   { code: '0163', label: 'Banco del Tesoro'              },
   { code: '0102', label: 'Banco de Venezuela (BDV)'      },
@@ -37,14 +37,14 @@ const BANCOS_MOVIL: { code: string; label: string }[] = [
   { code: '0105', label: 'Banco Mercantil'               },
   { code: '0138', label: 'Banco Plaza'                   },
   { code: '0108', label: 'Banco Provincial (BBVA)'       },
-  { code: '0104', label: 'Venezolano de CrÃ©dito (BVC)'   },
+  { code: '0104', label: 'Venezolano de Crédito (BVC)'   },
   { code: '0172', label: 'Bancamiga'                     },
   { code: '0168', label: 'Bancrecer'                     },
   { code: '0134', label: 'Banesco'                       },
   { code: '0174', label: 'Banplus'                       },
   { code: '0191', label: 'BNC'                           },
   { code: '0157', label: 'DelSur'                        },
-  { code: '0151', label: 'Fondo ComÃºn'                   },
+  { code: '0151', label: 'Fondo Común'                   },
   { code: '0601', label: 'IMCP'                          },
   { code: '0169', label: 'Mi Banco'                      },
   { code: '0137', label: 'Sofitasa'                      },
@@ -57,21 +57,23 @@ const PAYMENT_OPTIONS: {
   Icon: React.ElementType;
 }[] = [
   // { method: 'transfer', label: 'Transferencia',  sub: 'Referencia bancaria',     Icon: Building2  },
-  { method: 'mobile',   label: 'Pago mÃ³vil',     sub: 'Banco Activo Â· VerificaciÃ³n automÃ¡tica', Icon: Smartphone },
-  { method: 'otp',      label: 'DÃ©bito OTP',     sub: 'SyPago Â· DÃ©bito directo', Icon: KeyRound   },
+  { method: 'mobile',   label: 'Pago móvil',     sub: 'Banco Activo · Verificación automática', Icon: Smartphone },
+  { method: 'otp',      label: 'Débito OTP',     sub: 'SyPago · Débito directo', Icon: KeyRound   },
 ];
 
 type VerifyStatus = 'idle' | 'loading' | 'success' | 'failed' | 'error';
 type OtpStep = 'form' | 'requesting' | 'awaiting_otp' | 'confirming' | 'done' | 'error';
 
+const TODAY_ISO = new Date().toISOString().split('T')[0];
+
 export function PaymentStep() {
   const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState } = useWizardStore();
 
-  // â”€â”€ Campos compartidos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Campos compartidos ────────────────────────────────────────────────
   const [bankCode,    setBankCode]    = useState('');
   const [bankLabel,   setBankLabel]   = useState('');
 
-  // â”€â”€ Pago mÃ³vil (Meritop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pago móvil (Meritop) ──────────────────────────────────────────────
   const [telefonoPago, setTelPago]   = useState('');
   const [montoPagoM,   setMontoM]    = useState('');
   const [fechaPagoM,   setFechaM]    = useState('');
@@ -81,7 +83,7 @@ export function PaymentStep() {
   const [verifyResult, setVerifyResult] = useState<VerifyMobilePaymentResponse | null>(null);
   const [verifyError,  setVerifyError]  = useState<string>('');
 
-  // â”€â”€ SyPago DÃ©bito OTP â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── SyPago Débito OTP ─────────────────────────────────────────────────
   const [otpDocType,   setOtpDocType]   = useState('V');
   const [otpDocNum,    setOtpDocNum]    = useState('');
   const [otpName,      setOtpName]      = useState('');
@@ -92,9 +94,13 @@ export function PaymentStep() {
   const [otpStep,      setOtpStep]      = useState<OtpStep>('form');
   const [otpError,     setOtpError]     = useState('');
   const [otpResult,    setOtpResult]    = useState<SypagoOtpConfirmResponse | null>(null);
-  // otpSubmitted: true despuÃ©s del primer intento de "Solicitar OTP"
+  // otpSubmitted: true después del primer intento de "Solicitar OTP"
   const [otpSubmitted, setOtpSubmitted] = useState(false);
   const [otpCooldown,  setOtpCooldown]  = useState(0); // segundos restantes para reenvío
+
+  // Latch síncrono para evitar doble-click en "Confirmar pago".
+  // useRef garantiza que el bloqueo ocurre ANTES del siguiente render,
+  // a diferencia de setState que necesita un ciclo para propagarse.
   const confirmInFlight = useRef(false);
 
   // Resetear estados al cambiar método de pago
@@ -111,17 +117,27 @@ export function PaymentStep() {
     confirmInFlight.current = false;
   }, [paymentMethod]);
 
-  // Countdown para reenvÃ­o de OTP
+  // Sincroniza el monto en Bs con la cotización oficial cada vez que cambia.
+  // No es editable por el usuario: es el monto exacto a pagar (prima anual a tasa BCV).
+  // Esto evita que el cliente coloque un monto menor al cotizado.
+  useEffect(() => {
+    if (quoteState !== 'ready' || !quote) return;
+    const vesStr = vesAnnual(quote).toFixed(2);
+    setMontoM(vesStr);
+    setOtpAmount(vesStr);
+  }, [quoteState, quote]);
+
+  // Countdown para reenvío de OTP
   useEffect(() => {
     if (otpCooldown <= 0) return;
     const t = window.setTimeout(() => setOtpCooldown((s) => s - 1), 1000);
     return () => window.clearTimeout(t);
   }, [otpCooldown]);
 
-  // Si el store quedÃ³ con un mÃ©todo legacy ('card' / 'transfer' que ya no se
+  // Si el store quedó con un método legacy ('card' / 'transfer' que ya no se
   // ofrecen en PAYMENT_OPTIONS), redirigimos a 'mobile' para evitar pantalla
-  // vacÃ­a. Esto puede ocurrir si el usuario tenÃ­a estado previo persistido o
-  // si el flujo cambiÃ³ entre versiones.
+  // vacía. Esto puede ocurrir si el usuario tenía estado previo persistido o
+  // si el flujo cambió entre versiones.
   useEffect(() => {
     if (paymentMethod === 'card' || paymentMethod === 'transfer') {
       setPaymentMethod('mobile');
@@ -135,18 +151,18 @@ export function PaymentStep() {
   const annualUsd = hasRealQuote ? quote!.mprimaext      : (selectedPlan?.priceNum ?? 0) * 12;
   const annualVes = hasRealQuote ? vesAnnual(quote)       : 0;
 
-  // â”€â”€ Validaciones transferencia â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // â”€â”€ Validaciones pago mÃ³vil (Meritop) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Validaciones transferencia ──────────────────────────────────────
+  // ── Validaciones pago móvil (Meritop) ─────────────────────────────
   const movErrors = {
     banco    : !bankCode                                          ? 'Selecciona el banco'                : '',
-    telefono : telefonoPago.length > 0 && !/^04\d{9}$/.test(telefonoPago) ? 'Formato invÃ¡lido: 04XXXXXXXXX' : !telefonoPago ? 'El telÃ©fono es obligatorio' : '',
-    monto    : !montoPagoM                                        ? 'El monto es obligatorio'            : isNaN(parseFloat(montoPagoM)) || parseFloat(montoPagoM) <= 0 ? 'Monto invÃ¡lido' : '',
+    telefono : telefonoPago.length > 0 && !/^04\d{9}$/.test(telefonoPago) ? 'Formato inválido: 04XXXXXXXXX' : !telefonoPago ? 'El teléfono es obligatorio' : '',
+    monto    : !montoPagoM                                        ? 'El monto es obligatorio'            : isNaN(parseFloat(montoPagoM)) || parseFloat(montoPagoM) <= 0 ? 'Monto inválido' : '',
     fecha    : !fechaPagoM                                        ? 'La fecha es obligatoria'            : '',
     hora     : !horaPagoM                                        ? 'La hora es obligatoria'             : '',
   };
   const pagoMovilListo = Object.values(movErrors).every(e => !e) && telefonoPago.length === 11;
 
-  // â”€â”€ FunciÃ³n verificar pago mÃ³vil â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Función verificar pago móvil ─────────────────────────────────────
   async function handleVerificar() {
     if (!pagoMovilListo) return;
     setVerifyStatus('loading');
@@ -174,13 +190,13 @@ export function PaymentStep() {
     }
   }
 
-  // â”€â”€ Validaciones OTP (SyPago) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // Mismo patrÃ³n que pago mÃ³vil: errores de formato mientras escribe,
-  // errores de campo vacÃ­o visibles siempre (sin gate de "touched").
+  // ── Validaciones OTP (SyPago) ─────────────────────────────────────────
+  // Mismo patrón que pago móvil: errores de formato mientras escribe,
+  // errores de campo vacío visibles siempre (sin gate de "touched").
   const otpErrors = {
     docNum : otpDocNum.length > 0 && !/^\d{5,10}$/.test(otpDocNum)
-               ? 'Solo dÃ­gitos, entre 5 y 10 caracteres'
-               : !otpDocNum ? 'NÃºmero de documento obligatorio' : '',
+               ? 'Solo dígitos, entre 5 y 10 caracteres'
+               : !otpDocNum ? 'Número de documento obligatorio' : '',
 
     name   : otpName.length > 0 && otpName.trim().split(/\s+/).filter(Boolean).length < 2
                ? 'Ingresa nombre y apellido'
@@ -189,11 +205,11 @@ export function PaymentStep() {
     bank   : !otpBankCode ? 'Selecciona el banco' : '',
 
     phone  : otpPhone.length > 0 && !/^04\d{9}$/.test(otpPhone)
-               ? 'Formato invÃ¡lido: 04XXXXXXXXX'
-               : !otpPhone ? 'TelÃ©fono obligatorio' : '',
+               ? 'Formato inválido: 04XXXXXXXXX'
+               : !otpPhone ? 'Teléfono obligatorio' : '',
 
     amount : otpAmount.length > 0 && (isNaN(parseFloat(otpAmount)) || parseFloat(otpAmount) <= 0)
-               ? 'Ingresa un monto vÃ¡lido'
+               ? 'Ingresa un monto válido'
                : !otpAmount ? 'Monto obligatorio' : '',
   };
   const otpFormListo = !Object.values(otpErrors).some(e => e);
@@ -231,8 +247,11 @@ export function PaymentStep() {
 
   async function handleOtpConfirm() {
     if (!otpCode.trim()) return;
+
+    // Bloqueo síncrono — impide que dos clicks simultáneos pasen al mismo tiempo
     if (confirmInFlight.current) return;
     confirmInFlight.current = true;
+
     setOtpStep('confirming');
     setOtpError('');
     try {
@@ -248,9 +267,11 @@ export function PaymentStep() {
       });
       setOtpResult(result);
       setOtpStep('done');
+      // Latch queda activo en 'done' — no se puede volver a confirmar
     } catch (err) {
       setOtpError(err instanceof SypagoError ? err.message : 'Error al confirmar pago.');
       setOtpStep('error');
+      // Liberar latch solo en error para permitir reintentar
       confirmInFlight.current = false;
     }
   }
@@ -258,7 +279,7 @@ export function PaymentStep() {
   return (
     <div className="animate-fade-in space-y-6">
       <p className="text-slate-500 text-sm leading-relaxed -mt-2">
-        Confirma el mÃ©todo de pago y emite la pÃ³liza. La operaciÃ³n estÃ¡ cifrada de extremo a extremo.
+        Confirma el método de pago y emite la póliza. La operación está cifrada de extremo a extremo.
       </p>
 
       {/* Total bar */}
@@ -288,7 +309,7 @@ export function PaymentStep() {
               )}
               {isQuoteError && (
                 <span className="inline-flex items-center gap-1 text-[0.55rem] font-black text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded-md border border-rose-200 uppercase tracking-wider">
-                  <AlertTriangle size={9} strokeWidth={2.4} /> CotizaciÃ³n pendiente
+                  <AlertTriangle size={9} strokeWidth={2.4} /> Cotización pendiente
                 </span>
               )}
             </div>
@@ -306,11 +327,11 @@ export function PaymentStep() {
                 {formatUsdShort(annualUsd)}
               </span>
             )}
-            <span className="text-xs text-slate-500 font-semibold pb-1">/ aÃ±o</span>
+            <span className="text-xs text-slate-500 font-semibold pb-1">/ año</span>
           </div>
           {hasRealQuote && annualVes > 0 && (
-            <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1 tabular-nums">
-              â‰ˆ Bs {annualVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <p className="text-sm font-display font-black text-indigo-700 mt-1 tabular-nums">
+              Bs {annualVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
           )}
           {hasRealQuote && quote?.ptasa && quote.ptasa > 0 && (
@@ -321,11 +342,11 @@ export function PaymentStep() {
         </div>
       </div>
 
-      {/* Selector de mÃ©todo */}
+      {/* Selector de método */}
       <div>
         <p className="text-[0.7rem] font-black text-slate-500 uppercase tracking-widest mb-3 inline-flex items-center gap-1.5">
           <Sparkles size={11} className="text-indigo-500" />
-          MÃ©todo de pago
+          Método de pago
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {PAYMENT_OPTIONS.map(({ method, label, sub, Icon }) => (
@@ -367,7 +388,7 @@ export function PaymentStep() {
         <div className="flex items-center justify-between mb-4 text-xs">
           <div className="flex items-center gap-2 text-slate-500">
             <Lock size={12} className="text-emerald-500" />
-            <span className="font-semibold">ConexiÃ³n segura Â· Tus datos estÃ¡n protegidos</span>
+            <span className="font-semibold">Conexión segura · Tus datos están protegidos</span>
           </div>
           <span className="hidden sm:flex items-center gap-1.5 text-[0.62rem] font-bold text-slate-400">
             <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono">PCI-DSS</span>
@@ -375,11 +396,11 @@ export function PaymentStep() {
           </span>
         </div>
 
-        {/* â”€â”€ PAGO MÃ“VIL â”€â”€ */}
+        {/* ── PAGO MÓVIL ── */}
         {paymentMethod === 'mobile' && (
           <div className="animate-fade-in space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* fila 1: banco Â· telÃ©fono */}
+              {/* fila 1: banco · teléfono */}
               <Field label="Banco de origen" error={movErrors.banco}>
                 <BankSearchSelect
                   options={BANCOS_MOVIL}
@@ -393,7 +414,7 @@ export function PaymentStep() {
                 />
               </Field>
 
-              <Field label="TelÃ©fono de origen" hint="NÃºmero que realizÃ³ el pago" error={movErrors.telefono}>
+              <Field label="Teléfono de origen" hint="Número que realizó el pago" error={movErrors.telefono}>
                 <Input
                   value={telefonoPago}
                   onChange={(e) => { setTelPago(e.target.value.replace(/\D/g, '').slice(0, 11)); setVerifyStatus('idle'); }}
@@ -404,13 +425,13 @@ export function PaymentStep() {
                 />
               </Field>
 
-              {/* fila 2: fecha Â· hora */}
+              {/* fila 2: fecha · hora */}
               <Field label="Fecha del pago" error={movErrors.fecha}>
                 <Input
                   type="date"
                   value={fechaPagoM}
                   onChange={(e) => { setFechaM(e.target.value); setVerifyStatus('idle'); }}
-                  max={new Date().toISOString().split('T')[0]}
+                  max={TODAY_ISO}
                 />
               </Field>
 
@@ -422,18 +443,35 @@ export function PaymentStep() {
                 />
               </Field>
 
-              {/* fila 3: monto (ancho completo) */}
-              <Field label="Monto pagado (Bs)" error={movErrors.monto} full>
+              {/* fila 3: monto (ancho completo) — bloqueado cuando hay cotización oficial */}
+              <Field
+                label="Monto a pagar (Bs)"
+                hint={
+                  hasRealQuote
+                    ? 'Monto exacto según cotización oficial · no editable'
+                    : isLoadingQuote
+                    ? 'Calculando monto en bolívares desde la cotización...'
+                    : 'Esperando cotización para calcular el monto'
+                }
+                error={movErrors.monto}
+                full
+              >
                 <Input
                   value={montoPagoM}
-                  onChange={(e) => { setMontoM(e.target.value.replace(/[^0-9.]/g, '')); setVerifyStatus('idle'); }}
+                  onChange={(e) => {
+                    if (hasRealQuote) return; // bloqueado si hay cotización oficial
+                    setMontoM(e.target.value.replace(/[^0-9.]/g, ''));
+                    setVerifyStatus('idle');
+                  }}
                   placeholder="198114.50"
                   inputMode="decimal"
+                  readOnly={hasRealQuote}
+                  className={hasRealQuote ? 'bg-slate-50 text-slate-700 font-bold cursor-not-allowed' : ''}
                 />
               </Field>
             </div>
 
-            {/* BotÃ³n verificar */}
+            {/* Botón verificar */}
             <button
               type="button"
               disabled={!pagoMovilListo || verifyStatus === 'loading'}
@@ -456,16 +494,16 @@ export function PaymentStep() {
 
               {verifyStatus === 'loading' ? 'Verificando con Banco Activo...' :
                verifyStatus === 'success' ? 'Pago verificado correctamente' :
-               verifyStatus === 'failed'  ? 'Pago no encontrado Â· Reintentar' :
-               verifyStatus === 'error'   ? 'Error Â· Reintentar' :
-               'Verificar pago mÃ³vil'}
+               verifyStatus === 'failed'  ? 'Pago no encontrado · Reintentar' :
+               verifyStatus === 'error'   ? 'Error · Reintentar' :
+               'Verificar pago móvil'}
 
               {(verifyStatus === 'failed' || verifyStatus === 'error') && (
                 <RefreshCw size={13} className="ml-1 opacity-80" />
               )}
             </button>
 
-            {/* Resultado de la verificaciÃ³n */}
+            {/* Resultado de la verificación */}
             {verifyStatus === 'success' && verifyResult && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 animate-fade-in">
                 <div className="flex items-start gap-3">
@@ -513,8 +551,8 @@ export function PaymentStep() {
                 <div>
                   <p className="text-sm font-bold text-amber-800">Pago no encontrado</p>
                   <p className="text-xs text-amber-700 mt-1">
-                    {verifyResult?.message || 'No se encontrÃ³ el pago con los datos proporcionados.'}
-                    {' '}Verifica el telÃ©fono, banco, monto y hora, y vuelve a intentarlo.
+                    {verifyResult?.message || 'No se encontró el pago con los datos proporcionados.'}
+                    {' '}Verifica el teléfono, banco, monto y hora, y vuelve a intentarlo.
                   </p>
                 </div>
               </div>
@@ -532,7 +570,7 @@ export function PaymentStep() {
           </div>
         )}
 
-        {/* â”€â”€ DÃ‰BITO OTP (SyPago) â”€â”€ */}
+        {/* ── DÉBITO OTP (SyPago) ── */}
         {paymentMethod === 'otp' && (
           <div className="animate-fade-in space-y-5">
 
@@ -540,14 +578,14 @@ export function PaymentStep() {
             {(otpStep === 'form' || otpStep === 'requesting' || otpStep === 'error') && (
               <>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Ingresa los datos del pagador. El banco le enviarÃ¡ una clave OTP por SMS o notificaciÃ³n push.
+                  Ingresa los datos del pagador. El banco le enviará una clave OTP por SMS o notificación push.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* fila 1: documento Â· nombre */}
-                  <Field label="Documento del pagador" hint="Tipo y nÃºmero de cÃ©dula"
+                  {/* fila 1: documento · nombre */}
+                  <Field label="Documento del pagador" hint="Tipo y número de cédula"
                     error={otpErrors.docNum}>
                     <div className="flex gap-2 w-full">
-                      {/* Selector de tipo â€” ancho fijo, legible en mÃ³vil */}
+                      {/* Selector de tipo — ancho fijo, legible en móvil */}
                       <select
                         value={otpDocType}
                         onChange={(e) => setOtpDocType(e.target.value)}
@@ -571,11 +609,11 @@ export function PaymentStep() {
                     <Input
                       value={otpName}
                       onChange={(e) => setOtpName(e.target.value)}
-                      placeholder="Juan PÃ©rez"
+                      placeholder="Juan Pérez"
                     />
                   </Field>
 
-                  {/* fila 2: banco Â· telÃ©fono */}
+                  {/* fila 2: banco · teléfono */}
                   <Field label="Banco del pagador" error={otpErrors.bank}>
                     <BankSearchSelect
                       options={BANCOS_MOVIL}
@@ -584,7 +622,7 @@ export function PaymentStep() {
                     />
                   </Field>
 
-                  <Field label="TelÃ©fono del pagador" hint="04XX Â· nÃºmero en el banco"
+                  <Field label="Teléfono del pagador" hint="04XX · número en el banco"
                     error={otpErrors.phone}>
                     <Input
                       value={otpPhone}
@@ -596,14 +634,29 @@ export function PaymentStep() {
                     />
                   </Field>
 
-                  {/* fila 3: monto (ancho completo) */}
-                  <Field label="Monto a debitar (Bs)" hint="Debe coincidir con la prima"
-                    error={otpErrors.amount} full>
+                  {/* fila 3: monto (ancho completo) — bloqueado cuando hay cotización oficial */}
+                  <Field
+                    label="Monto a debitar (Bs)"
+                    hint={
+                      hasRealQuote
+                        ? 'Monto exacto según cotización oficial · no editable'
+                        : isLoadingQuote
+                        ? 'Calculando monto en bolívares desde la cotización...'
+                        : 'Esperando cotización para calcular el monto'
+                    }
+                    error={otpErrors.amount}
+                    full
+                  >
                     <Input
                       value={otpAmount}
-                      onChange={(e) => setOtpAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                      onChange={(e) => {
+                        if (hasRealQuote) return; // bloqueado si hay cotización oficial
+                        setOtpAmount(e.target.value.replace(/[^0-9.]/g, ''));
+                      }}
                       placeholder="198114.50"
                       inputMode="decimal"
+                      readOnly={hasRealQuote}
+                      className={hasRealQuote ? 'bg-slate-50 text-slate-700 font-bold cursor-not-allowed' : ''}
                     />
                   </Field>
                 </div>
@@ -639,7 +692,7 @@ export function PaymentStep() {
             {/* Paso 2: ingresar OTP */}
             {(otpStep === 'awaiting_otp' || otpStep === 'confirming') && (
               <div className="space-y-4 animate-fade-in">
-                {/* Banner de instrucciÃ³n */}
+                {/* Banner de instrucción */}
                 <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-xl bg-indigo-500 grid place-items-center shrink-0 shadow-md">
                     <Smartphone size={18} className="text-white" />
@@ -647,13 +700,13 @@ export function PaymentStep() {
                   <div>
                     <p className="text-sm font-bold text-indigo-800">Clave OTP enviada</p>
                     <p className="text-xs text-indigo-600 mt-1">
-                      El banco ha enviado una clave de un solo uso al telÃ©fono <span className="font-mono font-bold">{otpPhone}</span>.
-                      IngrÃ©sala a continuaciÃ³n para autorizar el dÃ©bito.
+                      El banco ha enviado una clave de un solo uso al teléfono <span className="font-mono font-bold">{otpPhone}</span>.
+                      Ingrésala a continuación para autorizar el débito.
                     </p>
                   </div>
                 </div>
 
-                <Field label="Clave OTP" hint="La clave de 6 u 8 dÃ­gitos que recibiste por SMS o notificaciÃ³n">
+                <Field label="Clave OTP" hint="La clave de 6 u 8 dígitos que recibiste por SMS o notificación">
                   <Input
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 8))}
@@ -666,7 +719,7 @@ export function PaymentStep() {
 
                 {otpCode.length > 0 && otpCode.length < 6 && (
                   <p className="text-xs text-amber-600 font-medium -mt-2">
-                    La clave OTP debe tener al menos 6 dÃ­gitos.
+                    La clave OTP debe tener al menos 6 dígitos.
                   </p>
                 )}
 
@@ -674,8 +727,8 @@ export function PaymentStep() {
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                   <div className="text-xs text-slate-500">
                     {otpCooldown > 0
-                      ? <>Â¿No recibiste el cÃ³digo? Puedes reenviarlo en <span className="font-bold text-slate-700 tabular-nums">{otpCooldown}s</span></>
-                      : <>Â¿No recibiste el cÃ³digo?</>
+                      ? <>¿No recibiste el código? Puedes reenviarlo en <span className="font-bold text-slate-700 tabular-nums">{otpCooldown}s</span></>
+                      : <>¿No recibiste el código?</>
                     }
                   </div>
                   <button
@@ -689,7 +742,7 @@ export function PaymentStep() {
                       disabled:opacity-40 disabled:cursor-not-allowed
                       enabled:border-indigo-300 enabled:text-indigo-600 enabled:hover:bg-indigo-50"
                   >
-                    <RefreshCw size={12} /> Reenviar cÃ³digo
+                    <RefreshCw size={12} /> Reenviar código
                   </button>
                 </div>
 
@@ -708,7 +761,7 @@ export function PaymentStep() {
                     className="flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-[0_8px_20px_rgba(16,185,129,0.35)] hover:-translate-y-0.5 active:translate-y-0 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                   >
                     {otpStep === 'confirming'
-                      ? <><Loader2 size={16} className="animate-spin" /> Autorizando dÃ©bito...</>
+                      ? <><Loader2 size={16} className="animate-spin" /> Autorizando débito...</>
                       : <><ClipboardCheck size={16} /> Confirmar pago</>
                     }
                   </button>
@@ -716,7 +769,7 @@ export function PaymentStep() {
               </div>
             )}
 
-            {/* Paso 3: Ã©xito */}
+            {/* Paso 3: éxito */}
             {otpStep === 'done' && otpResult && (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 animate-fade-in">
                 <div className="flex items-start gap-3">
@@ -725,10 +778,10 @@ export function PaymentStep() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-emerald-800 mb-2">
-                      {otpResult.mock ? 'Pago autorizado [MODO PRUEBA]' : 'DÃ©bito autorizado por SyPago'}
+                      {otpResult.mock ? 'Pago autorizado [MODO PRUEBA]' : 'Débito autorizado por SyPago'}
                     </p>
                     <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
-                      <dt className="text-slate-500 font-semibold">ID de transacciÃ³n</dt>
+                      <dt className="text-slate-500 font-semibold">ID de transacción</dt>
                       <dd className="font-mono font-bold text-slate-800 truncate">{otpResult.transaction_id}</dd>
                       <dt className="text-slate-500 font-semibold">Pagador</dt>
                       <dd className="text-slate-700">{otpName}</dd>
@@ -738,7 +791,7 @@ export function PaymentStep() {
                       </dd>
                     </dl>
                     <p className="text-[0.65rem] text-emerald-600/70 mt-2">
-                      El resultado definitivo se recibirÃ¡ vÃ­a webhook. Puedes continuar a emitir la pÃ³liza.
+                      El resultado definitivo se recibirá vía webhook. Puedes continuar a emitir la póliza.
                     </p>
                   </div>
                 </div>

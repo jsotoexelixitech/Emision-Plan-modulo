@@ -5,7 +5,7 @@ import { IdentityInput } from '../../components/ui/IdentityInput';
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
-import { User, UserPlus, Heart, Wallet } from 'lucide-react';
+import { User, UserPlus, Heart, Wallet, ShieldAlert } from 'lucide-react';
 
 export function SectionCard({
   title,
@@ -65,6 +65,7 @@ interface ValidationErrors {
   email2?: string;
   fechaNac?: string;
   sexo?: string;
+  estadoCivil?: string;
   estado?: string;
   ciudad?: string;
   direccion?: string;
@@ -77,6 +78,7 @@ interface ValidationErrors {
   pag_apellido?: string;
   pag_identificacion?: string;
   pag_telefono?: string;
+  pag_email?: string;
   // Beneficiario
   benef_nombre?: string;
   benef_apellido?: string;
@@ -112,62 +114,119 @@ export function EmissionStep() {
 
   const validate = () => {
     const e: ValidationErrors = {};
-    const req = (v?: string) => !(v ?? '').trim();
+    const req  = (v?: string) => !(v ?? '').trim();
+    const len  = (v?: string) => (v ?? '').trim().length;
+    const digs = (v?: string) => (v ?? '').replace(/\D/g, '').length;
 
     // ── Tomador ───────────────────────────────────────────────────────────
-    if (req(tomador.identificacion)) e.identificacion = 'La identificación es obligatoria';
-    if (req(tomador.nombre))         e.nombre         = 'El nombre es obligatorio';
-    if (req(tomador.apellido))       e.apellido       = 'El apellido es obligatorio';
+    if (req(tomador.identificacion)) {
+      e.identificacion = 'La identificación es obligatoria';
+    } else if (digs(tomador.identificacion) < 6) {
+      e.identificacion = 'La identificación debe tener al menos 6 dígitos';
+    } else if (digs(tomador.identificacion) > 9) {
+      e.identificacion = 'La identificación no puede tener más de 9 dígitos';
+    }
+
+    if (req(tomador.nombre)) {
+      e.nombre = 'El nombre es obligatorio';
+    } else if (len(tomador.nombre) < 2) {
+      e.nombre = 'El nombre debe tener al menos 2 caracteres';
+    } else if (len(tomador.nombre) > 50) {
+      e.nombre = 'El nombre no puede superar 50 caracteres';
+    }
+
+    if (req(tomador.apellido)) {
+      e.apellido = 'El apellido es obligatorio';
+    } else if (len(tomador.apellido) < 2) {
+      e.apellido = 'El apellido debe tener al menos 2 caracteres';
+    } else if (len(tomador.apellido) > 50) {
+      e.apellido = 'El apellido no puede superar 50 caracteres';
+    }
+
+    if (req(tomador.sexo))       e.sexo        = 'Selecciona el sexo';
+    if (req(tomador.estadoCivil)) e.estadoCivil = 'Selecciona el estado civil';
 
     if (req(tomador.telefono)) {
       e.telefono = 'El teléfono es obligatorio';
-    } else if (tomador.telefono.replace(/\D/g, '').length < 10) {
-      e.telefono = 'Ingresa un teléfono válido (ej. 04121234567)';
+    } else if (digs(tomador.telefono) !== 11) {
+      e.telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
     }
 
     if (req(tomador.email)) {
       e.email = 'El correo electrónico es obligatorio';
+    } else if (len(tomador.email) < 5) {
+      e.email = 'El correo debe tener al menos 5 caracteres';
+    } else if (len(tomador.email) > 50) {
+      e.email = 'El correo no puede superar 50 caracteres';
     } else if (!emailRe.test(tomador.email.trim())) {
-      e.email = 'Ingresa un correo válido';
+      e.email = 'Ingresa un correo válido (ej. usuario@dominio.com)';
     }
 
     if (req(tomador.email2)) {
       e.email2 = 'Confirma tu correo electrónico';
+    } else if (!emailRe.test(tomador.email2.trim())) {
+      e.email2 = 'Ingresa un correo válido para confirmar';
     } else if (tomador.email.trim() !== tomador.email2.trim()) {
       e.email2 = 'Los correos no coinciden';
     }
 
-    if (req(tomador.fechaNac)) e.fechaNac  = 'La fecha de nacimiento es obligatoria';
-    if (req(tomador.sexo))     e.sexo      = 'Selecciona el sexo';
-    if (req(tomador.estado))   e.estado    = 'El estado es obligatorio';
-    if (req(tomador.ciudad))   e.ciudad    = 'La ciudad es obligatoria';
-    if (req(tomador.direccion)) e.direccion = 'La dirección es obligatoria';
+    if (req(tomador.fechaNac)) e.fechaNac = 'La fecha de nacimiento es obligatoria';
+    if (req(tomador.estado))   e.estado   = 'El estado es obligatorio';
+    if (req(tomador.ciudad))   e.ciudad   = 'La ciudad es obligatoria';
+
+    if (req(tomador.direccion)) {
+      e.direccion = 'La dirección es obligatoria';
+    } else if (len(tomador.direccion) < 5) {
+      e.direccion = 'La dirección debe tener al menos 5 caracteres';
+    } else if (len(tomador.direccion) > 200) {
+      e.direccion = 'La dirección no puede superar 200 caracteres';
+    }
 
     // ── Asegurado (solo si está habilitado) ───────────────────────────────
     if (!sameInsured) {
-      if (req(asegurado.nombre))        e.aseg_nombre        = 'El nombre es obligatorio';
-      if (req(asegurado.apellido))      e.aseg_apellido      = 'El apellido es obligatorio';
+      if (req(asegurado.nombre))         e.aseg_nombre         = 'El nombre es obligatorio';
+      if (req(asegurado.apellido))       e.aseg_apellido       = 'El apellido es obligatorio';
       if (req(asegurado.identificacion)) e.aseg_identificacion = 'La identificación es obligatoria';
     }
 
     // ── Pagador (solo si NO eres quien paga) ──────────────────────────────
     if (differentPayer) {
-      if (req(pagador.nombre))         e.pag_nombre         = 'El nombre del pagador es obligatorio';
-      if (req(pagador.apellido))       e.pag_apellido       = 'El apellido del pagador es obligatorio';
-      if (req(pagador.identificacion)) e.pag_identificacion = 'La identificación del pagador es obligatoria';
+      if (req(pagador.nombre)) {
+        e.pag_nombre = 'El nombre del pagador es obligatorio';
+      } else if (len(pagador.nombre) < 2) {
+        e.pag_nombre = 'El nombre debe tener al menos 2 caracteres';
+      }
+
+      if (req(pagador.apellido)) {
+        e.pag_apellido = 'El apellido del pagador es obligatorio';
+      } else if (len(pagador.apellido) < 2) {
+        e.pag_apellido = 'El apellido debe tener al menos 2 caracteres';
+      }
+
+      if (req(pagador.identificacion)) {
+        e.pag_identificacion = 'La identificación del pagador es obligatoria';
+      } else if (digs(pagador.identificacion) < 6) {
+        e.pag_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      }
+
       if (req(pagador.telefono)) {
         e.pag_telefono = 'El teléfono del pagador es obligatorio';
-      } else if ((pagador.telefono ?? '').replace(/\D/g, '').length < 10) {
-        e.pag_telefono = 'Ingresa un teléfono válido (ej. 04121234567)';
+      } else if (digs(pagador.telefono) !== 11) {
+        e.pag_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+      }
+
+      const pagEmail = (pagador.email ?? '').trim();
+      if (pagEmail && !emailRe.test(pagEmail)) {
+        e.pag_email = 'Ingresa un correo válido o deja el campo vacío';
       }
     }
 
     // ── Beneficiario (solo si está habilitado) ────────────────────────────
     if (hasBeneficiary) {
-      if (req(beneficiario.nombre))        e.benef_nombre        = 'El nombre es obligatorio';
-      if (req(beneficiario.apellido))      e.benef_apellido      = 'El apellido es obligatorio';
+      if (req(beneficiario.nombre))         e.benef_nombre         = 'El nombre es obligatorio';
+      if (req(beneficiario.apellido))       e.benef_apellido       = 'El apellido es obligatorio';
       if (req(beneficiario.identificacion)) e.benef_identificacion = 'La identificación es obligatoria';
-      if (req(beneficiario.parentesco))    e.benef_parentesco    = 'El parentesco es obligatorio';
+      if (req(beneficiario.parentesco))     e.benef_parentesco     = 'El parentesco es obligatorio';
     }
 
     setErrors(e);
@@ -231,7 +290,7 @@ export function EmissionStep() {
       </Field>
     ),
     telefono: (
-      <Field label="Teléfono *" error={errors.telefono} hint="Solo dígitos, ej. 04121234567">
+      <Field label="Teléfono *" error={errors.telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
         <Input
           value={tomador.telefono}
           onChange={(e) => setTomador({ telefono: formatTelefono(e.target.value) })}
@@ -293,7 +352,7 @@ export function EmissionStep() {
       </Field>
     ),
     estadoCivil: (
-      <Field label="Estado civil">
+      <Field label="Estado civil *" error={errors.estadoCivil}>
         <SearchSelect
           value={tomador.estadoCivil}
           options={
@@ -379,6 +438,25 @@ export function EmissionStep() {
           </div>
         </SectionCard>
 
+        {/* Persona Políticamente Expuesta — declaración legal requerida por La Mundial */}
+        <SectionCard
+          Icon={ShieldAlert}
+          title="Declaración legal"
+          description="Requerida por la Superintendencia de la Actividad Aseguradora (SUDEASEG)"
+        >
+          <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800 leading-relaxed mb-4">
+            <strong>¿Qué es una Persona Políticamente Expuesta (PPE)?</strong> Es aquella que desempeña o ha desempeñado
+            funciones públicas prominentes (cargos de gobierno, altos funcionarios, directivos de empresas estatales,
+            diplomáticos, etc.) en Venezuela o en el extranjero, en los últimos 5 años.
+          </div>
+          <ToggleSwitch
+            checked={tomador.personaPoliticamenteExpuesta}
+            onChange={(v) => setTomador({ personaPoliticamenteExpuesta: v })}
+            label="Soy una Persona Políticamente Expuesta (PPE)"
+            description="Declaro que ejerzo o he ejercido funciones públicas prominentes en los últimos 5 años."
+          />
+        </SectionCard>
+
         {/* Pagador */}
         <SectionCard
           Icon={Wallet}
@@ -426,7 +504,7 @@ export function EmissionStep() {
                   maxLength={11}
                 />
               </Field>
-              <Field label="Correo electrónico (opcional)" full>
+              <Field label="Correo electrónico (opcional)" error={errors.pag_email} full>
                 <Input
                   value={pagador.email ?? ''}
                   onChange={(e) => setPagador({ email: e.target.value })}

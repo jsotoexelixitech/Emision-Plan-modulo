@@ -6,6 +6,7 @@
  * por lo que se consulta directamente la base de datos Sis2000 de La Mundial.
  */
 const express = require('express');
+const axios   = require('axios');
 const { getSis2000Pool, sql } = require('../services/sis2000Pool');
 
 const router = express.Router();
@@ -198,6 +199,38 @@ router.get('/resolver', async (req, res) => {
   } catch (err) {
     console.error('[catalogo/resolver]', err.message);
     res.status(502).json({ success: false, message: err.message });
+  }
+});
+
+// ── Planes RCV ──────────────────────────────────────────────────────────────
+// Consulta el microservicio backend-api-sys (:3001) que accede a Sis2000_DES
+// y devuelve los planes reales via spBuscaPlan.
+
+router.get('/planes', async (req, res) => {
+  const baseUrl = (process.env.SYSIP_API_URL ?? 'http://localhost:3001').replace(/\/$/, '');
+  const url     = `${baseUrl}/api/v1/valrep/planes/v2`;
+
+  const body = {
+    cramo:      parseInt(process.env.LAMUNDIAL_RAMO      ?? '18',    10),
+    cproductor: parseInt(process.env.LAMUNDIAL_PRODUCTOR ?? '80080', 10),
+    cusuario:   String(process.env.LAMUNDIAL_CUSUARIO    ?? '4'),
+  };
+
+  const ctipo = req.query.ctipo ? parseInt(req.query.ctipo, 10) : undefined;
+  if (ctipo != null) body.ctipo = ctipo;
+
+  try {
+    const { data } = await axios.post(url, body, { timeout: 15_000 });
+
+    if (!data?.status || !Array.isArray(data?.data?.plan)) {
+      console.warn('[catalogo/planes] respuesta inesperada:', JSON.stringify(data).slice(0, 200));
+      return res.json({ success: true, planes: [] });
+    }
+
+    res.json({ success: true, planes: data.data.plan });
+  } catch (err) {
+    console.error('[catalogo/planes]', err.message);
+    res.status(502).json({ success: false, message: `No se pudieron obtener los planes: ${err.message}` });
   }
 });
 

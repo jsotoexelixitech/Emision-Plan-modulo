@@ -38,8 +38,12 @@ function findBestMatch<T>(
 
 interface VehicleErrors {
   placa?: string;
+  año?: string;
   marca?: string;
   modelo?: string;
+  uso?: string;
+  color?: string;
+  serial?: string;
   cond_nombre?: string;
   cond_apellido?: string;
   cond_licencia?: string;
@@ -236,14 +240,58 @@ export function VehicleStep() {
   // ── Validación ────────────────────────────────────────────────────────────
   const validate = () => {
     const e: VehicleErrors = {};
-    if (!vehicle.placa.trim())  e.placa  = 'La placa es obligatoria';
-    if (!vehicle.marca.trim())  e.marca  = 'La marca es obligatoria';
-    if (!vehicle.modelo.trim()) e.modelo = 'El modelo es obligatorio';
+    const req  = (v?: string) => !(v ?? '').trim();
+    const len  = (v?: string) => (v ?? '').trim().length;
+    const digs = (v?: string) => (v ?? '').replace(/\D/g, '').length;
+
+    if (req(vehicle.placa)) {
+      e.placa = 'La placa es obligatoria';
+    } else if (len(vehicle.placa) < 6) {
+      e.placa = 'La placa debe tener al menos 6 caracteres';
+    }
+
+    if (req(vehicle.año)) e.año = 'Selecciona el año del vehículo';
+    if (req(vehicle.marca))  e.marca  = 'La marca es obligatoria';
+    if (req(vehicle.modelo)) e.modelo = 'El modelo es obligatorio';
+
+    if (!vehicle.ccategoria_uso && req(vehicle.uso)) e.uso = 'Selecciona el uso del vehículo';
+
+    if (req(vehicle.color)) {
+      e.color = 'El color es obligatorio';
+    } else if (len(vehicle.color) < 2) {
+      e.color = 'El color debe tener al menos 2 caracteres';
+    } else if (len(vehicle.color) > 15) {
+      e.color = 'El color no puede superar 15 caracteres';
+    }
+
+    if (req(vehicle.serial)) {
+      e.serial = 'El serial del vehículo es obligatorio';
+    } else if (len(vehicle.serial) < 10) {
+      e.serial = 'El serial debe tener al menos 10 caracteres';
+    }
 
     if (hasDriver) {
-      if (!(conductor.nombre ?? '').trim())   e.cond_nombre   = 'El nombre del conductor es obligatorio';
-      if (!(conductor.apellido ?? '').trim()) e.cond_apellido = 'El apellido del conductor es obligatorio';
-      if (!(conductor.licencia ?? '').trim()) e.cond_licencia = 'El número de licencia es obligatorio';
+      const nombre   = (conductor.nombre   ?? '').trim();
+      const apellido = (conductor.apellido ?? '').trim();
+      const licencia = (conductor.licencia ?? '').trim();
+
+      if (!nombre) {
+        e.cond_nombre = 'El nombre del conductor es obligatorio';
+      } else if (nombre.length < 2) {
+        e.cond_nombre = 'El nombre debe tener al menos 2 caracteres';
+      }
+
+      if (!apellido) {
+        e.cond_apellido = 'El apellido del conductor es obligatorio';
+      } else if (apellido.length < 2) {
+        e.cond_apellido = 'El apellido debe tener al menos 2 caracteres';
+      }
+
+      if (!licencia) {
+        e.cond_licencia = 'El número de licencia es obligatorio';
+      }
+
+      void digs; // usado en validaciones adicionales si se requieren
     }
 
     setErrors(e);
@@ -378,7 +426,7 @@ export function VehicleStep() {
           </Field>
 
           {/* Año — selector del catálogo INMA */}
-          <Field label="Año del vehículo">
+          <Field label="Año del vehículo *" error={errors.año}>
             {anios.length > 0 ? (
               <Select
                 value={vehicle.año}
@@ -513,12 +561,17 @@ export function VehicleStep() {
               {versiones.length > 0 ? (
                 <Select
                   value={vehicle.cversion ?? ''}
-                  onChange={(e) => setVehicle({
-                    cversion: e.target.value,
-                    // Reset categoría de uso para forzar al usuario a elegir una válida para esta versión
-                    ccategoria_uso: undefined,
-                    xcategoria_uso: '',
-                  })}
+                  onChange={(e) => {
+                    const ver = versiones.find(v => v.cversion === e.target.value);
+                    setVehicle({
+                      cversion: e.target.value,
+                      // ctipo determina qué planes RCV están disponibles (1=particular, 4=moto...)
+                      ctipo: (ver as any)?.ctipo ?? undefined,
+                      // Reset categoría de uso para forzar al usuario a elegir una válida para esta versión
+                      ccategoria_uso: undefined,
+                      xcategoria_uso: '',
+                    });
+                  }}
                   className={!vehicle.cversion ? 'border-violet-300 focus:border-violet-500 ring-2 ring-violet-100' : ''}
                 >
                   <option value="">— Selecciona la versión —</option>
@@ -536,16 +589,17 @@ export function VehicleStep() {
 
           {/* Uso — categorías dinámicas según la versión seleccionada */}
           <Field
+            error={errors.uso}
             label={
               <span className="flex items-center gap-1.5">
-                ¿Para qué usas el vehículo?
+                ¿Para qué usas el vehículo? *
                 {loadCu && <Loader2 size={11} className="animate-spin text-indigo-400" />}
                 {vehicle.ccategoria_uso != null && vehicle.ccategoria_uso !== '' && !loadCu && (
                   <span className="text-[0.6rem] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓</span>
                 )}
                 {!vehicle.cversion && (
-                  <span className="text-[0.6rem] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded-full">
-                    elige versión
+                  <span className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
+                    selecciona la versión primero
                   </span>
                 )}
               </span> as unknown as string
@@ -602,12 +656,13 @@ export function VehicleStep() {
           )}
 
           {/* Color */}
-          <Field label="Color">
+          <Field label="Color *" error={errors.color}>
             <div className="relative">
               <Input
                 value={vehicle.color}
-                onChange={(e) => setVehicle({ color: e.target.value })}
+                onChange={(e) => setVehicle({ color: e.target.value.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, '').slice(0, 15) })}
                 placeholder="Plateado"
+                maxLength={15}
                 style={{ paddingLeft: '2.25rem' }}
               />
               <span
@@ -618,14 +673,25 @@ export function VehicleStep() {
             </div>
           </Field>
 
-          {/* Serial */}
-          <Field label="Serial del vehículo (VIN)" hint="Son los 17 caracteres que aparecen en el documento del vehículo">
+          {/* Serial de carrocería (VIN) */}
+          <Field label="Serial de carrocería (VIN) *" error={errors.serial} hint="Entre 10 y 17 caracteres alfanuméricos del documento del vehículo">
             <Input
               value={vehicle.serial}
-              onChange={(e) => setVehicle({ serial: e.target.value.toUpperCase() })}
+              onChange={(e) => setVehicle({ serial: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 17) })}
               placeholder="1HGBH41JXMN109186"
               className="font-mono uppercase tracking-wider"
               maxLength={17}
+            />
+          </Field>
+
+          {/* Serial del motor — opcional */}
+          <Field label="Serial del motor" hint="Opcional · Máx. 60 caracteres · Aparece en el documento del vehículo">
+            <Input
+              value={vehicle.serialMotor ?? ''}
+              onChange={(e) => setVehicle({ serialMotor: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 60) })}
+              placeholder="Ej. 4A123456789"
+              className="font-mono uppercase tracking-wider"
+              maxLength={60}
             />
           </Field>
         </div>

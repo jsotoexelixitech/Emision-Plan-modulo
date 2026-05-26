@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import type {
   WizardState,
   DocType,
@@ -29,6 +29,7 @@ const defaultTomador = (): TomadorData => ({
   estado: '',
   ciudad: '',
   direccion: '',
+  personaPoliticamenteExpuesta: false,
 });
 
 const defaultPerson = (): PersonData => ({
@@ -49,9 +50,11 @@ const defaultVehicle = (): VehicleData => ({
   tipoPlaca: 'nacional',
   marca: '',
   modelo: '',
-  año: '',
+  aÃ±o: '',
   color: '',
   serial: '',
+  serialMotor: '',
+  ntoneladas: undefined,
   uso: 'Particular',
 });
 
@@ -102,8 +105,8 @@ const initialState: WizardState = {
   vehicle: defaultVehicle(),
   category: '',
   selectedPlan: null,
-  // 'mobile' (Pago Móvil vía Banco Activo) es el método activo por defecto.
-  // 'transfer' está oculto en la UI por ahora; se mantendrá el tipo para compat.
+  // 'mobile' (Pago MÃ³vil vÃ­a Banco Activo) es el mÃ©todo activo por defecto.
+  // 'transfer' estÃ¡ oculto en la UI por ahora; se mantendrÃ¡ el tipo para compat.
   paymentMethod: 'mobile',
   policy: null,
   quote: null,
@@ -156,8 +159,8 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
     set((s) => {
       const next = { ...s.vehicle, ...data };
       // Invalidamos quote si cambian datos relevantes para la cotizacion.
-      // Incluimos cmarca/cmodelo/cversion para que el cambio de selector INMA también invalide.
-      const sigKeys: (keyof VehicleData)[] = ['placa', 'marca', 'modelo', 'año', 'uso', 'cmarca', 'cmodelo', 'cversion', 'ccategoria_uso'];
+      // Incluimos cmarca/cmodelo/cversion para que el cambio de selector INMA tambiÃ©n invalide.
+      const sigKeys: (keyof VehicleData)[] = ['placa', 'marca', 'modelo', 'aÃ±o', 'uso', 'cmarca', 'cmodelo', 'cversion', 'ccategoria_uso'];
       const changed = sigKeys.some((k) => s.vehicle[k] !== next[k]);
       if (changed && s.quote) {
         return {
@@ -196,10 +199,10 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
   reset: () => set(initialState),
 }));
 
-// Exposición controlada al objeto global para tests E2E (Playwright).
+// ExposiciÃ³n controlada al objeto global para tests E2E (Playwright).
 // Solo se activa cuando el frontend corre en modo desarrollo (vite dev) o
-// cuando explícitamente se setea VITE_E2E_EXPOSE_STORE=1 en el build.
-// En producción NO se expone para evitar manipulación externa del estado.
+// cuando explÃ­citamente se setea VITE_E2E_EXPOSE_STORE=1 en el build.
+// En producciÃ³n NO se expone para evitar manipulaciÃ³n externa del estado.
 if (
   typeof window !== 'undefined' &&
   (import.meta.env?.DEV || import.meta.env?.VITE_E2E_EXPOSE_STORE === '1')

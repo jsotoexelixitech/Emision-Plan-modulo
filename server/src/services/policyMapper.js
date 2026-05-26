@@ -150,7 +150,9 @@ function buildQuoteRequest(state, overrides = {}) {
       fano: ano,
       cplan,
       ccategoria_uso,
-      ntoneladas: 60,
+      ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
+        ? parseInt(v.ntoneladas, 10)
+        : 60,
     },
     metadata: {
       vehicleLabel: codes.label,
@@ -241,19 +243,24 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     color: cleanString(v.color) || 'Blanco',
     placa: upperPlate(v.placa),
     serial_carroceria: cleanString(v.serial),
-    serial_motor: '',
+    // serial_motor: opcional (String 60, nullable en La Mundial). Se envía vacío si no se provee.
+    serial_motor: cleanString(v.serialMotor) || '',
     ccategoria_uso: (v.ccategoria_uso != null && v.ccategoria_uso !== '')
       ? parseInt(v.ccategoria_uso, 10)
       : resolveUsageCategory(v.uso),
-    ntoneladas: 60,
+    // ntoneladas: nullable, default 60. Se usa el valor del usuario si fue ingresado.
+    ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
+      ? parseInt(v.ntoneladas, 10)
+      : 60,
 
     // Datos economicos (vienen de cotizacion; se envian como Number)
     mprima: Number(cotizacion.mprima),
     mprimaext: Number(cotizacion.mprimaext),
     ptasa: Number(cotizacion.ptasa),
 
-    // Declaraciones legales (defaults aceptados por La Mundial)
-    dec_persona_politica: '0',
+    // Declaraciones legales
+    // dec_persona_politica: NOT NULL en La Mundial → 1 si PPE, 0 si no
+    dec_persona_politica: (tomador.personaPoliticamenteExpuesta === true) ? '1' : '0',
     dec_term_y_cod: '1',
     dec_diagnos_enferm: null,
     dec_descrip_enferm: null,

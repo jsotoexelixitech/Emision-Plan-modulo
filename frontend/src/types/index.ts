@@ -53,6 +53,8 @@ export type TomadorData = {
   estado: string;
   ciudad: string;
   direccion: string;
+  /** Declara ser Persona Políticamente Expuesta (requerido por La Mundial). */
+  personaPoliticamenteExpuesta: boolean;
   /** Código numérico La Mundial del estado (cestado). Se obtiene del selector de catálogo. */
   cestado?: number;
   /** Código numérico La Mundial de la ciudad (cciudad). Se obtiene del selector de catálogo. */
@@ -73,6 +75,8 @@ export type PersonData = {
 };
 
 export interface Plan {
+  /** Código del plan en Sis2000 (ej. "RCVBAS", "Auto"). Se envía al backend en quote/emit. */
+  cplan?: string;
   name: string;
   price: string;
   priceNum: number;
@@ -107,6 +111,10 @@ export interface VehicleData {
   ccategoria_uso?: number | string;
   /** Etiqueta legible de la categoría de uso (ej. "Auto particular") — para display */
   xcategoria_uso?: string;
+  /** Tipo de vehículo INMA (1=particular, 2=rústico, 3=carga…) — set al elegir versión. Usado en planesRcv. */
+  ctipo?: number;
+  /** Serial del motor — opcional, máx. 60 caracteres. Aparece en el documento del vehículo. */
+  serialMotor?: string;
 }
 
 export interface PolicyQuote {

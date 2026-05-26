@@ -419,6 +419,14 @@ export interface ResolverResult {
   message?: string;
 }
 
+export interface PlanRcv {
+  cplan:   string;
+  xplan?:  string;
+  xplan_c?: string;
+  cramo?:  number;
+  cmoneda?: string;
+}
+
 export const catalogoApi = {
   anios: () =>
     api.get<{ success: boolean; min: number; max: number }>('/catalogo/anios'),
@@ -436,6 +444,14 @@ export const catalogoApi = {
   /** Resuelve texto libre (de OCR) → cmarca + cmodelo + versiones en una sola llamada */
   resolver: (fano: number, marca: string, modelo: string) =>
     api.get<ResolverResult>(`/catalogo/resolver?fano=${fano}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`),
+  /**
+   * Planes RCV disponibles desde Sis2000 vía backend-api-sys.
+   * ctipo: 1=particular, 4=moto, 3=pick-up, etc.
+   */
+  planesRcv: (ctipo?: number) =>
+    api.get<{ success: boolean; planes: PlanRcv[] }>(
+      `/catalogo/planes${ctipo != null ? `?ctipo=${ctipo}` : ''}`,
+    ),
 };
 
 // ──────────────────────────────────────────────────────────────────────
