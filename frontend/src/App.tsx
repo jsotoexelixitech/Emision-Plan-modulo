@@ -11,7 +11,7 @@ import { toast } from './store/toastStore';
 import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function App() {
-  const { category, selectedPlan, goTo } = useWizardStore();
+  const { category, selectedPlan, quoteState, quote, goTo } = useWizardStore();
 
   // Inicializa el store en el paso 4 para que el sidebar lo resalte correctamente
   useEffect(() => { goTo(4); }, [goTo]);
@@ -21,6 +21,23 @@ export default function App() {
       toast.warning(
         'Selecciona un plan',
         'Elige una categoría y un plan para continuar.',
+      );
+      return;
+    }
+    // Esperar a que la cotización esté lista para que pagos reciba el monto real
+    if (quoteState === 'loading') {
+      toast.warning(
+        'Cotización en proceso',
+        'Por favor espera mientras calculamos la prima...',
+        3000,
+      );
+      return;
+    }
+    if (!quote && quoteState !== 'ready') {
+      toast.warning(
+        'Cotización pendiente',
+        'Selecciona el plan y espera la cotización antes de continuar.',
+        3000,
       );
       return;
     }
