@@ -51,6 +51,10 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
     femision,               // service: b.femision
     fdesde,                 // service: b.fdesde
     fhasta,                 // service: b.fhasta
+    // Campos requeridos por QA La Mundial para createEmissionAuto
+    iplaca: payload.iplaca || 'N',
+    iestado_civil_tomador: payload.iestado_civil_tomador || payload.estado_civil_tomador || 'S',
+    iestado_civil_titular: payload.iestado_civil_titular || payload.estado_civil_titular || 'S',
     xnombre_tomador:    payload.nombre_tomador,
     xapellido_tomador:  payload.apellido_tomador,
     isexo_tomador:      payload.sexo_tomador,
