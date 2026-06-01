@@ -33,8 +33,29 @@ function findBestMatch<T>(
   if (!text || !list.length) return undefined;
   const n = normText(text);
   const val = (i: T) => normText(String(i[key] ?? ''));
-  return list.find(i => val(i) === n)
-    ?? list.find(i => val(i).includes(n) || n.includes(val(i)));
+
+  const exact = list.find((i) => val(i) === n);
+  if (exact) return exact;
+
+  const isShortPrefix = /^[A-Z]{1,4}$/.test(n) && !/\d/.test(n);
+  if (isShortPrefix) {
+    const byPrefix = list.filter((i) => val(i).startsWith(n));
+    if (byPrefix.length) {
+      return byPrefix.reduce((best, cur) =>
+        val(cur).length > val(best).length ? cur : best,
+      );
+    }
+  }
+
+  const partial = list.filter((i) => {
+    const v = val(i);
+    if (!v) return false;
+    if (v.startsWith(n) || n.startsWith(v)) return true;
+    return n.includes(v) || v.includes(n);
+  });
+  if (!partial.length) return undefined;
+
+  return partial.reduce((best, cur) => (val(cur).length > val(best).length ? cur : best));
 }
 
 interface VehicleErrors {

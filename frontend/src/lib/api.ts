@@ -456,6 +456,40 @@ export const catalogoApi = {
 };
 
 // ──────────────────────────────────────────────────────────────────────
+//  Personas (producto Funerario, ramo 9) — planes y cotización
+// ──────────────────────────────────────────────────────────────────────
+
+export interface PlanPer {
+  cplan: string;
+  xplan?: string;
+  cmoneda?: string;
+}
+
+/** Asegurado que se envía a la cotización de personas (formato amigable). */
+export interface CotizacionPerAsegurado {
+  /** Código de parentesco (1=Titular, 2=Cónyuge…). */
+  parentesco: number | string;
+  identificacion: string;
+  fechaNac: string;
+}
+
+export interface CotizacionPerPayload {
+  cplan: string;
+  asegurados: CotizacionPerAsegurado[];
+  ifrecuencia: string;
+  cramo?: number;
+}
+
+export const personasApi = {
+  /** Planes de personas vigentes (ramo 9 = funerario por defecto). */
+  planes: (cramo = 9) =>
+    api.get<{ success: boolean; planes: PlanPer[] }>(`/personas/planes?cramo=${cramo}`),
+  /** Cotización de personas (getCotizacionPer). */
+  cotizar: (payload: CotizacionPerPayload) =>
+    api.post<QuotePolicyResponse>('/personas/cotizacion', payload),
+};
+
+// ──────────────────────────────────────────────────────────────────────
 //  Catálogos de La Mundial — Estados, Ciudades y Listas (valrep)
 // ──────────────────────────────────────────────────────────────────────
 

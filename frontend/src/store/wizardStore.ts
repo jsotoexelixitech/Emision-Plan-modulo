@@ -6,12 +6,14 @@ import type {
   TomadorData,
   PersonData,
   VehicleData,
+  FuneralData,
   Plan,
   PaymentMethod,
   IssuedPolicy,
   PolicyQuote,
   QuoteState,
 } from '../types';
+import { getProductId } from '../lib/product';
 
 const defaultDoc = (): DocumentState => ({ status: 'idle', progress: 0 });
 
@@ -58,6 +60,15 @@ const defaultVehicle = (): VehicleData => ({
   uso: 'Particular',
 });
 
+const defaultFuneral = (): FuneralData => ({
+  asegurados: [{ tipoDoc: 'V', identificacion: '', nombre: '', apellido: '', fechaNac: '', sexo: '', parentesco: '1' }],
+  beneficiarios: [],
+  frecuencia: 'M',
+  diagnosticoEnfermedad: false,
+  descripcionEnfermedad: '',
+  aceptaTerminos: false,
+});
+
 interface WizardActions {
   goTo: (step: number) => void;
   nextStep: () => void;
@@ -74,6 +85,7 @@ interface WizardActions {
   setHasDriver: (v: boolean) => void;
   setConductor: (data: Partial<PersonData>) => void;
   setVehicle: (data: Partial<VehicleData>) => void;
+  setFuneral: (data: Partial<FuneralData>) => void;
   setCategory: (c: string) => void;
   setSelectedPlan: (plan: Plan | null) => void;
   setPaymentMethod: (m: PaymentMethod) => void;
@@ -86,6 +98,7 @@ interface WizardActions {
 
 const initialState: WizardState = {
   step: 1,
+  product: getProductId(),
   documents: {
     cedula: defaultDoc(),
     licencia: defaultDoc(),
@@ -94,6 +107,7 @@ const initialState: WizardState = {
   },
   ocrDone: false,
   tomador: defaultTomador(),
+  funeral: defaultFuneral(),
   sameInsured: true,
   asegurado: defaultPerson(),
   differentPayer: false,
@@ -173,6 +187,9 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
       }
       return { vehicle: next };
     }),
+
+  setFuneral: (data) =>
+    set((s) => ({ funeral: { ...s.funeral, ...data } })),
 
   setCategory: (category) => set({ category, selectedPlan: null }),
 

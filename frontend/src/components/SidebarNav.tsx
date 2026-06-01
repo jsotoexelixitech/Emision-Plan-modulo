@@ -1,22 +1,28 @@
 ﻿import {
   Check, FileText, UserCog, ShieldCheck, CreditCard,
-  User, Layers, Wallet, Lock, Shield, Car, Loader2,
+  User, Layers, Wallet, Lock, Shield, Car, Users, Loader2,
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
-
-const STEPS = [
-  { n: 1, label: 'Documentos', sub: 'OCR y validación',   Icon: FileText },
-  { n: 2, label: 'Emisión',    sub: 'Datos del cliente',   Icon: UserCog },
-  { n: 3, label: 'Vehículo',   sub: 'Datos del auto',      Icon: Car },
-  { n: 4, label: 'Plan',       sub: 'Cobertura ideal',     Icon: ShieldCheck },
-  { n: 5, label: 'Pago',       sub: 'Checkout final',      Icon: CreditCard },
-];
+import { getProductConfig } from '../lib/product';
 
 export function SidebarNav() {
-  const { step, tomador, vehicle, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
+  const { step, tomador, vehicle, funeral, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
+
+  const product = getProductConfig();
+
+  const STEPS = [
+    { n: 1, label: 'Documentos', sub: 'OCR y validación',   Icon: FileText },
+    { n: 2, label: product.hasVehicle ? 'Emisión' : 'Tomador', sub: 'Datos del cliente', Icon: UserCog },
+    product.hasVehicle
+      ? { n: 3, label: 'Vehículo', sub: 'Datos del auto', Icon: Car }
+      : { n: 3, label: 'Personas', sub: 'Asegurados',    Icon: Users },
+    { n: 4, label: 'Plan',       sub: 'Cobertura ideal',     Icon: ShieldCheck },
+    { n: 5, label: 'Pago',       sub: 'Checkout final',      Icon: CreditCard },
+  ];
 
   const name = [tomador.nombre, tomador.apellido].filter(Boolean).join(' ');
   const carDescriptor = [vehicle.marca, vehicle.modelo].filter(Boolean).join(' ');
+  const aseguradosCount = funeral.asegurados.filter((a) => a.identificacion.trim()).length;
 
   // Precio real de La Mundial cuando esté disponible, fallback al catálogo
   const hasRealQuote = quoteState === 'ready' && !!quote;
@@ -153,11 +159,19 @@ export function SidebarNav() {
 
             <div className="space-y-2.5">
               <SummaryRow icon={<User size={11} />} label="Cliente" value={name || '—'} />
-              <SummaryRow
-                icon={<Layers size={11} />}
-                label="Vehículo"
-                value={vehicle.placa ? `${vehicle.placa}${carDescriptor ? ` · ${carDescriptor}` : ''}` : carDescriptor || '—'}
-              />
+              {product.hasVehicle ? (
+                <SummaryRow
+                  icon={<Layers size={11} />}
+                  label="Vehículo"
+                  value={vehicle.placa ? `${vehicle.placa}${carDescriptor ? ` · ${carDescriptor}` : ''}` : carDescriptor || '—'}
+                />
+              ) : (
+                <SummaryRow
+                  icon={<Users size={11} />}
+                  label="Asegurados"
+                  value={aseguradosCount > 0 ? String(aseguradosCount) : '—'}
+                />
+              )}
               <SummaryRow icon={<Shield size={11} />} label="Plan" value={selectedPlan?.name ?? '—'} />
 
               {/* Prima mensual — real de La Mundial o spinner */}

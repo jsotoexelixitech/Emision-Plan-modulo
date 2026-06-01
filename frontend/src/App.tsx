@@ -7,11 +7,14 @@ import { Toaster } from './components/Toaster';
 import { WelcomeSplash } from './components/WelcomeSplash';
 import { Button } from './components/ui/Button';
 import { PlansStep } from './features/plans/PlansStep';
+import { FuneralPlansStep } from './features/plans/FuneralPlansStep';
+import { getProductConfig } from './lib/product';
 import { toast } from './store/toastStore';
 import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function App() {
   const { category, selectedPlan, quoteState, quote, goTo } = useWizardStore();
+  const product = getProductConfig();
 
   // Inicializa el store en el paso 4 para que el sidebar lo resalte correctamente
   useEffect(() => { goTo(4); }, [goTo]);
@@ -73,7 +76,9 @@ export default function App() {
                     Elige tu plan ideal
                   </h1>
                   <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
-                    Categorías diseñadas para cada perfil de uso del vehículo.
+                    {product.hasVehicle
+                      ? 'Categorías diseñadas para cada perfil de uso del vehículo.'
+                      : 'Planes funerarios para proteger a tu grupo familiar.'}
                   </p>
                 </div>
                 <a
@@ -88,7 +93,7 @@ export default function App() {
 
             <section className="surface-card overflow-hidden step-enter">
               <div className="p-6 sm:p-8 lg:p-10">
-                <PlansStep />
+                {product.hasVehicle ? <PlansStep /> : <FuneralPlansStep />}
               </div>
 
               <div className="hidden md:flex items-center justify-between gap-4 px-8 lg:px-10 py-5 border-t border-slate-100/80 bg-gradient-to-b from-slate-50/50 to-white/40 backdrop-blur-sm">

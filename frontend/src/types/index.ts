@@ -1,5 +1,8 @@
 export type DocType = 'cedula' | 'licencia' | 'certificado' | 'rif';
 
+/** Producto de seguro que se está suscribiendo en el flujo. */
+export type ProductId = 'rcv' | 'funerario';
+
 export type DocStatus = 'idle' | 'uploading' | 'processing' | 'done' | 'error';
 
 export interface DocumentFile {
@@ -91,6 +94,28 @@ export interface Plan {
 
 export type PaymentMethod = 'card' | 'transfer' | 'mobile' | 'otp';
 
+/** Persona (asegurado/beneficiario) del producto Funerario. */
+export interface FuneralPerson {
+  tipoDoc: string;
+  identificacion: string;
+  nombre: string;
+  apellido: string;
+  fechaNac: string;
+  sexo: string;
+  /** Código de parentesco La Mundial (1=Titular, 2=Cónyuge…). */
+  parentesco: string;
+}
+
+/** Datos del producto Funerario (personas). Se usa cuando product = 'funerario'. */
+export interface FuneralData {
+  asegurados: FuneralPerson[];
+  beneficiarios: FuneralPerson[];
+  frecuencia: string;
+  diagnosticoEnfermedad: boolean;
+  descripcionEnfermedad: string;
+  aceptaTerminos: boolean;
+}
+
 export interface VehicleData {
   placa: string;
   /** Tipo de placa: nacional (formato venezolano AAA000A/AAA000) o extranjera. */
@@ -151,9 +176,13 @@ export interface IssuedPolicy {
 
 export interface WizardState {
   step: number;
+  /** Producto activo del flujo (rcv | funerario). Se propaga entre módulos. */
+  product: ProductId;
   documents: Record<DocType, DocumentState>;
   ocrDone: boolean;
   tomador: TomadorData;
+  /** Datos del producto Funerario (personas). Solo se usa si product = 'funerario'. */
+  funeral: FuneralData;
   sameInsured: boolean;
   asegurado: PersonData;
   /** True cuando quien rellena el formulario NO es quien va a pagar la póliza. */

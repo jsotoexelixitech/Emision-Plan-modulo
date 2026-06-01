@@ -18,6 +18,7 @@ const swaggerSpec = require('./swagger');
 const emisionRoutes  = require('./routes/emision');
 const valrepRoutes   = require('./routes/valrep');
 const catalogoRoutes = require('./routes/catalogo');
+const personasRoutes = require('./routes/personas');
 const nexusAuth      = require('./middleware/nexusAuth');
 
 const app = express();
@@ -53,6 +54,8 @@ app.get('/api/health', (_req, res) => {
 // Catálogos (valrep + INMA) consultados directamente desde Sis2000.
 app.use('/api/valrep',   nexusAuth, valrepRoutes);
 app.use('/api/catalogo', nexusAuth, catalogoRoutes);
+// Producto Funerario (personas) — planes y cotización vía API de Personas
+app.use('/api/personas', nexusAuth, personasRoutes);
 // Cotizaciones y emisiones
 app.use('/api', nexusAuth, emisionRoutes);
 

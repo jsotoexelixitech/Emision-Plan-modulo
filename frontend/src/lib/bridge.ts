@@ -184,6 +184,12 @@ function makeBridge(): BridgeAPI {
         if (!urlToken && sessionToken && typeof sessionToken === 'string') {
           sessionStorage.setItem(getModuleTokenKey(), sessionToken);
         }
+        // Propaga el producto (rcv | funerario) entre módulos: getProductConfig()
+        // lo lee desde sessionStorage, así no depende de que la URL lo arrastre.
+        const sessionProduct = r.data.data.product;
+        if ((sessionProduct === 'rcv' || sessionProduct === 'funerario')) {
+          try { sessionStorage.setItem('exelixi_product', sessionProduct); } catch { /* ignore */ }
+        }
       }
       // eslint-disable-next-line no-console
       console.info('[bridge] hydrated session', sid);
