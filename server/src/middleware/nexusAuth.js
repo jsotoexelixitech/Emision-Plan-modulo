@@ -27,7 +27,17 @@ const jwt = require('jsonwebtoken');
 
 const ENABLED         = process.env.NEXUS_AUTH_ENABLED === 'true';
 const SECRET          = process.env.TENANT_TOKEN_SECRET || '';
-const EXPECTED_SUBMOD = parseInt(process.env.NEXUS_EXPECTED_SUBMODULO_ID || '0', 10);
+// Un mismo backend puede atender varios submódulos (p.ej. el mismo backend para
+// el flujo RCV y el flujo Funerario). Se aceptan varios ids vía
+// NEXUS_EXPECTED_SUBMODULO_IDS=19,23 (lista) o el legacy NEXUS_EXPECTED_SUBMODULO_ID.
+const EXPECTED_SUBMODS = (
+  process.env.NEXUS_EXPECTED_SUBMODULO_IDS ||
+  process.env.NEXUS_EXPECTED_SUBMODULO_ID ||
+  ''
+)
+  .split(',')
+  .map((s) => parseInt(s.trim(), 10))
+  .filter((n) => Number.isInteger(n) && n > 0);
 
 function extractToken(req) {
   const auth = req.headers.authorization || req.headers['x-nexus-token'];
@@ -100,11 +110,11 @@ function nexusAuth(req, res, next) {
       });
     }
     // Proxy interno: saltar verificación de submódulo — el caller ya autenticó al usuario
-    if (!isInternalProxy && EXPECTED_SUBMOD > 0 && payload.submoduloId !== EXPECTED_SUBMOD) {
+    if (!isInternalProxy && EXPECTED_SUBMODS.length > 0 && !EXPECTED_SUBMODS.includes(payload.submoduloId)) {
       return res.status(403).json({
         success: false,
         code: 'NEXUS_TOKEN_WRONG_SUBMODULE',
-        message: `Token emitido para submódulo ${payload.submoduloId}, este backend espera ${EXPECTED_SUBMOD}.`,
+        message: `Token emitido para submódulo ${payload.submoduloId}, este backend espera ${EXPECTED_SUBMODS.join(', ')}.`,
       });
     }
     req.empresa = { id: payload.empresaId };
