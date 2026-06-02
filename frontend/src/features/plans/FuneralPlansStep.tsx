@@ -148,8 +148,11 @@ export function FuneralPlansStep() {
             value={selectedPlan?.cplan ?? ''}
             onChange={(e) => {
               const found = apiPlans.find((p) => p.cplan === e.target.value);
-              setSelectedPlan(found ?? null);
+              // OJO: setCategory borra selectedPlan en el store, por eso se
+              // llama ANTES de setSelectedPlan (si no, el plan elegido se
+              // limpia en el mismo ciclo y la cotización no se dispara).
               if (found) setCategory(found.name);
+              setSelectedPlan(found ?? null);
             }}
             disabled={plansLoading || apiPlans.length === 0}
             className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
