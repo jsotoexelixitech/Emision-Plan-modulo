@@ -153,6 +153,9 @@ async function createEmissionPerson(payload) {
   const response = await post(endpoint, payload, apiKey ? { apikey: apiKey } : undefined);
   if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
     const r = response.data.result ?? {};
+    if (!r.cnpoliza || !r.cnrecibo) {
+      throw buildError(response.status, { message: 'Respuesta de emisión inválida: cnpoliza/cnrecibo faltan' }, endpoint);
+    }
     return {
       cnpoliza: r.cnpoliza,
       cnrecibo: r.cnrecibo,

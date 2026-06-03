@@ -190,8 +190,28 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
     // ── Canal ──────────────────────────────────────────────────────────────────
     productor,
 
-    // ── Asegurados (informativo / trazabilidad) ─────────────────────────────────
-    asegurados: buildAseguradosForQuote(funeral),
+    // ── Asegurados (para el trigger de Sis2000) ─────────────────────────────────
+    asegurados: asegurados.map((a, idx) => ({
+      icedula_asegurado: normalizeTipoCedula(a.tipoDoc),
+      xrif_asegurado: digitsToNumber(a.identificacion),
+      xnombre_asegurado: cleanString(a.nombre),
+      xapellido_asegurado: cleanString(a.apellido),
+      fnac_asegurado: normalizeDate(a.fechaNac),
+      isexo_asegurado: normalizeSexo(a.sexo),
+      nparentesco_asegurado: Number(a.cparen ?? a.parentesco ?? (idx === 0 ? 1 : 0)) || 0,
+      iestado_civil_asegurado: normalizeEstadoCivil(a.estadoCivil) || 'S'
+    })),
+
+    // ── Beneficiarios (para el trigger de Sis2000) ──────────────────────────────
+    beneficiarios: (Array.isArray(funeral.beneficiarios) ? funeral.beneficiarios : []).map(b => ({
+      icedula_beneficiario: normalizeTipoCedula(b.tipoDoc),
+      xrif_beneficiario: digitsToNumber(b.identificacion),
+      xnombre_beneficiario: cleanString(b.nombre),
+      xapellido_beneficiario: cleanString(b.apellido),
+      fnac_beneficiario: normalizeDate(b.fechaNac),
+      isexo_beneficiario: normalizeSexo(b.sexo),
+      nparentesco_beneficiario: Number(b.cparen ?? b.parentesco) || 0
+    })),
   };
 
   return {
@@ -199,7 +219,7 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
     metadata: {
       internalPolicyId: internalId,
       plan,
-      aseguradosCount: asegurados.length,
+      aseguradosCount: payload.asegurados.length,
     },
   };
 }
