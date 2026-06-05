@@ -531,3 +531,11 @@ export function getCiudades(cestado?: number | null): Promise<CatalogItem[]> {
 export function getValrepList(domain: string): Promise<CatalogItem[]> {
   return _fetchValrep(`/valrep/list/${domain.toUpperCase()}`);
 }
+
+/**
+ * Frecuencias dinámicas por plan y ramo.
+ */
+export async function getFrecuenciasByPlan(cplan: string, cramo: number = 9): Promise<CatalogItem[]> {
+  const { data } = await api.post<{ ok: boolean; items: CatalogItem[] }>('/valrep/frecuencia', { cplan, cramo });
+  return data?.items ?? [];
+}

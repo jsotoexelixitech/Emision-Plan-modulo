@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import {
   Check, Star, Shield, ChevronDown, ShieldCheck,
-  Loader2, AlertTriangle, Users,
+  Loader2, AlertTriangle, Users, CalendarClock
 } from 'lucide-react';
 import type { Plan } from '../../types';
-import { personasApi, type PlanPer } from '../../lib/api';
+import { personasApi, type PlanPer, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { toast } from '../../store/toastStore';
@@ -40,6 +40,10 @@ export function FuneralPlansStep() {
   const [plansLoading, setPlansLoading] = useState(false);
   const [plansError, setPlansError] = useState(false);
 
+  const [apiFrecuencias, setApiFrecuencias] = useState<CatalogItem[]>([]);
+  const [frecLoading, setFrecLoading] = useState(false);
+  const setFuneral = useWizardStore((s) => s.setFuneral);
+
   // ── Carga de planes de personas (ramo 9) ──────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +69,35 @@ export function FuneralPlansStep() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Carga de frecuencias ──────────────────────────────────────────────────
+  useEffect(() => {
+    const planCode = selectedPlan?.cplan;
+    if (!planCode) {
+      setApiFrecuencias([]);
+      return;
+    }
+
+    let cancelled = false;
+    setFrecLoading(true);
+    getFrecuenciasByPlan(planCode, product.cramo)
+      .then((items) => {
+        if (!cancelled) {
+          setApiFrecuencias(items);
+          // Si la frecuencia actual no es válida, seleccionar la primera por defecto
+          const currentValid = items.find((i) => String(i.code) === funeral.frecuencia);
+          if (!currentValid && items.length > 0) {
+            setFuneral({ frecuencia: String(items[0].code) });
+          }
+        }
+      })
+      .catch((err) => console.error('Error cargando frecuencias', err))
+      .finally(() => {
+        if (!cancelled) setFrecLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedPlan?.cplan, product.cramo, setFuneral, funeral.frecuencia]);
 
   // ── Cotización contra getCotizacionPer ─────────────────────────────────────
   const aseguradosListos = funeral.asegurados.filter(
@@ -130,49 +163,88 @@ export function FuneralPlansStep() {
         </span>
       </div>
 
-      {/* Selector de plan */}
-      <div>
-        <label className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-2 inline-flex items-center gap-1.5">
-          <Star size={11} className="text-violet-500" />
-          Plan funerario
-        </label>
-        <div className="relative group">
-          <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
-            selectedPlan
-              ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_4px_14px_rgba(46,109,191,0.3)]'
-              : 'bg-slate-100 text-slate-400'
-          }`}>
-            {plansLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={15} strokeWidth={2.5} />}
+      {/* Selectores */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Selector de plan */}
+        <div>
+          <label className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-2 inline-flex items-center gap-1.5">
+            <Star size={11} className="text-violet-500" />
+            Plan funerario
+          </label>
+          <div className="relative group">
+            <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
+              selectedPlan
+                ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_4px_14px_rgba(46,109,191,0.3)]'
+                : 'bg-slate-100 text-slate-400'
+            }`}>
+              {plansLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={15} strokeWidth={2.5} />}
+            </div>
+            <select
+              value={selectedPlan?.cplan ?? ''}
+              onChange={(e) => {
+                const found = apiPlans.find((p) => p.cplan === e.target.value);
+                // OJO: setCategory borra selectedPlan en el store, por eso se
+                // llama ANTES de setSelectedPlan (si no, el plan elegido se
+                // limpia en el mismo ciclo y la cotización no se dispara).
+                if (found) setCategory(found.name);
+                setSelectedPlan(found ?? null);
+              }}
+              disabled={plansLoading || apiPlans.length === 0}
+              className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
+            >
+              {plansLoading ? (
+                <option value="">Cargando planes...</option>
+              ) : plansError ? (
+                <option value="">Error al cargar planes</option>
+              ) : apiPlans.length === 0 ? (
+                <option value="">Sin planes disponibles</option>
+              ) : (
+                <>
+                  <option value="" disabled>— Elige un plan —</option>
+                  {apiPlans.map((p) => (
+                    <option key={p.cplan} value={p.cplan ?? ''}>{p.name}</option>
+                  ))}
+                </>
+              )}
+            </select>
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
-          <select
-            value={selectedPlan?.cplan ?? ''}
-            onChange={(e) => {
-              const found = apiPlans.find((p) => p.cplan === e.target.value);
-              // OJO: setCategory borra selectedPlan en el store, por eso se
-              // llama ANTES de setSelectedPlan (si no, el plan elegido se
-              // limpia en el mismo ciclo y la cotización no se dispara).
-              if (found) setCategory(found.name);
-              setSelectedPlan(found ?? null);
-            }}
-            disabled={plansLoading || apiPlans.length === 0}
-            className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
-          >
-            {plansLoading ? (
-              <option value="">Cargando planes...</option>
-            ) : plansError ? (
-              <option value="">Error al cargar planes</option>
-            ) : apiPlans.length === 0 ? (
-              <option value="">Sin planes disponibles</option>
-            ) : (
-              <>
-                <option value="" disabled>— Elige un plan —</option>
-                {apiPlans.map((p) => (
-                  <option key={p.cplan} value={p.cplan ?? ''}>{p.name}</option>
-                ))}
-              </>
-            )}
-          </select>
-          <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+        </div>
+
+        {/* Selector de frecuencia */}
+        <div>
+          <label className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-2 inline-flex items-center gap-1.5">
+            <CalendarClock size={11} className="text-emerald-500" />
+            Frecuencia de pago
+          </label>
+          <div className="relative group">
+            <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
+              funeral.frecuencia
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)]'
+                : 'bg-slate-100 text-slate-400'
+            }`}>
+              {frecLoading ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={15} strokeWidth={2.5} />}
+            </div>
+            <select
+              value={funeral.frecuencia ?? ''}
+              onChange={(e) => setFuneral({ frecuencia: e.target.value })}
+              disabled={frecLoading || apiFrecuencias.length === 0 || !selectedPlan}
+              className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
+            >
+              {frecLoading ? (
+                <option value="">Cargando...</option>
+              ) : !selectedPlan ? (
+                <option value="">Selecciona un plan primero</option>
+              ) : apiFrecuencias.length === 0 ? (
+                <option value="">Sin frecuencias</option>
+              ) : (
+                apiFrecuencias.map((f) => (
+                  <option key={f.code} value={String(f.code)}>{f.label}</option>
+                ))
+              )}
+            </select>
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
         </div>
       </div>
 
