@@ -135,7 +135,18 @@ router.post('/frecuencia', async (req, res) => {
     
     // El upstream puede devolver { status: true, data: { frecuencias: [...] } } o { status: true, frecuencias: [...] } o { status: true, plan: [...] }
     const payload = response.data.data || response.data;
-    const rawItems = payload.frecuencias || payload.plan || payload.items || [];
+    let rawItems = payload.frecuencias || payload.plan || payload.items || [];
+    
+    // Fallback: si el API upstream devuelve vacío (p. ej. la API legacy de QA),
+    // inyectamos las frecuencias por defecto tal como lo hace el Nest API.
+    if (!rawItems || rawItems.length === 0) {
+      rawItems = [
+        { cvalor: 'A', xdescripcion: 'Anual' },
+        { cvalor: 'S', xdescripcion: 'Semestral' },
+        { cvalor: 'T', xdescripcion: 'Trimestral' },
+        { cvalor: 'M', xdescripcion: 'Mensual' }
+      ];
+    }
     
     // Mapear al formato CatalogItem { code, label }
     const items = rawItems.map((f) => ({
