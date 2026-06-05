@@ -11,6 +11,7 @@
  * MATIPCANAL — todas con bactivo=1.
  */
 const express = require('express');
+const axios = require('axios');
 const { getSis2000Pool, sql } = require('../services/sis2000Pool');
 
 const router = express.Router();
@@ -105,6 +106,40 @@ router.get('/list/:domain', async (req, res) => {
     res.status(502).json({
       ok: false,
       error: `No se pudo obtener la lista ${domain} de Sis2000`,
+      detail: msg,
+    });
+  }
+});
+
+// POST /api/valrep/frecuencia
+// Proxy al nest-api (sysip-nest-api)
+router.post('/frecuencia', async (req, res) => {
+  try {
+    const { cplan, cramo } = req.body;
+    // URL del sysip-nest-api
+    const baseUrl = (process.env.NESTAPI_BASE_URL || process.env.LAMUNDIAL_BASE_URL || 'http://apiqa.exelixitech.com:3003').replace(/\/$/, '');
+    const url = `${baseUrl}/api/v1/valrep/frecuencia`;
+    
+    const response = await axios.post(url, { cplan, cramo }, {
+      headers: { 'Content-Type': 'application/json' },
+      validateStatus: () => true,
+    });
+    
+    if (response.status >= 400 || !response.data || !response.data.ok) {
+      return res.status(response.status >= 400 ? response.status : 502).json({
+        ok: false,
+        error: 'Error al consultar frecuencias',
+        detail: response.data
+      });
+    }
+    
+    res.json(response.data);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[valrep/frecuencia] proxy error:`, msg);
+    res.status(502).json({
+      ok: false,
+      error: 'No se pudo conectar con el servicio de frecuencias',
       detail: msg,
     });
   }
