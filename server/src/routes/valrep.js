@@ -125,7 +125,7 @@ router.post('/frecuencia', async (req, res) => {
       validateStatus: () => true,
     });
     
-    if (response.status >= 400 || !response.data || !response.data.ok) {
+    if (response.status >= 400 || !response.data || !response.data.status) {
       return res.status(response.status >= 400 ? response.status : 502).json({
         ok: false,
         error: 'Error al consultar frecuencias',
@@ -133,7 +133,17 @@ router.post('/frecuencia', async (req, res) => {
       });
     }
     
-    res.json(response.data);
+    // El upstream puede devolver { status: true, data: { frecuencias: [...] } } o { status: true, frecuencias: [...] } o { status: true, plan: [...] }
+    const payload = response.data.data || response.data;
+    const rawItems = payload.frecuencias || payload.plan || payload.items || [];
+    
+    // Mapear al formato CatalogItem { code, label }
+    const items = rawItems.map((f) => ({
+      code: f.cvalor || f.ifrecuencia || f.code,
+      label: f.xdescripcion || f.xfrecuencia || f.label || String(f.cvalor || f.ifrecuencia)
+    }));
+    
+    res.json({ ok: true, items });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[valrep/frecuencia] proxy error:`, msg);
