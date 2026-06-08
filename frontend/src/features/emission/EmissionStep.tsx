@@ -6,6 +6,8 @@ import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
 import { User, UserPlus, Heart, Wallet, ShieldAlert } from 'lucide-react';
+import { formatTelefono, isValidPhonePrefix } from '@exelixi/shared';
+
 
 export function SectionCard({
   title,
@@ -87,17 +89,6 @@ interface ValidationErrors {
 }
 
 const emailRe   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Limpia el telefono: solo digitos, maximo 11. Y ajusta prefijos validos */
-function formatTelefono(raw: string): string {
-  let d = raw.replace(/\D/g, '');
-  if (d.length > 0 && /^[428]/.test(d)) d = '0' + d;
-  return d.slice(0, 11);
-}
-
-function isValidPhonePrefix(phone: string): boolean {
-  if (!phone || phone.length !== 11) return false;
-  return /^(0414|0424|0412|0416|0426|02\d{2})/.test(phone);
-}
 
 /** Solo letras, tildes, ñ y espacios */
 function onlyLetters(v: string): string {

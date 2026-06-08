@@ -39,7 +39,6 @@ function getModuleTokenKey(): string {
 }
 
 const BRIDGE_HOST = (import.meta.env?.VITE_NEXUS_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:3092';
-const BRIDGE_KEY  = (import.meta.env?.VITE_NEXUS_API_KEY as string | undefined) ?? '';
 const QUERY_KEY   = 'sid';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -108,7 +107,6 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     'Content-Type': 'application/json',
     ...(init?.headers as Record<string, string> || {}),
   };
-  if (BRIDGE_KEY) headers['x-api-key'] = BRIDGE_KEY;
   const r = await fetch(url, { ...init, headers });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return (await r.json()) as T;
