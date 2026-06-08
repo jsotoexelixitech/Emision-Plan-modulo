@@ -1,4 +1,4 @@
-﻿import { Fragment, useState, useRef } from 'react';
+import { Fragment, useState, useRef } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import { Field, Input, Select, Textarea } from '../../components/ui/FormField';
 import { IdentityInput } from '../../components/ui/IdentityInput';
@@ -87,9 +87,16 @@ interface ValidationErrors {
 }
 
 const emailRe   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** Limpia el telefono: solo digitos, maximo 11 */
+/** Limpia el telefono: solo digitos, maximo 11. Y ajusta prefijos validos */
 function formatTelefono(raw: string): string {
-  return raw.replace(/\D/g, '').slice(0, 11);
+  let d = raw.replace(/\D/g, '');
+  if (d.length > 0 && /^[428]/.test(d)) d = '0' + d;
+  return d.slice(0, 11);
+}
+
+function isValidPhonePrefix(phone: string): boolean {
+  if (!phone || phone.length !== 11) return false;
+  return /^(0414|0424|0412|0416|0426|02\d{2})/.test(phone);
 }
 
 /** Solo letras, tildes, ñ y espacios */
@@ -150,6 +157,8 @@ export function EmissionStep() {
       e.telefono = 'El teléfono es obligatorio';
     } else if (digs(tomador.telefono) !== 11) {
       e.telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+    } else if (!isValidPhonePrefix(tomador.telefono || '')) {
+      e.telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
     }
 
     if (req(tomador.email)) {
@@ -213,6 +222,8 @@ export function EmissionStep() {
         e.pag_telefono = 'El teléfono del pagador es obligatorio';
       } else if (digs(pagador.telefono) !== 11) {
         e.pag_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+      } else if (!isValidPhonePrefix(pagador.telefono || '')) {
+        e.pag_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
       }
 
       const pagEmail = (pagador.email ?? '').trim();
@@ -552,9 +563,10 @@ export function EmissionStep() {
               <Field label="Cédula o documento *" error={errors.aseg_identificacion}>
                 <Input
                   value={asegurado.identificacion}
-                  onChange={(e) => setAsegurado({ identificacion: e.target.value.replace(/[^0-9A-Za-z]/g, '') })}
+                  onChange={(e) => setAsegurado({ identificacion: e.target.value.replace(/\D/g, '') })}
                   placeholder="Número de identificación"
                   inputMode="numeric"
+                  maxLength={9}
                 />
               </Field>
               <Field label="Fecha de nacimiento">

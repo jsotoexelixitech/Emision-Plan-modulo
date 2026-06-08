@@ -75,9 +75,16 @@ export function IdentityInput({
       <input
         id={inputId}
         type="text"
-        inputMode="numeric"
+        inputMode={['V', 'E', 'J'].includes(tipoDoc) ? 'numeric' : 'text'}
+        maxLength={9}
         value={identificacion}
-        onChange={(e) => onIdentificacionChange(e.target.value)}
+        onChange={(e) => {
+          let val = e.target.value;
+          if (['V', 'E', 'J'].includes(tipoDoc)) {
+            val = val.replace(/\D/g, '');
+          }
+          onIdentificacionChange(val);
+        }}
         placeholder={placeholder}
         className={
           'flex-1 min-w-0 px-3.5 py-2.5 bg-white text-sm text-slate-900 outline-none ' +

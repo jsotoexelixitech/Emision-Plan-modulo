@@ -101,7 +101,7 @@ export function FuneralPlansStep() {
 
   // ── Cotización contra getCotizacionPer ─────────────────────────────────────
   const aseguradosListos = funeral.asegurados.filter(
-    (a) => a.identificacion.trim() && a.fechaNac.trim(),
+    (a) => (a.identificacion || '').toString().trim() && (a.fechaNac || '').toString().trim(),
   );
   const planCode = selectedPlan?.cplan ?? '';
   const quoteSig = planCode
@@ -282,7 +282,17 @@ export function FuneralPlansStep() {
                     </span>
                   )}
                 </div>
-                <p className="text-[0.7rem] text-slate-400 font-semibold mt-1">/ año</p>
+                <p className="text-[0.7rem] text-slate-400 font-semibold mt-1 uppercase">
+                  {
+                    {
+                      M: '/ mes',
+                      T: '/ trimestre',
+                      C: '/ cuatrimestre',
+                      S: '/ semestre',
+                      A: '/ año'
+                    }[funeral.frecuencia ?? 'A'] ?? '/ año'
+                  }
+                </p>
                 {hasRealQuote && quote && quote.mprima > 0 && (
                   <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1.5 tabular-nums">
                     ≈ Bs {quote.mprima.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

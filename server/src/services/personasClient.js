@@ -86,7 +86,7 @@ function buildError(httpStatus, data, endpoint) {
 async function post(endpoint, body, extraHeaders) {
   const client = getClient();
   const ts = new Date().toISOString();
-  console.log(`[Personas][${ts}] -> ${endpoint} ${JSON.stringify(body).slice(0, 400)}`);
+  console.log(`[Personas][${ts}] -> ${endpoint} ${JSON.stringify(body).slice(0, 1500)}`);
   const t0 = Date.now();
   let response;
   try {

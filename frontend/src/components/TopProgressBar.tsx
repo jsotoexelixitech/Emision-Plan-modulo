@@ -1,20 +1,24 @@
-﻿import { useWizardStore } from '../store/wizardStore';
+import { useWizardStore } from '../store/wizardStore';
+
+import { getProductConfig } from '../lib/product';
 
 const TOTAL_STEPS = 5;
-
-const MOBILE_LABELS: Record<number, string> = {
-  1: 'Documentos',
-  2: 'Emisión',
-  3: 'Vehículo',
-  4: 'Plan',
-  5: 'Pago',
-  6: 'Listo',
-};
 
 export function TopProgressBar() {
   const step = useWizardStore((s) => s.step);
   const segments = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
   const safeStep = Math.min(step, TOTAL_STEPS);
+  const product = getProductConfig();
+  
+  const MOBILE_LABELS: Record<number, string> = {
+    1: 'Documentos',
+    2: product.hasVehicle ? 'Emisión' : 'Tomador',
+    3: product.hasVehicle ? 'Vehículo' : 'Asegurado',
+    4: 'Plan',
+    5: 'Pago',
+    6: 'Listo',
+  };
+  
   const label = MOBILE_LABELS[step] ?? '';
 
   return (
