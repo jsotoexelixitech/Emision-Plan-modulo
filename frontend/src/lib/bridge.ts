@@ -144,6 +144,15 @@ function makeBridge(): BridgeAPI {
     for (const [k, v] of Object.entries(s)) {
       if (typeof v !== 'function') out[k] = v;
     }
+    // Limpieza de datos fantasma y bloqueo de producto en la sesión backend
+    const prod = sessionStorage.getItem('exelixi_product') || 'rcv';
+    if (prod === 'funerario') {
+      delete out.vehicle;
+    } else if (prod === 'rcv') {
+      delete out.funeral;
+    }
+    out.product = prod;
+
     // Incluye nexus_token para que módulos posteriores puedan autenticarse
     const nexusToken =
       getNexusTokenFromUrl() ||
