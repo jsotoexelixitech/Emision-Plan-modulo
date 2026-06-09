@@ -5,10 +5,18 @@ import App from './App.tsx'
 import './lib/bridge'
 import { NexusGuard } from './nexus/NexusGuard'
 
+import { EmisionConfigPanel } from './config/EmisionConfigPanel'
+
+const isConfigRoute = window.location.pathname === '/config';
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <NexusGuard recheckInterval={30}>
-      <App />
-    </NexusGuard>
+    {isConfigRoute ? (
+      <EmisionConfigPanel />
+    ) : (
+      <NexusGuard recheckInterval={30}>
+        <App />
+      </NexusGuard>
+    )}
   </StrictMode>,
 )
