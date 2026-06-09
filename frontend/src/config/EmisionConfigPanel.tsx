@@ -36,11 +36,17 @@ export function EmisionConfigPanel() {
   
   const [apiMap, setApiMap] = useState<ApiMapEntry[]>([]);
   const [permitirEstimado, setPermitirEstimado] = useState(true);
+  const [inspeccionObligatoria, setInspeccionObligatoria] = useState(false);
+  const [diasCarencia, setDiasCarencia] = useState(0);
+  const [edadMaxima, setEdadMaxima] = useState(70);
 
   useEffect(() => {
     if (!config) return;
     setApiMap((config.apiMap as ApiMapEntry[]) ?? []);
     setPermitirEstimado(config.permitirEstimado ?? true);
+    setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
+    setDiasCarencia(config.diasCarencia ?? 0);
+    setEdadMaxima(config.edadMaxima ?? 70);
   }, [config]);
 
   const addMapEntry = () => {
@@ -59,7 +65,7 @@ export function EmisionConfigPanel() {
   };
 
   async function handleSave() {
-    await saveConfig({ apiMap, permitirEstimado });
+    await saveConfig({ apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
@@ -72,7 +78,7 @@ export function EmisionConfigPanel() {
         <header className="mb-8 animate-fade-in">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <p className="text-[0.68rem] font-black tracking-[0.22em] gradient-text-indigo uppercase mb-2 inline-flex items-center gap-1.5">
+              <p className="text-[0.68rem] font-black tracking-[0.22em] text-indigo-500 uppercase mb-2 inline-flex items-center gap-1.5">
                 <Sparkles size={11} className="text-indigo-500" />
                 PARAMETRIZADOR · {producto}
               </p>
@@ -89,7 +95,7 @@ export function EmisionConfigPanel() {
           </div>
         </header>
 
-        <section className="surface-card overflow-hidden animate-fade-in">
+        <section className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl rounded-3xl overflow-hidden animate-fade-in">
           <div className="p-6 sm:p-8 lg:p-10">
             {/* Tabs */}
             <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50 backdrop-blur-sm">
@@ -97,7 +103,7 @@ export function EmisionConfigPanel() {
                 <button
                   key={t}
                   onClick={() => setTab(t as Tab)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-bold transition-all ${tab === t ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === t ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}
                 >
                   <Icon size={15} />{label}
                 </button>
@@ -127,13 +133,40 @@ export function EmisionConfigPanel() {
                     </div>
 
                     <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={permitirEstimado} onChange={e => { setPermitirEstimado(e.target.checked); setSaved(false); }} className="rounded w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5" />
-                        <div>
-                          <span className="text-sm text-slate-800 font-bold block mb-1">Permitir cotizaciones estimadas</span>
-                          <span className="text-xs text-slate-500">Si la aseguradora no responde o el vehículo está incompleto, permite mostrar una prima referencial (Fallback).</span>
+                      {producto === 'rcv' && (
+                        <>
+                          <label className="flex items-start gap-3 cursor-pointer p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                            <input type="checkbox" checked={permitirEstimado} onChange={e => { setPermitirEstimado(e.target.checked); setSaved(false); }} className="rounded w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5" />
+                            <div>
+                              <span className="text-sm text-slate-800 font-bold block mb-1">Permitir cotizaciones estimadas</span>
+                              <span className="text-xs text-slate-500">Si la aseguradora no responde o el vehículo está incompleto, permite mostrar una prima referencial (Fallback).</span>
+                            </div>
+                          </label>
+                          <hr className="border-slate-100" />
+                          <label className="flex items-start gap-3 cursor-pointer p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                            <input type="checkbox" checked={inspeccionObligatoria} onChange={e => { setInspeccionObligatoria(e.target.checked); setSaved(false); }} className="rounded w-5 h-5 text-indigo-600 focus:ring-indigo-500 border-slate-300 mt-0.5" />
+                            <div>
+                              <span className="text-sm text-slate-800 font-bold block mb-1">Inspección Obligatoria</span>
+                              <span className="text-xs text-slate-500">Exigir paso por el módulo de inspección si el riesgo lo amerita.</span>
+                            </div>
+                          </label>
+                        </>
+                      )}
+
+                      {producto === 'funerario' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-2">
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Días de Carencia</label>
+                            <input type="number" min={0} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 font-semibold" value={diasCarencia} onChange={e => { setDiasCarencia(Number(e.target.value)); setSaved(false); }} />
+                            <span className="text-[10px] text-slate-400 block mt-1">Días de espera antes de que el plan sea utilizable.</span>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Edad Máxima de Ingreso</label>
+                            <input type="number" min={0} max={100} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 font-semibold" value={edadMaxima} onChange={e => { setEdadMaxima(Number(e.target.value)); setSaved(false); }} />
+                            <span className="text-[10px] text-slate-400 block mt-1">Límite de edad del titular para adquirir la póliza.</span>
+                          </div>
                         </div>
-                      </label>
+                      )}
                     </div>
                   </div>
                 )}
@@ -159,7 +192,7 @@ export function EmisionConfigPanel() {
 
                     <div className="space-y-3">
                       {apiMap.map((entry, idx) => (
-                        <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-4 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end shadow-sm hover:shadow-md transition-shadow">
+                        <div key={idx} className="rounded-2xl border border-indigo-100 bg-white/50 backdrop-blur-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-5 items-end shadow-sm hover:shadow-md hover:bg-white transition-all group">
                           <div>
                             <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Campo origen</label>
                             <select className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-mono outline-none focus:border-indigo-400" value={entry.internalKey} onChange={e => updateMapEntry(idx, 'internalKey', e.target.value)}>
@@ -180,7 +213,7 @@ export function EmisionConfigPanel() {
                               <option value="number">A Número</option>
                             </select>
                           </div>
-                          <button onClick={() => removeMapEntry(idx)} className="p-2.5 rounded-xl text-rose-400 hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                          <button onClick={() => removeMapEntry(idx)} className="p-2.5 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
                             <Trash2 size={16} />
                           </button>
                         </div>
