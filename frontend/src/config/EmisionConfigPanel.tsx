@@ -3,13 +3,13 @@ import { useProductConfig } from '../hooks/useProductConfig';
 import { getProductId } from '../lib/product';
 import {
   Settings2, RotateCcw, Save, CheckCircle2, AlertTriangle,
-  Loader2, Plus, Trash2, ArrowLeftRight, Layers, Sparkles
+  Loader2, Plus, Trash2, ArrowLeftRight, Layers, Sparkles, Globe, Lock, Eye, EyeOff,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
 
 const EMPRESA_ID = Number(import.meta.env.VITE_EMPRESA_ID ?? 1);
 
-type Tab = 'general' | 'mapeador';
+type Tab = 'general' | 'conexion' | 'mapeador';
 
 interface ApiMapEntry {
   internalKey: string;
@@ -24,6 +24,17 @@ const INTERNAL_FIELDS = [
   'mprima',
   'mprimaext',
   'ptasa',
+  'tomador_nombre',
+  'tomador_apellido',
+  'tomador_cedula',
+  'tomador_telefono',
+  'tomador_email',
+  'vehicle_marca',
+  'vehicle_modelo',
+  'vehicle_placa',
+  'vehicle_año',
+  'vehicle_color',
+  'frecuencia',
 ];
 
 export function EmisionConfigPanel() {
@@ -33,12 +44,22 @@ export function EmisionConfigPanel() {
 
   const [tab, setTab] = useState<Tab>('general');
   const [saved, setSaved] = useState(false);
-  
+  const [showToken, setShowToken] = useState(false);
+
   const [apiMap, setApiMap] = useState<ApiMapEntry[]>([]);
   const [permitirEstimado, setPermitirEstimado] = useState(true);
   const [inspeccionObligatoria, setInspeccionObligatoria] = useState(false);
   const [diasCarencia, setDiasCarencia] = useState(0);
   const [edadMaxima, setEdadMaxima] = useState(70);
+
+  // ── Conexión API ──────────────────────────────────────────
+  const [apiUrl, setApiUrl] = useState('');
+  const [apiFormat, setApiFormat] = useState<'json' | 'form' | 'multipart'>('json');
+  const [apiMethod, setApiMethod] = useState<'POST' | 'PUT' | 'PATCH'>('POST');
+  const [apiAuth, setApiAuth] = useState<'none' | 'bearer' | 'apikey' | 'basic'>('none');
+  const [apiToken, setApiToken] = useState('');
+  const [apiKeyHeader, setApiKeyHeader] = useState('X-API-Key');
+  const [apiKeyValue, setApiKeyValue] = useState('');
 
   useEffect(() => {
     if (!config) return;
@@ -47,34 +68,40 @@ export function EmisionConfigPanel() {
     setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
     setDiasCarencia(config.diasCarencia ?? 0);
     setEdadMaxima(config.edadMaxima ?? 70);
+    // Conexión
+    setApiUrl(config.apiUrl ?? '');
+    setApiFormat(config.apiFormat ?? 'json');
+    setApiMethod(config.apiMethod ?? 'POST');
+    setApiAuth(config.apiAuth ?? 'none');
+    setApiToken(config.apiToken ?? '');
+    setApiKeyHeader(config.apiKeyHeader ?? 'X-API-Key');
+    setApiKeyValue(config.apiKeyValue ?? '');
   }, [config]);
 
-  const addMapEntry = () => {
-    setApiMap(prev => [...prev, { internalKey: '', externalKey: '', transform: 'none' }]);
-    setSaved(false);
-  };
-
+  const addMapEntry = () => { setApiMap(p => [...p, { internalKey: '', externalKey: '', transform: 'none' }]); setSaved(false); };
   const updateMapEntry = (idx: number, field: keyof ApiMapEntry, val: string) => {
-    setApiMap(prev => prev.map((e, i) => i === idx ? { ...e, [field]: val } : e));
+    setApiMap(p => p.map((e, i) => i === idx ? { ...e, [field]: val } : e));
     setSaved(false);
   };
-
-  const removeMapEntry = (idx: number) => {
-    setApiMap(prev => prev.filter((_, i) => i !== idx));
-    setSaved(false);
-  };
+  const removeMapEntry = (idx: number) => { setApiMap(p => p.filter((_, i) => i !== idx)); setSaved(false); };
 
   async function handleSave() {
-    await saveConfig({ apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima });
+    await saveConfig({
+      apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
+      apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   }
+
+  const inp = 'w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 bg-white';
+  const lbl = 'text-[11px] font-bold text-slate-500 block mb-1.5';
 
   return (
     <div className="min-h-screen relative">
       <AuroraBackground />
 
-      <div className="pt-[40px] px-6 lg:px-10 pb-12 max-w-4xl mx-auto relative z-10">
+      <div className="pt-[40px] px-4 sm:px-6 lg:px-10 pb-12 w-full max-w-5xl mx-auto relative z-10">
         <header className="mb-8 animate-fade-in">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
@@ -83,10 +110,10 @@ export function EmisionConfigPanel() {
                 PARAMETRIZADOR · {producto}
               </p>
               <h1 className="font-display text-3xl sm:text-[2.5rem] font-black text-slate-900 tracking-tight leading-tight">
-                Módulo Emisión
+                Creación de Póliza
               </h1>
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
-                Configura parámetros generales de cotización y mapeo de planes.
+                Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.
               </p>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center shadow-lg shadow-indigo-500/20">
@@ -96,10 +123,14 @@ export function EmisionConfigPanel() {
         </header>
 
         <section className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl rounded-3xl overflow-hidden animate-fade-in">
-          <div className="p-6 sm:p-8 lg:p-10">
+          <div className="p-5 sm:p-8">
             {/* Tabs */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50 backdrop-blur-sm">
-              {([['general', 'Ajustes Generales', Layers], ['mapeador', 'Mapeador API', ArrowLeftRight]] as const).map(([t, label, Icon]) => (
+            <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50">
+              {([
+                ['general', 'Ajustes Generales', Layers],
+                ['conexion', 'Conexión API', Globe],
+                ['mapeador', 'Mapeador de Campos', ArrowLeftRight],
+              ] as const).map(([t, label, Icon]) => (
                 <button
                   key={t}
                   onClick={() => setTab(t as Tab)}
@@ -156,14 +187,161 @@ export function EmisionConfigPanel() {
                       {producto === 'funerario' && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-2">
                           <div>
-                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Días de Carencia</label>
-                            <input type="number" min={0} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 font-semibold" value={diasCarencia} onChange={e => { setDiasCarencia(Number(e.target.value)); setSaved(false); }} />
+                            <label className={lbl}>Días de Carencia</label>
+                            <input type="number" min={0} className={inp} value={diasCarencia} onChange={e => { setDiasCarencia(Number(e.target.value)); setSaved(false); }} />
                             <span className="text-[10px] text-slate-400 block mt-1">Días de espera antes de que el plan sea utilizable.</span>
                           </div>
                           <div>
-                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Edad Máxima de Ingreso</label>
-                            <input type="number" min={0} max={100} className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 font-semibold" value={edadMaxima} onChange={e => { setEdadMaxima(Number(e.target.value)); setSaved(false); }} />
+                            <label className={lbl}>Edad Máxima de Ingreso</label>
+                            <input type="number" min={0} max={100} className={inp} value={edadMaxima} onChange={e => { setEdadMaxima(Number(e.target.value)); setSaved(false); }} />
                             <span className="text-[10px] text-slate-400 block mt-1">Límite de edad del titular para adquirir la póliza.</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── TAB CONEXIÓN API ── */}
+                {tab === 'conexion' && (
+                  <div className="space-y-6">
+                    <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-4 flex items-start gap-3">
+                      <Globe size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+                      <p className="text-xs text-indigo-700 leading-relaxed">
+                        Configura el endpoint donde se enviarán los datos del tomador y vehículo al momento de emitir la póliza. Si el campo URL está vacío, se usa el endpoint interno por defecto.
+                      </p>
+                    </div>
+
+                    {/* URL y método */}
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Destino</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-end">
+                        <div>
+                          <label className={lbl}>URL del endpoint de creación de póliza</label>
+                          <input
+                            className={inp}
+                            type="url"
+                            placeholder="https://api.aseguradora.com/v1/polizas"
+                            value={apiUrl}
+                            onChange={e => { setApiUrl(e.target.value); setSaved(false); }}
+                          />
+                          <span className="text-[10px] text-slate-400 block mt-1">Deja vacío para usar el endpoint interno configurado en el servidor.</span>
+                        </div>
+                        <div>
+                          <label className={lbl}>Método HTTP</label>
+                          <select className={inp} value={apiMethod} onChange={e => { setApiMethod(e.target.value as any); setSaved(false); }}>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="PATCH">PATCH</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Formato de envío</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          {([
+                            ['json', 'JSON', 'application/json — El más común'],
+                            ['form', 'Form URL-Encoded', 'application/x-www-form-urlencoded'],
+                            ['multipart', 'Multipart', 'Para enviar archivos adjuntos'],
+                          ] as const).map(([val, title, desc]) => (
+                            <label key={val} className={`flex flex-col gap-1 p-3 rounded-xl border cursor-pointer transition-all ${apiFormat === val ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-400/20' : 'border-slate-200 bg-white hover:border-indigo-200'}`}>
+                              <div className="flex items-center gap-2">
+                                <input type="radio" name="apiFormat" value={val} checked={apiFormat === val} onChange={() => { setApiFormat(val); setSaved(false); }} className="text-indigo-600" />
+                                <span className="font-bold text-sm text-slate-800">{title}</span>
+                              </div>
+                              <span className="text-[10px] text-slate-400 ml-5">{desc}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Autenticación */}
+                    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-5 space-y-4">
+                      <p className="text-xs font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Lock size={12} /> Autenticación
+                      </p>
+                      <div>
+                        <label className={lbl}>Tipo de autenticación</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {([
+                            ['none', 'Sin auth'],
+                            ['bearer', 'Bearer Token'],
+                            ['apikey', 'API Key Header'],
+                            ['basic', 'Basic Auth'],
+                          ] as const).map(([val, title]) => (
+                            <label key={val} className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all ${apiAuth === val ? 'border-indigo-400 bg-indigo-50 ring-2 ring-indigo-400/20' : 'border-slate-200 hover:border-indigo-200'}`}>
+                              <input type="radio" name="apiAuth" value={val} checked={apiAuth === val} onChange={() => { setApiAuth(val); setSaved(false); }} className="text-indigo-600" />
+                              <span className="font-bold text-xs text-slate-700">{title}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Campos condicionales según auth */}
+                      {apiAuth === 'bearer' && (
+                        <div className="animate-fade-in">
+                          <label className={lbl}>Bearer Token</label>
+                          <div className="relative">
+                            <input
+                              className={`${inp} pr-10`}
+                              type={showToken ? 'text' : 'password'}
+                              placeholder="eyJhbGci..."
+                              value={apiToken}
+                              onChange={e => { setApiToken(e.target.value); setSaved(false); }}
+                            />
+                            <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                              {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {apiAuth === 'apikey' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                          <div>
+                            <label className={lbl}>Nombre del header</label>
+                            <input className={inp} placeholder="X-API-Key" value={apiKeyHeader} onChange={e => { setApiKeyHeader(e.target.value); setSaved(false); }} />
+                          </div>
+                          <div>
+                            <label className={lbl}>Valor del header</label>
+                            <div className="relative">
+                              <input
+                                className={`${inp} pr-10`}
+                                type={showToken ? 'text' : 'password'}
+                                placeholder="••••••••••"
+                                value={apiKeyValue}
+                                onChange={e => { setApiKeyValue(e.target.value); setSaved(false); }}
+                              />
+                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {apiAuth === 'basic' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+                          <div>
+                            <label className={lbl}>Usuario</label>
+                            <input className={inp} placeholder="usuario" value={apiKeyHeader} onChange={e => { setApiKeyHeader(e.target.value); setSaved(false); }} />
+                          </div>
+                          <div>
+                            <label className={lbl}>Contraseña</label>
+                            <div className="relative">
+                              <input
+                                className={`${inp} pr-10`}
+                                type={showToken ? 'text' : 'password'}
+                                placeholder="••••••••"
+                                value={apiKeyValue}
+                                onChange={e => { setApiKeyValue(e.target.value); setSaved(false); }}
+                              />
+                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -174,10 +352,10 @@ export function EmisionConfigPanel() {
                 {/* ── TAB MAPEADOR ── */}
                 {tab === 'mapeador' && (
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                       <div>
-                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Mapeador de campos API</p>
-                        <p className="text-xs text-slate-400 mt-1">Traduce los campos del plan al formato de la API destino.</p>
+                        <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Mapeador de campos</p>
+                        <p className="text-xs text-slate-400 mt-1">Traduce los campos internos al formato que espera la API destino.</p>
                       </div>
                       <button onClick={addMapEntry} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600/10 text-indigo-700 text-xs font-bold hover:bg-indigo-600/20 transition-colors">
                         <Plus size={14} /> Nueva regla
@@ -186,34 +364,39 @@ export function EmisionConfigPanel() {
 
                     {apiMap.length === 0 && (
                       <div className="text-center py-12 text-slate-400 text-sm rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
-                        No hay mapeos. Los campos se enviarán con el nombre interno.
+                        No hay mapeos. Los campos se enviarán con su nombre interno.<br />
+                        <span className="text-xs">Agrega reglas para traducir los campos al formato de la aseguradora.</span>
                       </div>
                     )}
 
                     <div className="space-y-3">
                       {apiMap.map((entry, idx) => (
-                        <div key={idx} className="rounded-2xl border border-indigo-100 bg-white/50 backdrop-blur-sm p-5 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto] gap-5 items-end shadow-sm hover:shadow-md hover:bg-white transition-all group">
+                        <div key={idx} className="rounded-2xl border border-indigo-100 bg-white/50 p-4 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto_auto] gap-4 items-end shadow-sm hover:shadow-md hover:bg-white transition-all group">
                           <div>
-                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Campo origen</label>
+                            <label className={lbl}>Campo interno</label>
                             <select className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-slate-50 font-mono outline-none focus:border-indigo-400" value={entry.internalKey} onChange={e => updateMapEntry(idx, 'internalKey', e.target.value)}>
                               <option value="">— Seleccionar —</option>
                               {INTERNAL_FIELDS.map(k => <option key={k} value={k}>{k}</option>)}
                             </select>
                           </div>
                           <div>
-                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Campo destino (API)</label>
+                            <label className={lbl}>Campo destino (API)</label>
                             <input className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 font-mono outline-none focus:border-indigo-400" placeholder="ej: xplan" value={entry.externalKey} onChange={e => updateMapEntry(idx, 'externalKey', e.target.value)} />
                           </div>
                           <div>
-                            <label className="text-[11px] font-bold text-slate-500 block mb-1.5">Transformación</label>
-                            <select className="text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none focus:border-indigo-400" value={entry.transform ?? 'none'} onChange={e => updateMapEntry(idx, 'transform', e.target.value)}>
+                            <label className={lbl}>Transformación</label>
+                            <select className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none focus:border-indigo-400" value={entry.transform ?? 'none'} onChange={e => updateMapEntry(idx, 'transform', e.target.value)}>
                               <option value="none">Ninguna</option>
                               <option value="uppercase">MAYÚSCULAS</option>
                               <option value="lowercase">minúsculas</option>
                               <option value="number">A Número</option>
+                              <option value="date_ddmmyyyy">Fecha DD/MM/YYYY</option>
+                              <option value="date_yyyymmdd">Fecha YYYY-MM-DD</option>
+                              <option value="strip_prefix">Quitar prefijo (V-)</option>
+                              <option value="json_string">Objeto como JSON string</option>
                             </select>
                           </div>
-                          <button onClick={() => removeMapEntry(idx)} className="p-2.5 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100">
+                          <button onClick={() => removeMapEntry(idx)} className="p-2.5 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 self-end">
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -226,14 +409,14 @@ export function EmisionConfigPanel() {
           </div>
 
           {loadState !== 'loading' && (
-            <div className="px-6 sm:px-8 lg:px-10 py-5 bg-slate-50/80 border-t border-slate-100 backdrop-blur-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="px-5 sm:px-8 py-5 bg-slate-50/80 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
               {saveError && (
                 <div className="w-full sm:w-auto flex items-center gap-2 text-xs text-rose-600 bg-rose-50 px-4 py-2 rounded-xl">
                   <AlertTriangle size={14} />{saveError}
                 </div>
               )}
               <div className="flex gap-3 w-full sm:w-auto sm:ml-auto">
-                <button onClick={() => { if (confirm('¿Restaurar originales?')) resetConfig(); }} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <button onClick={() => { if (confirm('¿Restaurar configuración original?')) resetConfig(); }} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
                   <RotateCcw size={15} /> Restaurar defaults
                 </button>
                 <button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-8 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50">
