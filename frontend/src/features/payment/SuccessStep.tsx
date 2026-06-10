@@ -72,7 +72,7 @@ export function SuccessStep() {
               <p className="text-[0.65rem] font-bold tracking-widest text-slate-500 uppercase">
                 Certificado digital
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">La Mundial de Seguros</p>
+              <p className="text-xs text-slate-500 mt-0.5">La Mundial de Seguros</p>
             </div>
             <div className="flex items-center gap-1.5 text-[0.6rem] font-bold text-emerald-700 bg-emerald-50 ring-1 ring-emerald-200 px-2.5 py-1 rounded-full uppercase tracking-wider">
               <CheckCircle2 size={10} />
@@ -118,7 +118,7 @@ export function SuccessStep() {
                     </p>
                   ) : null}
                   {ptasa ? (
-                    <p className="text-[0.58rem] text-slate-400 mt-0.5 tabular-nums">
+                    <p className="text-[0.58rem] text-slate-500 mt-0.5 tabular-nums">
                       Tasa BCV: {ptasa.toFixed(4)}
                     </p>
                   ) : null}
@@ -196,7 +196,7 @@ export function SuccessStep() {
       <div className="text-center">
         <button
           onClick={() => reset()}
-          className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-indigo-600 transition-colors font-semibold"
+          className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-semibold"
         >
           <RefreshCw size={13} />
           Emitir otra póliza

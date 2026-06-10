@@ -17,7 +17,7 @@ export function Field({ label, error, hint, full, children, className }: FieldPr
         {label}
       </label>
       {children}
-      {hint && !error && <p className="text-[0.72rem] text-slate-400">{hint}</p>}
+      {hint && !error && <p className="text-[0.72rem] text-slate-500">{hint}</p>}
       {error && (
         <p className="text-[0.72rem] text-rose-500 font-semibold flex items-center gap-1">
           <span className="w-1 h-1 rounded-full bg-rose-500" />

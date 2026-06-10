@@ -142,7 +142,7 @@ export function EmisionConfigPanel() {
             </div>
 
             {loadState === 'loading' && (
-              <div className="flex items-center justify-center gap-3 py-20 text-slate-400">
+              <div className="flex items-center justify-center gap-3 py-20 text-slate-500">
                 <Loader2 size={20} className="animate-spin" /><span className="text-sm">Cargando configuración...</span>
               </div>
             )}
@@ -189,12 +189,12 @@ export function EmisionConfigPanel() {
                           <div>
                             <label className={lbl}>Días de Carencia</label>
                             <input type="number" min={0} className={inp} value={diasCarencia} onChange={e => { setDiasCarencia(Number(e.target.value)); setSaved(false); }} />
-                            <span className="text-[10px] text-slate-400 block mt-1">Días de espera antes de que el plan sea utilizable.</span>
+                            <span className="text-[10px] text-slate-500 block mt-1">Días de espera antes de que el plan sea utilizable.</span>
                           </div>
                           <div>
                             <label className={lbl}>Edad Máxima de Ingreso</label>
                             <input type="number" min={0} max={100} className={inp} value={edadMaxima} onChange={e => { setEdadMaxima(Number(e.target.value)); setSaved(false); }} />
-                            <span className="text-[10px] text-slate-400 block mt-1">Límite de edad del titular para adquirir la póliza.</span>
+                            <span className="text-[10px] text-slate-500 block mt-1">Límite de edad del titular para adquirir la póliza.</span>
                           </div>
                         </div>
                       )}
@@ -225,7 +225,7 @@ export function EmisionConfigPanel() {
                             value={apiUrl}
                             onChange={e => { setApiUrl(e.target.value); setSaved(false); }}
                           />
-                          <span className="text-[10px] text-slate-400 block mt-1">Deja vacío para usar el endpoint interno configurado en el servidor.</span>
+                          <span className="text-[10px] text-slate-500 block mt-1">Deja vacío para usar el endpoint interno configurado en el servidor.</span>
                         </div>
                         <div>
                           <label className={lbl}>Método HTTP</label>
@@ -250,7 +250,7 @@ export function EmisionConfigPanel() {
                                 <input type="radio" name="apiFormat" value={val} checked={apiFormat === val} onChange={() => { setApiFormat(val); setSaved(false); }} className="text-indigo-600" />
                                 <span className="font-bold text-sm text-slate-800">{title}</span>
                               </div>
-                              <span className="text-[10px] text-slate-400 ml-5">{desc}</span>
+                              <span className="text-[10px] text-slate-500 ml-5">{desc}</span>
                             </label>
                           ))}
                         </div>
@@ -291,7 +291,7 @@ export function EmisionConfigPanel() {
                               value={apiToken}
                               onChange={e => { setApiToken(e.target.value); setSaved(false); }}
                             />
-                            <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                            <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600">
                               {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
                             </button>
                           </div>
@@ -314,7 +314,7 @@ export function EmisionConfigPanel() {
                                 value={apiKeyValue}
                                 onChange={e => { setApiKeyValue(e.target.value); setSaved(false); }}
                               />
-                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600">
                                 {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
                               </button>
                             </div>
@@ -338,7 +338,7 @@ export function EmisionConfigPanel() {
                                 value={apiKeyValue}
                                 onChange={e => { setApiKeyValue(e.target.value); setSaved(false); }}
                               />
-                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                              <button type="button" onClick={() => setShowToken(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600">
                                 {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
                               </button>
                             </div>
@@ -355,7 +355,7 @@ export function EmisionConfigPanel() {
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
                       <div>
                         <p className="text-xs font-black text-slate-500 uppercase tracking-widest">Mapeador de campos</p>
-                        <p className="text-xs text-slate-400 mt-1">Traduce los campos internos al formato que espera la API destino.</p>
+                        <p className="text-xs text-slate-500 mt-1">Traduce los campos internos al formato que espera la API destino.</p>
                       </div>
                       <button onClick={addMapEntry} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600/10 text-indigo-700 text-xs font-bold hover:bg-indigo-600/20 transition-colors">
                         <Plus size={14} /> Nueva regla
@@ -363,7 +363,7 @@ export function EmisionConfigPanel() {
                     </div>
 
                     {apiMap.length === 0 && (
-                      <div className="text-center py-12 text-slate-400 text-sm rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+                      <div className="text-center py-12 text-slate-500 text-sm rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
                         No hay mapeos. Los campos se enviarán con su nombre interno.<br />
                         <span className="text-xs">Agrega reglas para traducir los campos al formato de la aseguradora.</span>
                       </div>

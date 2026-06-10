@@ -120,7 +120,7 @@ export function SidebarNav() {
                       0{n}
                     </span>
                     {isActive && (
-                      <span className="text-[0.58rem] font-bold text-indigo-200 bg-gradient-to-r from-indigo-500/25 to-violet-500/25 px-2 py-0.5 rounded-full ring-1 ring-indigo-400/30 tracking-wider">
+                      <span className="text-[0.58rem] font-bold text-indigo-300 bg-gradient-to-r from-indigo-500/25 to-violet-500/25 px-2 py-0.5 rounded-full ring-1 ring-indigo-400/30 tracking-wider">
                         EN CURSO
                       </span>
                     )}
@@ -131,7 +131,7 @@ export function SidebarNav() {
                     )}
                   </div>
                   <p className={`mt-0.5 font-display text-[0.95rem] font-bold leading-tight ${
-                    isActive ? 'text-white' : isComplete ? 'text-slate-300' : 'text-slate-400'
+                    isActive ? 'text-white' : isComplete ? 'text-slate-300' : 'text-slate-500'
                   }`}>
                     {label}
                   </p>
@@ -176,7 +176,7 @@ export function SidebarNav() {
 
               {/* Prima mensual — real de La Mundial o spinner */}
               <div className="flex items-center justify-between gap-3 py-1">
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-500">
                   <CreditCard size={11} />
                   <span className="text-[0.72rem]">Prima / mes</span>
                 </div>
@@ -196,7 +196,7 @@ export function SidebarNav() {
               {precioAnualDisplay && (
                 <div className="flex items-center justify-between gap-3 py-0.5 opacity-70">
                   <span className="text-[0.68rem] text-slate-500 pl-5">Total anual</span>
-                  <span className="text-[0.72rem] font-semibold text-slate-400 tabular-nums">{precioAnualDisplay}</span>
+                  <span className="text-[0.72rem] font-semibold text-slate-500 tabular-nums">{precioAnualDisplay}</span>
                 </div>
               )}
 
@@ -204,7 +204,7 @@ export function SidebarNav() {
               {bsDisplay && (
                 <div className="flex items-center justify-between gap-3 py-0.5 opacity-70">
                   <span className="text-[0.68rem] text-slate-500 pl-5">En Bs</span>
-                  <span className="text-[0.72rem] font-semibold text-slate-400 tabular-nums">{bsDisplay}</span>
+                  <span className="text-[0.72rem] font-semibold text-slate-500 tabular-nums">{bsDisplay}</span>
                 </div>
               )}
 
@@ -270,7 +270,7 @@ function SummaryRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1">
-      <div className="flex items-center gap-2 text-slate-400">
+      <div className="flex items-center gap-2 text-slate-500">
         {icon}
         <span className="text-[0.72rem]">{label}</span>
       </div>

@@ -12,7 +12,7 @@ const variantClasses = {
   processing: 'bg-violet-50 text-violet-600',
   done: 'bg-emerald-50 text-emerald-600',
   error: 'bg-rose-50 text-rose-600',
-  optional: 'bg-slate-50 text-slate-400 border border-dashed border-slate-300',
+  optional: 'bg-slate-50 text-slate-500 border border-dashed border-slate-300',
 };
 
 const dotClasses = {

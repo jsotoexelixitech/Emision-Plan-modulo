@@ -97,7 +97,7 @@ export default function App() {
               </div>
 
               <div className="hidden md:flex items-center justify-between gap-4 px-8 lg:px-10 py-5 border-t border-slate-100/80 bg-gradient-to-b from-slate-50/50 to-white/40 backdrop-blur-sm">
-                <div className="flex items-center gap-2 text-xs text-slate-400">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
                   <ShieldCheck size={13} className="text-emerald-500" />
                   <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
                 </div>

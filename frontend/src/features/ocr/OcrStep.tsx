@@ -296,7 +296,7 @@ function UploadDocCard({
               : isLoading
               ? `bg-gradient-to-br ${config.accent} text-white shadow-[0_4px_14px_rgba(15, 26, 90,0.32)]`
               : config.optional
-              ? 'bg-slate-100 text-slate-400'
+              ? 'bg-slate-100 text-slate-500'
               : 'bg-indigo-100 text-indigo-600'
             }
           `}
@@ -324,7 +324,7 @@ function UploadDocCard({
         )}
 
         {docState.status === 'idle' && (
-          <div className="flex flex-col items-center gap-2.5 text-slate-400 transition-colors">
+          <div className="flex flex-col items-center gap-2.5 text-slate-500 transition-colors">
             {/* Ícono central — desktop y móvil */}
             <div className="relative w-14 h-14 rounded-2xl bg-white border-2 border-dashed border-slate-300 grid place-items-center group-hover:border-indigo-400 group-hover:bg-indigo-50/60 transition-all pointer-events-none">
               <Upload size={20} strokeWidth={2.2} className="group-hover:scale-110 transition-transform" />
@@ -361,7 +361,7 @@ function UploadDocCard({
               </button>
             </div>
 
-            <span className="text-[0.62rem] text-slate-400 font-mono uppercase tracking-wider pointer-events-none">JPG · PNG · PDF</span>
+            <span className="text-[0.62rem] text-slate-500 font-mono uppercase tracking-wider pointer-events-none">JPG · PNG · PDF</span>
           </div>
         )}
 
@@ -372,7 +372,7 @@ function UploadDocCard({
                 <p className="text-[1rem] font-black text-indigo-600 leading-none font-mono">
                   {Math.round(docState.progress)}
                 </p>
-                <p className="text-[0.55rem] text-slate-400 font-bold mt-0.5 tracking-wider">%</p>
+                <p className="text-[0.55rem] text-slate-500 font-bold mt-0.5 tracking-wider">%</p>
               </div>
             </CircularProgress>
             <div className="flex items-center gap-1.5 text-[0.7rem] font-semibold text-indigo-600">
@@ -392,7 +392,7 @@ function UploadDocCard({
             </div>
             <p className="text-xs font-bold text-emerald-700">Verificado</p>
             {docState.file && (
-              <p className="text-[0.62rem] text-slate-400 max-w-full truncate px-2 font-mono">
+              <p className="text-[0.62rem] text-slate-500 max-w-full truncate px-2 font-mono">
                 {docState.file.name}
               </p>
             )}
@@ -604,7 +604,7 @@ export function OcrStep() {
               <p className="text-xs text-slate-500 font-semibold leading-tight">
                 de <span className="font-mono text-slate-700">3</span> obligatorios
               </p>
-              <p className="text-[0.65rem] text-slate-400 mt-0.5">documentos verificados</p>
+              <p className="text-[0.65rem] text-slate-500 mt-0.5">documentos verificados</p>
             </div>
           </div>
           {/* Mini progress */}

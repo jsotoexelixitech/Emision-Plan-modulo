@@ -175,7 +175,7 @@ export function FuneralPlansStep() {
             <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
               selectedPlan
                 ? 'bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-[0_4px_14px_rgba(46,109,191,0.3)]'
-                : 'bg-slate-100 text-slate-400'
+                : 'bg-slate-100 text-slate-500'
             }`}>
               {plansLoading ? <Loader2 size={14} className="animate-spin" /> : <Check size={15} strokeWidth={2.5} />}
             </div>
@@ -207,7 +207,7 @@ export function FuneralPlansStep() {
                 </>
               )}
             </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           </div>
         </div>
 
@@ -221,7 +221,7 @@ export function FuneralPlansStep() {
             <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
               funeral.frecuencia
                 ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)]'
-                : 'bg-slate-100 text-slate-400'
+                : 'bg-slate-100 text-slate-500'
             }`}>
               {frecLoading ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={15} strokeWidth={2.5} />}
             </div>
@@ -243,7 +243,7 @@ export function FuneralPlansStep() {
                 ))
               )}
             </select>
-            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           </div>
         </div>
       </div>
@@ -270,7 +270,7 @@ export function FuneralPlansStep() {
 
               <div className="w-full sm:w-auto sm:shrink-0 text-left sm:text-right">
                 <div className="flex items-end gap-1 sm:justify-end">
-                  <span className="text-base sm:text-[1.2rem] font-display font-black text-slate-400 leading-none pb-1 sm:pb-2">$</span>
+                  <span className="text-base sm:text-[1.2rem] font-display font-black text-slate-500 leading-none pb-1 sm:pb-2">$</span>
                   {isLoadingQuote && !hasRealQuote ? (
                     <span className="text-4xl sm:text-5xl font-display font-black gradient-text-indigo leading-none inline-flex items-center gap-2">
                       <Loader2 size={28} className="animate-spin opacity-70" />
@@ -282,7 +282,7 @@ export function FuneralPlansStep() {
                     </span>
                   )}
                 </div>
-                <p className="text-[0.7rem] text-slate-400 font-semibold mt-1 uppercase">
+                <p className="text-[0.7rem] text-slate-500 font-semibold mt-1 uppercase">
                   {
                     {
                       M: '/ mes',
@@ -329,7 +329,7 @@ export function FuneralPlansStep() {
       ) : (
         <div className="text-center py-14 px-4 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-br from-slate-50/70 to-white">
           <div className="w-14 h-14 rounded-2xl bg-white border border-slate-200 grid place-items-center mx-auto mb-3 shadow-sm">
-            <Shield size={22} className="text-slate-400" />
+            <Shield size={22} className="text-slate-500" />
           </div>
           <p className="text-sm text-slate-500 font-medium">
             {plansLoading ? 'Cargando planes disponibles...' : 'Elige un plan en el selector para ver la cotización.'}

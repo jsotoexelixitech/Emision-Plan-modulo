@@ -173,7 +173,7 @@ export function DocumentPreviewModal({ open, file, title, subtitle, onClose }: P
             {kind === 'other' && (
               <div className="text-center max-w-sm">
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 grid place-items-center mx-auto mb-4">
-                  <FileWarning size={28} className="text-slate-400" />
+                  <FileWarning size={28} className="text-slate-500" />
                 </div>
                 <p className="font-display font-bold text-slate-900 mb-2">
                   No se puede previsualizar

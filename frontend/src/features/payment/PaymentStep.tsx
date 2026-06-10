@@ -335,7 +335,7 @@ export function PaymentStep() {
             </p>
           )}
           {hasRealQuote && quote?.ptasa && quote.ptasa > 0 && (
-            <p className="text-[0.6rem] text-slate-400 mt-0.5 tabular-nums">
+            <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
               Tasa BCV: {quote.ptasa.toFixed(4)}
             </p>
           )}
@@ -390,7 +390,7 @@ export function PaymentStep() {
             <Lock size={12} className="text-emerald-500" />
             <span className="font-semibold">Conexión segura · Tus datos están protegidos</span>
           </div>
-          <span className="hidden sm:flex items-center gap-1.5 text-[0.62rem] font-bold text-slate-400">
+          <span className="hidden sm:flex items-center gap-1.5 text-[0.62rem] font-bold text-slate-500">
             <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono">PCI-DSS</span>
             <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono">SSL</span>
           </span>
@@ -802,7 +802,7 @@ export function PaymentStep() {
       </div>
 
       {/* Trust badges */}
-      <div className="flex items-center justify-center gap-6 flex-wrap pt-2 text-[0.7rem] text-slate-400">
+      <div className="flex items-center justify-center gap-6 flex-wrap pt-2 text-[0.7rem] text-slate-500">
         <div className="flex items-center gap-1.5">
           <ShieldCheck size={13} className="text-emerald-500" />
           <span className="font-semibold">Datos protegidos</span>

@@ -502,7 +502,7 @@ export function VehicleStep() {
                 ))}
               </Select>
             ) : (
-              <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-400 flex items-center gap-2">
+              <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 flex items-center gap-2">
                 <Loader2 size={14} className="animate-spin shrink-0" />
                 Cargando años…
               </div>
@@ -539,7 +539,7 @@ export function VehicleStep() {
               </Select>
             ) : vehicle.año ? (
               loadM ? (
-                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-400 flex items-center gap-2">
+                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin shrink-0" /> Cargando marcas…
                 </div>
               ) : (
@@ -550,7 +550,7 @@ export function VehicleStep() {
                 />
               )
             ) : (
-              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-400 flex items-center gap-2">
+              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-500 flex items-center gap-2">
                 <AlertTriangle size={13} className="shrink-0 text-amber-400" />
                 Selecciona el año primero
               </div>
@@ -586,7 +586,7 @@ export function VehicleStep() {
               </Select>
             ) : vehicle.cmarca ? (
               loadMo ? (
-                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-400 flex items-center gap-2">
+                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin shrink-0" /> Cargando modelos…
                 </div>
               ) : (
@@ -597,7 +597,7 @@ export function VehicleStep() {
                 />
               )
             ) : (
-              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-400 flex items-center gap-2">
+              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-500 flex items-center gap-2">
                 <AlertTriangle size={13} className="shrink-0 text-amber-400" />
                 Selecciona la marca primero
               </div>
@@ -641,7 +641,7 @@ export function VehicleStep() {
                   ))}
                 </Select>
               ) : loadV ? (
-                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-400 flex items-center gap-2">
+                <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 flex items-center gap-2">
                   <Loader2 size={14} className="animate-spin shrink-0" /> Cargando versiones…
                 </div>
               ) : null}
@@ -668,12 +668,12 @@ export function VehicleStep() {
             hint={!vehicle.cversion ? 'Selecciona la versión del vehículo para ver las categorías.' : undefined}
           >
             {!vehicle.cversion ? (
-              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-400 flex items-center gap-2">
+              <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-500 flex items-center gap-2">
                 <AlertTriangle size={13} className="shrink-0 text-amber-400" />
                 Selecciona la versión primero
               </div>
             ) : loadCu ? (
-              <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-400 flex items-center gap-2">
+              <div className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-slate-50 text-sm text-slate-500 flex items-center gap-2">
                 <Loader2 size={14} className="animate-spin shrink-0" /> Cargando categorías…
               </div>
             ) : categoriasUso.length > 0 ? (
@@ -769,7 +769,7 @@ export function VehicleStep() {
             <span className="text-sm text-slate-700 font-bold truncate max-w-[200px]">
               {[vehicle.marca, vehicle.modelo].filter(Boolean).join(' ') || 'Marca · Modelo'}
             </span>
-            {vehicle.año && <span className="text-xs text-slate-400 font-mono">{vehicle.año}</span>}
+            {vehicle.año && <span className="text-xs text-slate-500 font-mono">{vehicle.año}</span>}
             {vehicle.color && (
               <span className="inline-flex items-center gap-1.5 text-xs text-slate-500 capitalize">
                 <span className="w-3 h-3 rounded-full ring-1 ring-slate-300" style={{ background: getColorSwatch(vehicle.color) }} />
