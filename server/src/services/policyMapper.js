@@ -175,7 +175,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const tomador = state.tomador || {};
   const v = state.vehicle || {};
   const sameInsured = state.sameInsured !== false;
-  const titular = sameInsured ? tomador : (state.asegurado || tomador);
+  const titular = sameInsured ? tomador : (state.asegurado || {});
 
   const codes = resolveCodesFromVehicle(v);
   const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
@@ -189,15 +189,15 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
 
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
-  const tipo_cedula_titular = normalizeTipoCedula(titular.tipoDoc || tipo_cedula_tomador);
+  const tipo_cedula_titular = sameInsured ? tipo_cedula_tomador : (titular.tipoDoc ? normalizeTipoCedula(titular.tipoDoc) : null);
 
   // Prioridad: código real del selector (cestado/cciudad) → fallback al mapa estático por texto
   const stateCodeTomador = tomador.cestado   ? parseInt(tomador.cestado, 10)  : resolveStateCode(tomador.estado);
   const cityCodeTomador  = tomador.cciudad   ? parseInt(tomador.cciudad, 10)  : resolveCityCode(tomador.ciudad, stateCodeTomador);
   const stateCodeTitular = sameInsured ? stateCodeTomador
-    : (titular.cestado  ? parseInt(titular.cestado, 10)  : resolveStateCode(titular.estado));
+    : (titular.cestado ? parseInt(titular.cestado, 10) : (titular.estado ? resolveStateCode(titular.estado) : null));
   const cityCodeTitular  = sameInsured ? cityCodeTomador
-    : (titular.cciudad  ? parseInt(titular.cciudad, 10)  : resolveCityCode(titular.ciudad, stateCodeTitular));
+    : (titular.cciudad ? parseInt(titular.cciudad, 10) : (titular.ciudad ? resolveCityCode(titular.ciudad, stateCodeTitular) : null));
 
   const payload = {
     poliza: internalId,
@@ -224,16 +224,16 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
     // Titular del vehiculo
     tipo_cedula_titular,
-    rif_titular: onlyDigits(titular.identificacion || tomador.identificacion),
-    nombre_titular: cleanString(titular.nombre || tomador.nombre),
-    apellido_titular: cleanString(titular.apellido || tomador.apellido),
-    sexo_titular: normalizeSexo(titular.sexo || tomador.sexo),
-    fnac_titular: normalizeDate(titular.fechaNac || tomador.fechaNac),
+    rif_titular: sameInsured ? onlyDigits(tomador.identificacion) : (titular.identificacion ? onlyDigits(titular.identificacion) : null),
+    nombre_titular: sameInsured ? cleanString(tomador.nombre) : (titular.nombre ? cleanString(titular.nombre) : null),
+    apellido_titular: sameInsured ? cleanString(tomador.apellido) : (titular.apellido ? cleanString(titular.apellido) : null),
+    sexo_titular: sameInsured ? normalizeSexo(tomador.sexo) : (titular.sexo ? normalizeSexo(titular.sexo) : null),
+    fnac_titular: sameInsured ? normalizeDate(tomador.fechaNac) : (titular.fechaNac ? normalizeDate(titular.fechaNac) : null),
     estado_titular: stateCodeTitular,
     ciudad_titular: cityCodeTitular,
-    direccion_titular: cleanString(titular.direccion || tomador.direccion),
-    telefono_titular: cleanPhone(titular.telefono || tomador.telefono),
-    correo_titular: cleanString(titular.email || tomador.email),
+    direccion_titular: sameInsured ? cleanString(tomador.direccion) : (titular.direccion ? cleanString(titular.direccion) : null),
+    telefono_titular: sameInsured ? cleanPhone(tomador.telefono) : (titular.telefono ? cleanPhone(titular.telefono) : null),
+    correo_titular: sameInsured ? cleanString(tomador.email) : (titular.email ? cleanString(titular.email) : null),
 
     // Vehiculo
     marca: codes.cmarca,
