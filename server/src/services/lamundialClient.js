@@ -17,8 +17,8 @@
 const axios = require('axios');
 
 const DEFAULT_BASE = 'https://qaapisys2000.lamundialdeseguros.com';
-const PATH_PREFIX = '/CorreccionCalculo/api/v1/external';
-const INMA_PREFIX  = '/CorreccionCalculo/api/v1/inma';
+const PATH_PREFIX = process.env.LAMUNDIAL_PATH_PREFIX || '/CorreccionCalculo/api/v1/external';
+const INMA_PREFIX  = process.env.LAMUNDIAL_INMA_PREFIX || '/CorreccionCalculo/api/v1/inma';
 const DEFAULT_TIMEOUT = 30_000;
 
 let _client = null;
