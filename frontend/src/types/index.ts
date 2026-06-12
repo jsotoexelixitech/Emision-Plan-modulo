@@ -75,6 +75,13 @@ export type PersonData = {
   relacion?: string;
   telefono?: string;
   email?: string;
+  sexo?: string;
+  estadoCivil?: string;
+  estado?: string;
+  cestado?: number;
+  ciudad?: string;
+  cciudad?: number;
+  direccion?: string;
 };
 
 export interface Plan {
@@ -102,8 +109,10 @@ export interface FuneralPerson {
   apellido: string;
   fechaNac: string;
   sexo: string;
-  /** Código de parentesco La Mundial (1=Titular, 2=Cónyuge…). */
+  /** Código de parentesco La Mundial (1=Titular, 2=Cónyuge, 3=Hijo(a)…). */
   parentesco: string;
+  telefono?: string;
+  email?: string;
 }
 
 /** Datos del producto Funerario (personas). Se usa cuando product = 'funerario'. */

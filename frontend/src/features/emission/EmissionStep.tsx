@@ -81,11 +81,28 @@ interface ValidationErrors {
   pag_identificacion?: string;
   pag_telefono?: string;
   pag_email?: string;
+  // Asegurado
+  aseg_nombre?: string;
+  aseg_apellido?: string;
+  aseg_identificacion?: string;
+  aseg_telefono?: string;
+  aseg_email?: string;
+  aseg_sexo?: string;
+  aseg_estadoCivil?: string;
+  aseg_estado?: string;
+  aseg_ciudad?: string;
+  aseg_direccion?: string;
   // Beneficiario
   benef_nombre?: string;
   benef_apellido?: string;
   benef_identificacion?: string;
-  benef_parentesco?: string;
+  benef_telefono?: string;
+  benef_email?: string;
+  benef_sexo?: string;
+  benef_estadoCivil?: string;
+  benef_estado?: string;
+  benef_ciudad?: string;
+  benef_direccion?: string;
 }
 
 const emailRe   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -108,6 +125,8 @@ export function EmissionStep() {
 
   const catalogs = useCatalogs();
   const ciudadesState = useCiudades(tomador.cestado);
+  const aseguradoCiudades = useCiudades(asegurado.cestado);
+  const beneficiarioCiudades = useCiudades(beneficiario.cestado);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
   const validate = () => {
@@ -187,6 +206,12 @@ export function EmissionStep() {
       if (req(asegurado.nombre))         e.aseg_nombre         = 'El nombre es obligatorio';
       if (req(asegurado.apellido))       e.aseg_apellido       = 'El apellido es obligatorio';
       if (req(asegurado.identificacion)) e.aseg_identificacion = 'La identificación es obligatoria';
+      if (req(asegurado.telefono))       e.aseg_telefono       = 'El teléfono es obligatorio';
+      if (req(asegurado.sexo))           e.aseg_sexo           = 'El sexo es obligatorio';
+      if (req(asegurado.estadoCivil))    e.aseg_estadoCivil    = 'El estado civil es obligatorio';
+      if (req(asegurado.estado))         e.aseg_estado         = 'El estado es obligatorio';
+      if (req(asegurado.ciudad))         e.aseg_ciudad         = 'La ciudad es obligatoria';
+      if (req(asegurado.direccion))      e.aseg_direccion      = 'La dirección es obligatoria';
     }
 
     // ── Pagador (solo si NO eres quien paga) ──────────────────────────────
@@ -228,7 +253,12 @@ export function EmissionStep() {
       if (req(beneficiario.nombre))         e.benef_nombre         = 'El nombre es obligatorio';
       if (req(beneficiario.apellido))       e.benef_apellido       = 'El apellido es obligatorio';
       if (req(beneficiario.identificacion)) e.benef_identificacion = 'La identificación es obligatoria';
-      if (req(beneficiario.parentesco))     e.benef_parentesco     = 'El parentesco es obligatorio';
+      if (req(beneficiario.telefono))       e.benef_telefono       = 'El teléfono es obligatorio';
+      if (req(beneficiario.sexo))           e.benef_sexo           = 'El sexo es obligatorio';
+      if (req(beneficiario.estadoCivil))    e.benef_estadoCivil    = 'El estado civil es obligatorio';
+      if (req(beneficiario.estado))         e.benef_estado         = 'El estado es obligatorio';
+      if (req(beneficiario.ciudad))         e.benef_ciudad         = 'La ciudad es obligatoria';
+      if (req(beneficiario.direccion))      e.benef_direccion      = 'La dirección es obligatoria';
     }
 
     setErrors(e);
@@ -519,113 +549,156 @@ export function EmissionStep() {
           )}
         </SectionCard>
 
-        {/* Asegurado — oculto a pedido del cliente. En la práctica el tomador
-            siempre es el asegurado. Conservamos el código para reactivar a futuro
-            sin volver a escribirlo (mismo patrón que "Beneficiario" más abajo). */}
-        {false && (
+        {true && (
         <SectionCard
           Icon={UserPlus}
-          title="¿El seguro es para ti?"
-          description="El seguro puede ser para ti o para otra persona. Aquí lo defines."
+          title="Datos de la persona que será asegurada (Titular)"
+          description="Completa la información de la persona asegurada."
         >
           <ToggleSwitch
-            checked={sameInsured}
-            onChange={setSameInsured}
-            label="Sí, el seguro es para mí"
-            description="Usaremos los datos que ya llenaste arriba. No hay nada más que hacer en esta sección."
+            checked={!sameInsured}
+            onChange={(v) => setSameInsured(!v)}
+            label="¿La persona que pagará la Póliza es diferente a la que será asegurada?"
           />
 
           {!sameInsured && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-              <Field label="Nombre *" error={errors.aseg_nombre}>
-                <Input
-                  value={asegurado.nombre}
-                  onChange={(e) => setAsegurado({ nombre: onlyLetters(e.target.value) })}
-                  placeholder="Nombre de la otra persona"
+              <Field label="Cédula o documento *" error={errors.aseg_identificacion}>
+                <IdentityInput
+                  tipoDoc={asegurado.tipoDoc ?? 'V'}
+                  identificacion={asegurado.identificacion}
+                  onTipoDocChange={(v) => setAsegurado({ tipoDoc: v })}
+                  onIdentificacionChange={(v) => setAsegurado({ identificacion: v })}
                 />
+              </Field>
+              <div className="hidden sm:block"></div>
+              <Field label="Nombre *" error={errors.aseg_nombre}>
+                <Input value={asegurado.nombre} onChange={(e) => setAsegurado({ nombre: onlyLetters(e.target.value) })} placeholder="Nombre" />
               </Field>
               <Field label="Apellido *" error={errors.aseg_apellido}>
-                <Input
-                  value={asegurado.apellido}
-                  onChange={(e) => setAsegurado({ apellido: onlyLetters(e.target.value) })}
-                  placeholder="Apellido de la otra persona"
+                <Input value={asegurado.apellido} onChange={(e) => setAsegurado({ apellido: onlyLetters(e.target.value) })} placeholder="Apellido" />
+              </Field>
+              <Field label="Teléfono *" error={errors.aseg_telefono}>
+                <Input value={asegurado.telefono ?? ''} onChange={(e) => setAsegurado({ telefono: formatTelefono(e.target.value) })} placeholder="04121234567" type="tel" maxLength={11} />
+              </Field>
+              <Field label="Correo electrónico" error={errors.aseg_email}>
+                <Input value={asegurado.email ?? ''} onChange={(e) => setAsegurado({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" />
+              </Field>
+              <Field label="Estado donde vive *" error={errors.aseg_estado}>
+                <SearchSelect
+                  value={asegurado.cestado}
+                  options={catalogs.estados.map((s) => ({ value: String(s.code), label: s.label }))}
+                  onChange={(code, label) => setAsegurado({ estado: label, cestado: code ? Number(code) : undefined, ciudad: '', cciudad: undefined })}
+                  placeholder="Escribe para buscar estado..." loading={catalogs.loading}
                 />
               </Field>
-              <Field label="Cédula o documento *" error={errors.aseg_identificacion}>
-                <Input
-                  value={asegurado.identificacion}
-                  onChange={(e) => setAsegurado({ identificacion: e.target.value.replace(/\D/g, '') })}
-                  placeholder="Número de identificación"
-                  inputMode="numeric"
-                  maxLength={9}
+              <Field label="Ciudad donde vive *" error={errors.aseg_ciudad} hint={asegurado.cestado ? '' : 'Selecciona primero el estado'}>
+                <SearchSelect
+                  value={asegurado.cciudad}
+                  options={aseguradoCiudades.ciudades.map((c) => ({ value: String(c.code), label: c.label }))}
+                  onChange={(code, label) => setAsegurado({ ciudad: label, cciudad: code ? Number(code) : undefined })}
+                  placeholder={asegurado.cestado ? 'Escribe para buscar ciudad...' : 'Selecciona primero el estado'}
+                  disabled={!asegurado.cestado} loading={aseguradoCiudades.loading}
                 />
               </Field>
-              <Field label="Fecha de nacimiento">
+              <Field label="Fecha de nacimiento *">
                 <Input value={asegurado.fechaNac ?? ''} onChange={(e) => setAsegurado({ fechaNac: e.target.value })} type="date" />
+              </Field>
+              <Field label="Sexo *" error={errors.aseg_sexo}>
+                <SearchSelect
+                  value={asegurado.sexo}
+                  options={catalogs.sexos.length > 0 ? catalogs.sexos.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Femenino', label: 'Femenino' }, { value: 'Masculino', label: 'Masculino' }]}
+                  onChange={(value) => setAsegurado({ sexo: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
+                />
+              </Field>
+              <Field label="Estado civil *" error={errors.aseg_estadoCivil}>
+                <SearchSelect
+                  value={asegurado.estadoCivil}
+                  options={catalogs.estadosCivil.length > 0 ? catalogs.estadosCivil.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Soltero(a)', label: 'Soltero(a)' }, { value: 'Casado(a)', label: 'Casado(a)' }, { value: 'Divorciado(a)', label: 'Divorciado(a)' }, { value: 'Viudo(a)', label: 'Viudo(a)' }]}
+                  onChange={(value) => setAsegurado({ estadoCivil: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
+                />
+              </Field>
+              <div className="hidden sm:block"></div>
+              <Field label="Dirección *" error={errors.aseg_direccion} full>
+                <Textarea value={asegurado.direccion ?? ''} onChange={(e) => setAsegurado({ direccion: e.target.value })} placeholder="Dirección completa" rows={2} />
               </Field>
             </div>
           )}
         </SectionCard>
         )}
 
-        {/* Beneficiario — oculto temporalmente, conservar codigo */}
-        {false && (
+        {true && (
         <SectionCard
           Icon={Heart}
-          title="Beneficiario"
+          title="Datos del Beneficiario Preferencial"
           description="Persona que recibe beneficios en caso de siniestro"
         >
           <ToggleSwitch
             checked={hasBeneficiary}
             onChange={setHasBeneficiary}
-            label="Agregar un beneficiario"
-            description="Registra a una persona que reciba los beneficios relacionados con la póliza."
+            label="¿Desea agregar un beneficiario preferencial a la póliza?"
           />
 
           {hasBeneficiary && (
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-              <Field label="Nombre *" error={errors.benef_nombre}>
-                <Input
-                  value={beneficiario.nombre}
-                  onChange={(e) => setBeneficiario({ nombre: onlyLetters(e.target.value) })}
-                  placeholder="Nombre del beneficiario"
+              <Field label="Cédula o documento *" error={errors.benef_identificacion}>
+                <IdentityInput
+                  tipoDoc={beneficiario.tipoDoc ?? 'V'}
+                  identificacion={beneficiario.identificacion}
+                  onTipoDocChange={(v) => setBeneficiario({ tipoDoc: v })}
+                  onIdentificacionChange={(v) => setBeneficiario({ identificacion: v })}
                 />
+              </Field>
+              <div className="hidden sm:block"></div>
+              <Field label="Nombre *" error={errors.benef_nombre}>
+                <Input value={beneficiario.nombre} onChange={(e) => setBeneficiario({ nombre: onlyLetters(e.target.value) })} placeholder="Nombre" />
               </Field>
               <Field label="Apellido *" error={errors.benef_apellido}>
-                <Input
-                  value={beneficiario.apellido}
-                  onChange={(e) => setBeneficiario({ apellido: onlyLetters(e.target.value) })}
-                  placeholder="Apellido del beneficiario"
+                <Input value={beneficiario.apellido} onChange={(e) => setBeneficiario({ apellido: onlyLetters(e.target.value) })} placeholder="Apellido" />
+              </Field>
+              <Field label="Teléfono *" error={errors.benef_telefono}>
+                <Input value={beneficiario.telefono ?? ''} onChange={(e) => setBeneficiario({ telefono: formatTelefono(e.target.value) })} placeholder="04121234567" type="tel" maxLength={11} />
+              </Field>
+              <Field label="Correo electrónico" error={errors.benef_email}>
+                <Input value={beneficiario.email ?? ''} onChange={(e) => setBeneficiario({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" />
+              </Field>
+              <Field label="Estado *" error={errors.benef_estado}>
+                <SearchSelect
+                  value={beneficiario.cestado}
+                  options={catalogs.estados.map((s) => ({ value: String(s.code), label: s.label }))}
+                  onChange={(code, label) => setBeneficiario({ estado: label, cestado: code ? Number(code) : undefined, ciudad: '', cciudad: undefined })}
+                  placeholder="Escribe para buscar estado..." loading={catalogs.loading}
                 />
               </Field>
-              <Field label="Documento *" error={errors.benef_identificacion}>
-                <Input
-                  value={beneficiario.identificacion}
-                  onChange={(e) => setBeneficiario({ identificacion: e.target.value.replace(/[^0-9A-Za-z]/g, '') })}
-                  placeholder="Identificación"
-                  inputMode="numeric"
+              <Field label="Ciudad *" error={errors.benef_ciudad} hint={beneficiario.cestado ? '' : 'Selecciona primero el estado'}>
+                <SearchSelect
+                  value={beneficiario.cciudad}
+                  options={beneficiarioCiudades.ciudades.map((c) => ({ value: String(c.code), label: c.label }))}
+                  onChange={(code, label) => setBeneficiario({ ciudad: label, cciudad: code ? Number(code) : undefined })}
+                  placeholder={beneficiario.cestado ? 'Escribe para buscar ciudad...' : 'Selecciona primero el estado'}
+                  disabled={!beneficiario.cestado} loading={beneficiarioCiudades.loading}
                 />
               </Field>
-              <Field label="Parentesco *" error={errors.benef_parentesco}>
-                <Select
-                  value={beneficiario.parentesco ?? ''}
-                  onChange={(e) => setBeneficiario({ parentesco: e.target.value })}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {catalogs.parentescos.length > 0
-                    ? catalogs.parentescos.map((p) => (
-                        <option key={String(p.code)} value={String(p.label)}>{p.label}</option>
-                      ))
-                    : (
-                      <>
-                        <option value="Cónyuge">Cónyuge</option>
-                        <option value="Hijo(a)">Hijo(a)</option>
-                        <option value="Padre / Madre">Padre / Madre</option>
-                        <option value="Hermano(a)">Hermano(a)</option>
-                        <option value="Otro">Otro</option>
-                      </>
-                    )}
-                </Select>
+              <Field label="Fecha de nacimiento *">
+                <Input value={beneficiario.fechaNac ?? ''} onChange={(e) => setBeneficiario({ fechaNac: e.target.value })} type="date" />
+              </Field>
+              <Field label="Sexo *" error={errors.benef_sexo}>
+                <SearchSelect
+                  value={beneficiario.sexo}
+                  options={catalogs.sexos.length > 0 ? catalogs.sexos.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Femenino', label: 'Femenino' }, { value: 'Masculino', label: 'Masculino' }]}
+                  onChange={(value) => setBeneficiario({ sexo: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
+                />
+              </Field>
+              <Field label="Estado civil *" error={errors.benef_estadoCivil}>
+                <SearchSelect
+                  value={beneficiario.estadoCivil}
+                  options={catalogs.estadosCivil.length > 0 ? catalogs.estadosCivil.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Soltero(a)', label: 'Soltero(a)' }, { value: 'Casado(a)', label: 'Casado(a)' }, { value: 'Divorciado(a)', label: 'Divorciado(a)' }, { value: 'Viudo(a)', label: 'Viudo(a)' }]}
+                  onChange={(value) => setBeneficiario({ estadoCivil: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
+                />
+              </Field>
+              <div className="hidden sm:block"></div>
+              <Field label="Dirección *" error={errors.benef_direccion} full>
+                <Textarea value={beneficiario.direccion ?? ''} onChange={(e) => setBeneficiario({ direccion: e.target.value })} placeholder="Dirección completa" rows={2} />
               </Field>
             </div>
           )}
