@@ -176,6 +176,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const v = state.vehicle || {};
   const sameInsured = state.sameInsured !== false;
   const titular = sameInsured ? tomador : (state.asegurado || {});
+  const cond = state.conductor || null;
+  const ben = state.beneficiario || null;
 
   const codes = resolveCodesFromVehicle(v);
   const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
@@ -234,6 +236,40 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     direccion_titular: sameInsured ? cleanString(tomador.direccion) : (titular.direccion ? cleanString(titular.direccion) : null),
     telefono_titular: sameInsured ? cleanPhone(tomador.telefono) : (titular.telefono ? cleanPhone(titular.telefono) : null),
     correo_titular: sameInsured ? cleanString(tomador.email) : (titular.email ? cleanString(titular.email) : null),
+
+    ...(cond ? {
+      conductor: {
+        icedula_conductor: normalizeTipoCedula(cond.tipoDoc),
+        xrif_conductor: Number(onlyDigits(cond.identificacion)),
+        xnombre_conductor: cleanString(cond.nombre),
+        xapellido_conductor: cleanString(cond.apellido),
+        isexo_conductor: normalizeSexo(cond.sexo),
+        iestado_civil_conductor: cond.estadoCivil || 'S',
+        fnac_conductor: normalizeDate(cond.fechaNac),
+        cestado_conductor: cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado),
+        cciudad_conductor: cond.cciudad ? parseInt(cond.cciudad, 10) : resolveCityCode(cond.ciudad, cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado)),
+        xdireccion_conductor: cleanString(cond.direccion),
+        xtelefono_conductor: cleanPhone(cond.telefono),
+        xcorreo_conductor: cleanString(cond.email),
+      }
+    } : {}),
+
+    ...(ben ? {
+      beneficiario: {
+        icedula_beneficiario: normalizeTipoCedula(ben.tipoDoc),
+        xrif_beneficiario: Number(onlyDigits(ben.identificacion)),
+        xnombre_beneficiario: cleanString(ben.nombre),
+        xapellido_beneficiario: cleanString(ben.apellido),
+        isexo_beneficiario: normalizeSexo(ben.sexo),
+        iestado_civil_beneficiario: ben.estadoCivil || 'S',
+        fnac_beneficiario: normalizeDate(ben.fechaNac),
+        cestado_beneficiario: ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado),
+        cciudad_beneficiario: ben.cciudad ? parseInt(ben.cciudad, 10) : resolveCityCode(ben.ciudad, ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado)),
+        xdireccion_beneficiario: cleanString(ben.direccion),
+        xtelefono_beneficiario: cleanPhone(ben.telefono),
+        xcorreo_beneficiario: cleanString(ben.email),
+      }
+    } : {}),
 
     // Vehiculo
     marca: codes.cmarca,
