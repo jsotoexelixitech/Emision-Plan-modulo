@@ -229,8 +229,19 @@ async function createEmissionAuto(payload) {
 
   const t0 = Date.now();
   let response;
+
+  // El nuevo backend en 192.168.10.213 tiene validación estricta (forbidNonWhitelisted: true).
+  // Debemos limpiar las propiedades que el mapper agrega pero que el DTO rechaza.
+  const cleanPayload = { ...payload };
+  const keysToRemove = [
+    'mprima', 'mprimaext', 'ptasa', 'dec_diagnos_enferm', 'dec_descrip_enferm',
+    'xnombre_tomador', 'xapellido_tomador', 'isexo_tomador',
+    'xnombre_titular', 'xapellido_titular', 'isexo_titular', 'mprima_ext'
+  ];
+  keysToRemove.forEach(k => delete cleanPayload[k]);
+
   try {
-    response = await client.post(endpoint, payload);
+    response = await client.post(endpoint, cleanPayload);
   } catch (netErr) {
     const err = new Error(`Red no disponible llamando ${endpoint}: ${netErr.message}`);
     err.code = 'LAMUNDIAL_NETWORK';
