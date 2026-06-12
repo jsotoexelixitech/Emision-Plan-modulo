@@ -1,6 +1,6 @@
 import { Fragment, useState, useRef } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
-import { Field, Input, Select, Textarea } from '../../components/ui/FormField';
+import { Field, Input, Textarea } from '../../components/ui/FormField';
 import { IdentityInput } from '../../components/ui/IdentityInput';
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { SearchSelect } from '../../components/ui/SearchSelect';
@@ -71,10 +71,6 @@ interface ValidationErrors {
   estado?: string;
   ciudad?: string;
   direccion?: string;
-  // Asegurado
-  aseg_nombre?: string;
-  aseg_apellido?: string;
-  aseg_identificacion?: string;
   // Pagador
   pag_nombre?: string;
   pag_apellido?: string;
