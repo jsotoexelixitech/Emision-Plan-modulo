@@ -16,7 +16,7 @@
  */
 const axios = require('axios');
 
-const DEFAULT_BASE = 'http://192.168.10.213:3000';
+const DEFAULT_BASE = 'https://qaapisys2000.lamundialdeseguros.com';
 const PATH_PREFIX = process.env.LAMUNDIAL_PATH_PREFIX || '/CorreccionCalculo/api/v1/external';
 const INMA_PREFIX  = process.env.LAMUNDIAL_INMA_PREFIX || '/CorreccionCalculo/api/v1/inma';
 const DEFAULT_TIMEOUT = 30_000;
@@ -60,6 +60,21 @@ function getClient() {
   });
   _clientCfg = cfg;
   return _client;
+}
+
+function getEmissionClient() {
+  const cfg = getConfig();
+  // El cliente de emision usa una URL distinta (test)
+  const emissionBaseUrl = process.env.LAMUNDIAL_EMISSION_URL || 'http://192.168.10.213:3000';
+  return axios.create({
+    baseURL: `${emissionBaseUrl.replace(/\/$/, '')}${PATH_PREFIX}`,
+    timeout: cfg.timeout,
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: cfg.apiKey,
+    },
+    validateStatus: () => true,
+  });
 }
 
 /**
@@ -202,7 +217,7 @@ async function getCotizacionAuto(input) {
  * economicos provenientes de getCotizacionAuto.
  */
 async function createEmissionAuto(payload) {
-  const client = getClient();
+  const client = getEmissionClient();
   const endpoint = '/createEmissionAuto';
   const summary = {
     poliza: payload.poliza,
