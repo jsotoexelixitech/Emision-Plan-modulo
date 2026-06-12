@@ -240,9 +240,14 @@ async function createEmissionAuto(payload) {
   ];
   keysToRemove.forEach(k => delete cleanPayload[k]);
 
+  const emisionUrl = process.env.LAMUNDIAL_EMISSION_URL || 'http://192.168.10.213:3000';
+  console.log(`[createEmissionAuto] → enviando a ${emisionUrl}${PATH_PREFIX}${endpoint}`);
+  console.log(`[createEmissionAuto] → payload limpio:`, JSON.stringify(cleanPayload, null, 2));
+
   try {
     response = await client.post(endpoint, cleanPayload);
   } catch (netErr) {
+    console.error(`[createEmissionAuto] ERROR de red: ${netErr.message}`);
     const err = new Error(`Red no disponible llamando ${endpoint}: ${netErr.message}`);
     err.code = 'LAMUNDIAL_NETWORK';
     err.endpoint = endpoint;
@@ -250,7 +255,7 @@ async function createEmissionAuto(payload) {
     throw err;
   }
   const elapsed = Date.now() - t0;
-  logResponse(endpoint, response.status, elapsed, response.data);
+  console.log(`[createEmissionAuto] ← respuesta (${response.status}) en ${elapsed}ms:`, JSON.stringify(response.data));
 
   if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
     const r = response.data.result || {};
