@@ -273,8 +273,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
     // Vehiculo
     marca: codes.cmarca,
+    xmarca: cleanString(v.marca) || cleanString(v.cmarca) || '',
     modelo: codes.cmodelo,
+    xmodelo: cleanString(v.modelo) || cleanString(v.cmodelo) || '',
     version: codes.cversion,
+    xversion: cleanString(v.version) || cleanString(v.cversion) || '',
     fano: ano,
     color: cleanString(v.color) || 'Blanco',
     placa: upperPlate(v.placa),
