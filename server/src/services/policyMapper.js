@@ -86,6 +86,12 @@ function normalizeSexo(v) {
   return s === 'F' ? 'F' : 'M';
 }
 
+function normalizeEstadoCivil(v) {
+  const s = cleanString(v).toUpperCase().charAt(0);
+  if (['S', 'C', 'D', 'V'].includes(s)) return s;
+  return 'S';
+}
+
 function todayYmd() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -244,7 +250,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
         xnombre_conductor: cleanString(cond.nombre),
         xapellido_conductor: cleanString(cond.apellido),
         isexo_conductor: normalizeSexo(cond.sexo),
-        iestado_civil_conductor: cond.estadoCivil || 'S',
+        iestado_civil_conductor: normalizeEstadoCivil(cond.estadoCivil),
         fnac_conductor: normalizeDate(cond.fechaNac),
         cestado_conductor: cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado),
         cciudad_conductor: cond.cciudad ? parseInt(cond.cciudad, 10) : resolveCityCode(cond.ciudad, cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado)),
@@ -261,7 +267,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
         xnombre_beneficiario: cleanString(ben.nombre),
         xapellido_beneficiario: cleanString(ben.apellido),
         isexo_beneficiario: normalizeSexo(ben.sexo),
-        iestado_civil_beneficiario: ben.estadoCivil || 'S',
+        iestado_civil_beneficiario: normalizeEstadoCivil(ben.estadoCivil),
         fnac_beneficiario: normalizeDate(ben.fechaNac),
         cestado_beneficiario: ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado),
         cciudad_beneficiario: ben.cciudad ? parseInt(ben.cciudad, 10) : resolveCityCode(ben.ciudad, ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado)),
