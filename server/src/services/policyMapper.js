@@ -182,8 +182,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const v = state.vehicle || {};
   const sameInsured = state.sameInsured !== false;
   const titular = sameInsured ? tomador : (state.asegurado || {});
-  const cond = state.conductor || null;
-  const ben = state.beneficiario || null;
+  const cond = state.hasDriver ? state.conductor : null;
+  const ben = state.hasBeneficiary ? state.beneficiario : null;
 
   const codes = resolveCodesFromVehicle(v);
   const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
