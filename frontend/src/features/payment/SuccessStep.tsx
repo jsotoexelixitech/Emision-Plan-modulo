@@ -35,7 +35,14 @@ export function SuccessStep() {
   const downloadPdf = () => {
     if (pdfUrl) {
       window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-      toast.success('Abriendo póliza', 'El PDF se abrió en una nueva pestaña.');
+      if (conductorUrl) {
+        const link = document.createElement('a');
+        link.href = conductorUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.click();
+      }
+      toast.success('Abriendo póliza', conductorUrl ? 'La póliza y el anexo se abrieron en pestañas nuevas.' : 'El PDF se abrió en una nueva pestaña.');
     } else {
       toast.warning(
         'PDF no disponible',
