@@ -150,6 +150,7 @@ router.post('/policies/emit', async (req, res) => {
         cnpoliza: result.cnpoliza,
         cnrecibo: result.cnrecibo,
         urlpoliza: result.urlpoliza,
+        url_conductor_habitual: result.url_conductor_habitual,
         ncuota: result.ncuota,
         internalPolicyId: result.internalPolicyId,
         emittedAt: result.emittedAt,
