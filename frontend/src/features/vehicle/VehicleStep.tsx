@@ -6,7 +6,7 @@ import { SectionCard } from '../emission/EmissionStep';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { IdentityInput } from '../../components/ui/IdentityInput';
-import { formatTelefono } from '@exelixi/shared';
+import { formatTelefono, isValidPhonePrefix } from '@exelixi/shared';
 import {
   Car, UserCog, Sparkles, ScanLine, ShieldCheck,
   Loader2, AlertTriangle,
@@ -21,6 +21,8 @@ const COLOR_SWATCHES: Record<string, string> = {
   rojo: '#EF4444', azul: '#3B82F6', verde: '#10B981', amarillo: '#F59E0B',
   marrón: '#92400E', beige: '#F5DEB3',
 };
+
+const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function getColorSwatch(name: string): string {
   if (!name) return '#E2E8F0';
