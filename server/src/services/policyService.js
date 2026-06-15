@@ -293,13 +293,13 @@ async function quoteAndEmit(state, overrides = {}) {
         conductorRif: String(payload.conductor.xrif_conductor)
       });
       if (docRes.data && docRes.data.url) {
+        // En srv001, sysip-nest-api devuelve localhost:3002 en la URL a veces
+        // Vamos a parchear la IP para asegurar que el cliente pueda abrir el PDF
         let url = docRes.data.url;
-        // Si la URL viene con localhost (porque emision-api llamo internamente),
-        // reemplazarlo por la IP del servidor para que el navegador del usuario pueda abrirlo.
-        if (url.includes('localhost:3002') || url.includes('127.0.0.1:3002')) {
-          url = url.replace(/localhost:3002|127\.0\.0\.1:3002/, '192.168.8.120:3002');
-        }
+        console.log(`[Policy] URL de anexo devuelta por sysip-nest-api: ${url}`);
+        url = url.replace('localhost', '192.168.8.120');
         url_conductor_habitual = url;
+        console.log(`[Policy] URL final mapeada para el frontend: ${url_conductor_habitual}`);
       }
     } catch (err) {
       console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.response?.data || err.message);
