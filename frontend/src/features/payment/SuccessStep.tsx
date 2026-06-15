@@ -35,10 +35,20 @@ export function SuccessStep() {
   const downloadPdf = () => {
     if (pdfUrl) {
       window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+      
+      if (conductorUrl) {
+        // Descargar anexo silenciosamente usando iframe para evitar bloqueo de popup
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = conductorUrl.includes('?') ? `${conductorUrl}&download=true` : `${conductorUrl}?download=true`;
+        document.body.appendChild(iframe);
+        setTimeout(() => document.body.removeChild(iframe), 10000);
+      }
+
       toast.success(
-        'Abriendo póliza',
+        'Abriendo documentos',
         conductorUrl 
-          ? 'Por seguridad de tu navegador, haz click en "Anexo Conductor" para abrir el segundo documento.'
+          ? 'La póliza se abrió en una pestaña y el anexo se descargó automáticamente.'
           : 'El PDF se abrió en una nueva pestaña.'
       );
     } else {
@@ -198,7 +208,7 @@ export function SuccessStep() {
           onClick={downloadPdf}
         >
           <Download size={15} />
-          Descargar Póliza Matriz
+          Descargar Documentos
         </Button>
         {conductorUrl && (
           <Button
