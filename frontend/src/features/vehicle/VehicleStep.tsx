@@ -365,8 +365,25 @@ export function VehicleStep() {
       if (!licencia) {
         e.cond_licencia = 'El número de licencia es obligatorio';
       }
-      if (req(conductor.identificacion)) e.cond_identificacion = 'La identificación es obligatoria';
-      if (req(conductor.telefono))       e.cond_telefono       = 'El teléfono es obligatorio';
+
+      if (req(conductor.identificacion)) {
+        e.cond_identificacion = 'La identificación es obligatoria';
+      } else if (digs(conductor.identificacion) < 6) {
+        e.cond_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      }
+
+      if (req(conductor.telefono)) {
+        e.cond_telefono = 'El teléfono es obligatorio';
+      } else if (digs(conductor.telefono) !== 11) {
+        e.cond_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+      } else if (!isValidPhonePrefix(conductor.telefono || '')) {
+        e.cond_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
+      }
+
+      const condEmail = (conductor.email ?? '').trim();
+      if (condEmail && !emailRe.test(condEmail)) {
+        e.cond_email = 'Ingresa un correo válido o deja el campo vacío';
+      }
       if (req(conductor.sexo))           e.cond_sexo           = 'El sexo es obligatorio';
       if (req(conductor.estadoCivil))    e.cond_estadoCivil    = 'El estado civil es obligatorio';
       if (req(conductor.estado))         e.cond_estado         = 'El estado es obligatorio';

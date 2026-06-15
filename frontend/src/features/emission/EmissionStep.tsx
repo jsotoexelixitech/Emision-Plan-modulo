@@ -199,10 +199,37 @@ export function EmissionStep() {
 
     // ── Asegurado (solo si está habilitado) ───────────────────────────────
     if (!sameInsured) {
-      if (req(asegurado.nombre))         e.aseg_nombre         = 'El nombre es obligatorio';
-      if (req(asegurado.apellido))       e.aseg_apellido       = 'El apellido es obligatorio';
-      if (req(asegurado.identificacion)) e.aseg_identificacion = 'La identificación es obligatoria';
-      if (req(asegurado.telefono))       e.aseg_telefono       = 'El teléfono es obligatorio';
+      if (req(asegurado.nombre)) {
+        e.aseg_nombre = 'El nombre es obligatorio';
+      } else if (len(asegurado.nombre) < 2) {
+        e.aseg_nombre = 'El nombre debe tener al menos 2 caracteres';
+      }
+
+      if (req(asegurado.apellido)) {
+        e.aseg_apellido = 'El apellido es obligatorio';
+      } else if (len(asegurado.apellido) < 2) {
+        e.aseg_apellido = 'El apellido debe tener al menos 2 caracteres';
+      }
+
+      if (req(asegurado.identificacion)) {
+        e.aseg_identificacion = 'La identificación es obligatoria';
+      } else if (digs(asegurado.identificacion) < 6) {
+        e.aseg_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      }
+
+      if (req(asegurado.telefono)) {
+        e.aseg_telefono = 'El teléfono es obligatorio';
+      } else if (digs(asegurado.telefono) !== 11) {
+        e.aseg_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+      } else if (!isValidPhonePrefix(asegurado.telefono || '')) {
+        e.aseg_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
+      }
+
+      const asegEmail = (asegurado.email ?? '').trim();
+      if (asegEmail && !emailRe.test(asegEmail)) {
+        e.aseg_email = 'Ingresa un correo válido o deja el campo vacío';
+      }
+
       if (req(asegurado.sexo))           e.aseg_sexo           = 'El sexo es obligatorio';
       if (req(asegurado.estadoCivil))    e.aseg_estadoCivil    = 'El estado civil es obligatorio';
       if (req(asegurado.estado))         e.aseg_estado         = 'El estado es obligatorio';
@@ -246,10 +273,37 @@ export function EmissionStep() {
 
     // ── Beneficiario (solo si está habilitado) ────────────────────────────
     if (hasBeneficiary) {
-      if (req(beneficiario.nombre))         e.benef_nombre         = 'El nombre es obligatorio';
-      if (req(beneficiario.apellido))       e.benef_apellido       = 'El apellido es obligatorio';
-      if (req(beneficiario.identificacion)) e.benef_identificacion = 'La identificación es obligatoria';
-      if (req(beneficiario.telefono))       e.benef_telefono       = 'El teléfono es obligatorio';
+      if (req(beneficiario.nombre)) {
+        e.benef_nombre = 'El nombre es obligatorio';
+      } else if (len(beneficiario.nombre) < 2) {
+        e.benef_nombre = 'El nombre debe tener al menos 2 caracteres';
+      }
+
+      if (req(beneficiario.apellido)) {
+        e.benef_apellido = 'El apellido es obligatorio';
+      } else if (len(beneficiario.apellido) < 2) {
+        e.benef_apellido = 'El apellido debe tener al menos 2 caracteres';
+      }
+
+      if (req(beneficiario.identificacion)) {
+        e.benef_identificacion = 'La identificación es obligatoria';
+      } else if (digs(beneficiario.identificacion) < 6) {
+        e.benef_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      }
+
+      if (req(beneficiario.telefono)) {
+        e.benef_telefono = 'El teléfono es obligatorio';
+      } else if (digs(beneficiario.telefono) !== 11) {
+        e.benef_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
+      } else if (!isValidPhonePrefix(beneficiario.telefono || '')) {
+        e.benef_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
+      }
+
+      const benefEmail = (beneficiario.email ?? '').trim();
+      if (benefEmail && !emailRe.test(benefEmail)) {
+        e.benef_email = 'Ingresa un correo válido o deja el campo vacío';
+      }
+
       if (req(beneficiario.sexo))           e.benef_sexo           = 'El sexo es obligatorio';
       if (req(beneficiario.estadoCivil))    e.benef_estadoCivil    = 'El estado civil es obligatorio';
       if (req(beneficiario.estado))         e.benef_estado         = 'El estado es obligatorio';
