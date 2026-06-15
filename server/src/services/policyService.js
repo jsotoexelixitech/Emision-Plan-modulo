@@ -286,7 +286,13 @@ async function quoteAndEmit(state, overrides = {}) {
         conductorRif: String(payload.conductor.xrif_conductor)
       });
       if (docRes.data && docRes.data.url) {
-        url_conductor_habitual = docRes.data.url;
+        let url = docRes.data.url;
+        // Si la URL viene con localhost (porque emision-api llamo internamente),
+        // reemplazarlo por la IP del servidor para que el navegador del usuario pueda abrirlo.
+        if (url.includes('localhost:3002') || url.includes('127.0.0.1:3002')) {
+          url = url.replace(/localhost:3002|127\.0\.0\.1:3002/, '192.168.8.120:3002');
+        }
+        url_conductor_habitual = url;
       }
     } catch (err) {
       console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.message);
