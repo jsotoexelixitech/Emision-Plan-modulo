@@ -267,6 +267,32 @@ async function quoteAndEmit(state, overrides = {}) {
     throw mapClientError(err, 'emit', { internalPolicyId: payload.poliza });
   }
 
+  // 5.5) Generar anexo de Conductor Habitual si existe
+  let url_conductor_habitual = undefined;
+  if (payload.conductor && payload.conductor.xrif_conductor) {
+    try {
+      const SYSIP_URL = (process.env.SYSIP_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+      const docRes = await axios.post(`${SYSIP_URL}/api/v1/documents/conductor-habitual`, {
+        poliza: emission.cnpoliza,
+        certificado: "0",
+        fechaEmision: payload.femision,
+        sucursal: "CARACAS",
+        intermediario: String(payload.cproductor || '80080'),
+        tomadorNombre: `${payload.xnombre_tomador} ${payload.xapellido_tomador}`.trim(),
+        tomadorRif: String(payload.xrif_tomador),
+        vigenciaDesde: payload.fdesde,
+        vigenciaHasta: payload.fhasta,
+        conductorNombre: `${payload.conductor.xnombre_conductor} ${payload.conductor.xapellido_conductor}`.trim(),
+        conductorRif: String(payload.conductor.xrif_conductor)
+      });
+      if (docRes.data && docRes.data.url) {
+        url_conductor_habitual = docRes.data.url;
+      }
+    } catch (err) {
+      console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.message);
+    }
+  }
+
   // 6) Log de exito
   console.log(
     `[Policy][${new Date().toISOString()}] EMITIDA internalId=${payload.poliza} cnpoliza=${emission.cnpoliza}`
@@ -277,6 +303,7 @@ async function quoteAndEmit(state, overrides = {}) {
     cnpoliza: emission.cnpoliza,
     cnrecibo: emission.cnrecibo,
     urlpoliza: emission.urlpoliza,
+    url_conductor_habitual,
     ncuota: emission.ncuota,
     quote: {
       mprima: quoteResult.mprima,

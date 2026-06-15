@@ -136,6 +136,8 @@ export interface EmittedPolicy {
   cnrecibo: string;
   /** URL al PDF emitido por La Mundial. Vacia en modo legacy/mock. */
   urlpoliza: string;
+  /** URL al PDF del Anexo Conductor Habitual (opcional) */
+  url_conductor_habitual?: string;
   /** Numero de cuota (1 = primera cuota / pago anual). */
   ncuota?: number;
   /** Identificador interno de control (no es el numero de poliza). */
