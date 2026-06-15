@@ -35,14 +35,12 @@ export function SuccessStep() {
   const downloadPdf = () => {
     if (pdfUrl) {
       window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-      if (conductorUrl) {
-        const link = document.createElement('a');
-        link.href = conductorUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.click();
-      }
-      toast.success('Abriendo póliza', conductorUrl ? 'La póliza y el anexo se abrieron en pestañas nuevas.' : 'El PDF se abrió en una nueva pestaña.');
+      toast.success(
+        'Abriendo póliza',
+        conductorUrl 
+          ? 'Por seguridad de tu navegador, haz click en "Anexo Conductor" para abrir el segundo documento.'
+          : 'El PDF se abrió en una nueva pestaña.'
+      );
     } else {
       toast.warning(
         'PDF no disponible',
@@ -200,7 +198,7 @@ export function SuccessStep() {
           onClick={downloadPdf}
         >
           <Download size={15} />
-          Descargar PDF
+          Descargar Póliza Matriz
         </Button>
         {conductorUrl && (
           <Button
