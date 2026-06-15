@@ -272,16 +272,23 @@ async function quoteAndEmit(state, overrides = {}) {
   if (payload.conductor && payload.conductor.xrif_conductor) {
     try {
       const SYSIP_URL = (process.env.SYSIP_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+      const femision = payload.fecha_emision || payload.femision || new Date().toISOString().slice(0, 10);
+      const fdesde = payload.fdesde || femision;
+      const dHasta = new Date(femision + 'T00:00:00Z');
+      dHasta.setUTCFullYear(dHasta.getUTCFullYear() + 1);
+      dHasta.setUTCDate(dHasta.getUTCDate() - 1);
+      const fhasta = payload.fhasta || dHasta.toISOString().slice(0, 10);
+
       const docRes = await axios.post(`${SYSIP_URL}/api/v1/documents/conductor-habitual`, {
         poliza: emission.cnpoliza,
         certificado: "0",
-        fechaEmision: payload.femision,
+        fechaEmision: femision,
         sucursal: "CARACAS",
         intermediario: String(payload.cproductor || '80080'),
-        tomadorNombre: `${payload.xnombre_tomador} ${payload.xapellido_tomador}`.trim(),
-        tomadorRif: String(payload.xrif_tomador),
-        vigenciaDesde: payload.fdesde,
-        vigenciaHasta: payload.fhasta,
+        tomadorNombre: `${payload.nombre_tomador || payload.xnombre_tomador || ''} ${payload.apellido_tomador || payload.xapellido_tomador || ''}`.trim(),
+        tomadorRif: String(payload.rif_tomador || payload.xrif_tomador || ''),
+        vigenciaDesde: fdesde,
+        vigenciaHasta: fhasta,
         conductorNombre: `${payload.conductor.xnombre_conductor} ${payload.conductor.xapellido_conductor}`.trim(),
         conductorRif: String(payload.conductor.xrif_conductor)
       });
@@ -295,7 +302,7 @@ async function quoteAndEmit(state, overrides = {}) {
         url_conductor_habitual = url;
       }
     } catch (err) {
-      console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.message);
+      console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.response?.data || err.message);
     }
   }
 
