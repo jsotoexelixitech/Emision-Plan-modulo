@@ -59,8 +59,30 @@ function nexusAuth(req, res, next) {
   const remoteAddr = req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? '';
   const isInternalProxy =
     remoteAddr === '127.0.0.1' ||
-    remoteAddr === '::1' ||
     remoteAddr === '::ffff:127.0.0.1';
+
+  // --- BYPASS PARA LA MUNDIAL Y QA ---
+  const origin = req.headers.origin || '';
+  const referer = req.headers.referer || '';
+  const whitelistedOrigins = (process.env.WHITELISTED_ORIGINS || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  let isBypass = false;
+  for (const w of whitelistedOrigins) {
+    if (origin.includes(w) || referer.includes(w) || remoteAddr.includes(w)) {
+      isBypass = true;
+      break;
+    }
+  }
+
+  if (isBypass) {
+    req.empresa = { id: 1 };
+    req.submoduloId = EXPECTED_SUBMODS.length > 0 ? EXPECTED_SUBMODS[0] : 17;
+    return next();
+  }
+  // -----------------------------------
 
   if (!ENABLED) {
     // Modo permissive: intenta decodificar sin verificar para tracking
