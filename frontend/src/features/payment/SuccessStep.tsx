@@ -34,16 +34,18 @@ export function SuccessStep() {
 
   const downloadPdf = () => {
     if (pdfUrl) {
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-      
       if (conductorUrl) {
-        // Descargar anexo silenciosamente usando iframe para evitar bloqueo de popup
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = conductorUrl.includes('?') ? `${conductorUrl}&download=true` : `${conductorUrl}?download=true`;
-        document.body.appendChild(iframe);
-        setTimeout(() => document.body.removeChild(iframe), 10000);
+        // Ejecutar descarga nativa primero usando un enlace oculto
+        const link = document.createElement('a');
+        link.href = conductorUrl.includes('?') ? `${conductorUrl}&download=true` : `${conductorUrl}?download=true`;
+        link.setAttribute('download', 'Anexo_Conductor_Habitual.pdf');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
+      
+      // Abrir póliza principal
+      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
 
       toast.success(
         'Abriendo documentos',
