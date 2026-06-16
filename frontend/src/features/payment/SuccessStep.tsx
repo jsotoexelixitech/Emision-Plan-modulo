@@ -181,13 +181,14 @@ export function SuccessStep() {
                   href={conductorUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold text-indigo-600 hover:text-indigo-800 transition-colors break-all underline-offset-2 hover:underline"
+                  className="inline-flex items-center gap-1.5 text-[0.7rem] font-semibold text-emerald-600 hover:text-emerald-800 transition-colors break-all underline-offset-2 hover:underline"
                 >
                   <ExternalLink size={11} className="shrink-0" />
                   <span className="truncate">{conductorUrl}</span>
                 </a>
               </div>
             ) : null}
+
           </div>
 
           <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2 text-[0.66rem] text-slate-500">
