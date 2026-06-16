@@ -329,9 +329,11 @@ export function VehicleStep() {
 
     if (req(vehicle.año)) e.año = 'Selecciona el año del vehículo';
     if (req(vehicle.marca))  e.marca  = 'La marca es obligatoria';
-    if (req(vehicle.modelo)) e.modelo = 'El modelo es obligatorio';
+    if (req(vehicle.cmodelo)) e.modelo = 'Selecciona el modelo del catálogo';
+    else if (req(vehicle.modelo)) e.modelo = 'El modelo es obligatorio';
 
-    if (!vehicle.ccategoria_uso && req(vehicle.uso)) e.uso = 'Selecciona el uso del vehículo';
+    if (req(vehicle.cversion)) e.uso = 'Debes seleccionar la versión exacta del vehículo';
+    else if (!vehicle.ccategoria_uso && req(vehicle.uso)) e.uso = 'Selecciona el uso del vehículo';
 
     if (req(vehicle.color)) {
       e.color = 'El color es obligatorio';
