@@ -1,4 +1,4 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import type {
   WizardState,
   DocType,
@@ -93,6 +93,7 @@ interface WizardActions {
   setQuote: (q: PolicyQuote, vehicleSignature: string) => void;
   setQuoteState: (s: QuoteState, error?: string | null) => void;
   clearQuote: () => void;
+  setMetadataCanal: (data: Record<string, any> | null) => void;
   reset: () => void;
 }
 
@@ -127,6 +128,7 @@ const initialState: WizardState = {
   quoteState: 'idle',
   quoteError: null,
   quoteVehicleSignature: null,
+  metadataCanal: null,
 };
 
 export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
@@ -212,6 +214,8 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
 
   clearQuote: () =>
     set({ quote: null, quoteState: 'idle', quoteError: null, quoteVehicleSignature: null }),
+
+  setMetadataCanal: (data) => set({ metadataCanal: data }),
 
   reset: () => set(initialState),
 }));

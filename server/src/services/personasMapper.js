@@ -127,8 +127,12 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
   // El titular es el primer asegurado (parentesco 1). Si no hay, usamos el tomador.
   const titular = asegurados[0] || {};
 
-  const cramo = parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9;
-  const productor = parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080;
+  const metadata = state.metadataCanal || {};
+
+  const cramo = metadata.cramo ? parseInt(metadata.cramo, 10) : (parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9);
+  const productor = metadata.cproductor ? parseInt(metadata.cproductor, 10) : (parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080);
+  const ctipocanal = metadata.ctipocanal ? parseInt(metadata.ctipocanal, 10) : undefined;
+  const cusuario = metadata.cusuario ? parseInt(metadata.cusuario, 10) : undefined;
   const plan = overrides.plan || state.selectedPlan?.cplan || '';
   const frecuencia = overrides.frecuencia || funeral.frecuencia || 'M';
   const fecha_emision = overrides.fechaEmision || todayYmd();
@@ -189,6 +193,8 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
 
     // ── Canal ──────────────────────────────────────────────────────────────────
     productor,
+    ...(cusuario !== undefined ? { cusuario } : {}),
+    ...(ctipocanal !== undefined ? { ctipocanal } : {}),
 
     // ── Asegurados (para el trigger de Sis2000) ─────────────────────────────────
     asegurados: asegurados.map((a, idx) => ({

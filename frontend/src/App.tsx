@@ -13,11 +13,37 @@ import { toast } from './store/toastStore';
 import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function App() {
-  const { category, selectedPlan, quoteState, quote, goTo } = useWizardStore();
+  const { category, selectedPlan, quoteState, quote, goTo, setMetadataCanal } = useWizardStore();
   const product = getProductConfig();
 
   // Inicializa el store en el paso 4 para que el sidebar lo resalte correctamente
   useEffect(() => { goTo(4); }, [goTo]);
+
+  // Interceptar SSO Delegation
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const token = searchParams.get('session_token');
+    
+    if (token) {
+      try {
+        // Extraer payload del JWT (formato base64url)
+        const payloadBase64 = token.split('.')[1];
+        if (payloadBase64) {
+          const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+          const payload = JSON.parse(payloadStr);
+          
+          if (payload.metadata) {
+            setMetadataCanal(payload.metadata);
+          }
+        }
+      } catch (err) {
+        console.error('Error decodificando session_token:', err);
+      } finally {
+        // Limpiar URL por seguridad
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [setMetadataCanal]);
 
   function handleContinuar() {
     if (!category || !selectedPlan) {

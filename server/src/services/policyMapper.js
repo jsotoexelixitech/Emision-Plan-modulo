@@ -188,9 +188,13 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const codes = resolveCodesFromVehicle(v);
   const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
 
-  const productor = parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080;
-  const cusuario = parseInt(process.env.LAMUNDIAL_CUSUARIO, 10) || 4;
-  const cramo = parseInt(process.env.LAMUNDIAL_RAMO, 10) || 18;
+  const metadata = state.metadataCanal || {};
+
+  const productor = metadata.cproductor ? parseInt(metadata.cproductor, 10) : (parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080);
+  const cusuario = metadata.cusuario ? parseInt(metadata.cusuario, 10) : (parseInt(process.env.LAMUNDIAL_CUSUARIO, 10) || 4);
+  const cramo = metadata.cramo ? parseInt(metadata.cramo, 10) : (parseInt(process.env.LAMUNDIAL_RAMO, 10) || 18);
+  const ctipocanal = metadata.ctipocanal ? parseInt(metadata.ctipocanal, 10) : undefined;
+  
   const plan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
   const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
   const fecha_emision = overrides.fechaEmision || todayYmd();
@@ -216,6 +220,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
     productor,
     cusuario,
+    ...(ctipocanal !== undefined ? { ctipocanal } : {}),
 
     // Tomador
     tipo_cedula_tomador,

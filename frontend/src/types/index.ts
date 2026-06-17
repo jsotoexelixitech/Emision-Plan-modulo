@@ -218,4 +218,6 @@ export interface WizardState {
   /** Snapshot del vehiculo con el que se hizo la ultima cotizacion. Sirve para
    *  invalidar la quote si cambian datos relevantes (placa, marca, modelo, año, uso). */
   quoteVehicleSignature: string | null;
+  /** Datos dinámicos del canal (SSO Delegate) para emisión dinámica */
+  metadataCanal: Record<string, any> | null;
 }
