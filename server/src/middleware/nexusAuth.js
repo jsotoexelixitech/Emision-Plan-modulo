@@ -142,6 +142,26 @@ function nexusAuth(req, res, next) {
     req.empresa = { id: payload.empresaId };
     req.submoduloId = payload.submoduloId;
     req.nexusToken = token;
+
+    // ── Heartbeat: renueva el token en BD y verifica empresa activa ──────────
+    const NEXUS_API = (process.env.NEXUS_API_URL || 'http://192.168.8.120:3092').replace(/\/$/, '');
+    try {
+      const hbRes = await fetch(`${NEXUS_API}/api/access/heartbeat`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        signal: AbortSignal.timeout(5000),
+      });
+      if (hbRes.ok) {
+        const hb = await hbRes.json();
+        if (hb.active === false) {
+          return res.status(403).json({ success: false, code: 'ACCESS_SUSPENDED', message: hb.reason || 'Acceso suspendido. Contacte a su administrador.' });
+        }
+      }
+    } catch (_hbErr) {
+      console.warn('[nexusAuth] heartbeat no disponible, continuando:', _hbErr.message);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     return next();
   } catch (err) {
     return res.status(401).json({
