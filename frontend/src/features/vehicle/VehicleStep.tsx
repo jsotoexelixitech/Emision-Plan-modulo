@@ -851,8 +851,8 @@ export function VehicleStep() {
               <Field label="Apellido *" error={errors.cond_apellido}>
                 <Input value={conductor.apellido} onChange={(e) => setConductor({ apellido: String(e.target.value).replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, '') })} placeholder="Apellido" />
               </Field>
-              <Field label="Teléfono *" error={errors.cond_telefono}>
-                <Input value={conductor.telefono ?? ''} onChange={(e) => setConductor({ telefono: formatTelefono(e.target.value) })} placeholder="04121234567" type="tel" maxLength={11} />
+              <Field label="Teléfono *" error={errors.cond_telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
+                <Input value={formatTelefono(conductor.telefono ?? '')} onChange={(e) => setConductor({ telefono: formatTelefono(e.target.value) })} placeholder="(0412) 123-4567" type="tel" maxLength={15} inputMode="numeric" />
               </Field>
               <Field label="Correo electrónico *" error={errors.cond_email}>
                 <Input value={conductor.email ?? ''} onChange={(e) => setConductor({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" inputMode="email" />

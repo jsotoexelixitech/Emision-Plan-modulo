@@ -333,12 +333,12 @@ export function EmissionStep() {
     telefono: (
       <Field label="Teléfono *" error={errors.telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
         <Input
-          value={tomador.telefono}
+          value={formatTelefono(tomador.telefono ?? '')}
           onChange={(e) => setTomador({ telefono: formatTelefono(e.target.value) })}
-          placeholder="04121234567"
+          placeholder="(0412) 123-4567"
           type="tel"
           inputMode="numeric"
-          maxLength={11}
+          maxLength={15}
         />
       </Field>
     ),
@@ -537,12 +537,12 @@ export function EmissionStep() {
               </Field>
               <Field label="Teléfono del pagador *" error={errors.pag_telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
                 <Input
-                  value={pagador.telefono ?? ''}
+                  value={formatTelefono(pagador.telefono ?? '')}
                   onChange={(e) => setPagador({ telefono: formatTelefono(e.target.value) })}
-                  placeholder="04121234567"
+                  placeholder="(0412) 123-4567"
                   type="tel"
                   inputMode="numeric"
-                  maxLength={11}
+                  maxLength={15}
                 />
               </Field>
               <Field label="Correo electrónico del pagador *" error={errors.pag_email}>
@@ -588,7 +588,7 @@ export function EmissionStep() {
                 <Input value={beneficiario.apellido} onChange={(e) => setBeneficiario({ apellido: onlyLetters(e.target.value) })} placeholder="Apellido" />
               </Field>
               <Field label="Teléfono *" error={errors.benef_telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
-                <Input value={beneficiario.telefono ?? ''} onChange={(e) => setBeneficiario({ telefono: formatTelefono(e.target.value) })} placeholder="04121234567" type="tel" maxLength={11} inputMode="numeric" />
+                <Input value={formatTelefono(beneficiario.telefono ?? '')} onChange={(e) => setBeneficiario({ telefono: formatTelefono(e.target.value) })} placeholder="(0412) 123-4567" type="tel" maxLength={15} inputMode="numeric" />
               </Field>
               <Field label="Correo electrónico *" error={errors.benef_email}>
                 <Input value={beneficiario.email ?? ''} onChange={(e) => setBeneficiario({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" inputMode="email" />
