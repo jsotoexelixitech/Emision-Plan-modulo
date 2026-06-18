@@ -50,7 +50,7 @@ function extractToken(req) {
   return null;
 }
 
-function nexusAuth(req, res, next) {
+async function nexusAuth(req, res, next) {
   const token = extractToken(req);
 
   // Llamadas desde localhost (pagos-api proxy o Vite dev proxy) son confiables —
