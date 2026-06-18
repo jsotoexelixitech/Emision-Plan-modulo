@@ -5,7 +5,7 @@ import { IdentityInput } from '../../components/ui/IdentityInput';
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
-import { User, UserPlus, Heart, Wallet, ShieldAlert } from 'lucide-react';
+import { User, Heart, Wallet, ShieldAlert } from 'lucide-react';
 import { formatTelefono, isValidPhonePrefix } from '@exelixi/shared';
 
 
@@ -111,8 +111,6 @@ function onlyLetters(v: string): string {
 export function EmissionStep() {
   const {
     tomador, setTomador,
-    sameInsured, setSameInsured,
-    asegurado, setAsegurado,
     differentPayer, setDifferentPayer,
     pagador, setPagador,
     hasBeneficiary, setHasBeneficiary,
@@ -121,7 +119,6 @@ export function EmissionStep() {
 
   const catalogs = useCatalogs();
   const ciudadesState = useCiudades(tomador.cestado);
-  const aseguradoCiudades = useCiudades(asegurado.cestado);
   const beneficiarioCiudades = useCiudades(beneficiario.cestado);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -195,46 +192,6 @@ export function EmissionStep() {
       e.direccion = 'La dirección debe tener al menos 5 caracteres';
     } else if (len(tomador.direccion) > 200) {
       e.direccion = 'La dirección no puede superar 200 caracteres';
-    }
-
-    // ── Asegurado (solo si está habilitado) ───────────────────────────────
-    if (!sameInsured) {
-      if (req(asegurado.nombre)) {
-        e.aseg_nombre = 'El nombre es obligatorio';
-      } else if (len(asegurado.nombre) < 2) {
-        e.aseg_nombre = 'El nombre debe tener al menos 2 caracteres';
-      }
-
-      if (req(asegurado.apellido)) {
-        e.aseg_apellido = 'El apellido es obligatorio';
-      } else if (len(asegurado.apellido) < 2) {
-        e.aseg_apellido = 'El apellido debe tener al menos 2 caracteres';
-      }
-
-      if (req(asegurado.identificacion)) {
-        e.aseg_identificacion = 'La identificación es obligatoria';
-      } else if (digs(asegurado.identificacion) < 6) {
-        e.aseg_identificacion = 'La identificación debe tener al menos 6 dígitos';
-      }
-
-      if (req(asegurado.telefono)) {
-        e.aseg_telefono = 'El teléfono es obligatorio';
-      } else if (digs(asegurado.telefono) !== 11) {
-        e.aseg_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
-      } else if (!isValidPhonePrefix(asegurado.telefono || '')) {
-        e.aseg_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
-      }
-
-      const asegEmail = (asegurado.email ?? '').trim();
-      if (asegEmail && !emailRe.test(asegEmail)) {
-        e.aseg_email = 'Ingresa un correo válido o deja el campo vacío';
-      }
-
-      if (req(asegurado.sexo))           e.aseg_sexo           = 'El sexo es obligatorio';
-      if (req(asegurado.estadoCivil))    e.aseg_estadoCivil    = 'El estado civil es obligatorio';
-      if (req(asegurado.estado))         e.aseg_estado         = 'El estado es obligatorio';
-      if (req(asegurado.ciudad))         e.aseg_ciudad         = 'La ciudad es obligatoria';
-      if (req(asegurado.direccion))      e.aseg_direccion      = 'La dirección es obligatoria';
     }
 
     // ── Pagador (solo si NO eres quien paga) ──────────────────────────────
