@@ -1,13 +1,12 @@
-import { Fragment, useState, useRef } from 'react';
+import { useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import { Field, Input, Textarea } from '../../components/ui/FormField';
 import { IdentityInput } from '../../components/ui/IdentityInput';
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
-import { User, Heart, Wallet, ShieldAlert } from 'lucide-react';
+import { User, Heart, ShieldAlert, FileText } from 'lucide-react';
 import { formatTelefono, isValidPhonePrefix } from '@exelixi/shared';
-
 
 export function SectionCard({
   title,
@@ -59,51 +58,11 @@ export function SectionCard({
 }
 
 interface ValidationErrors {
-  nombre?: string;
-  apellido?: string;
-  identificacion?: string;
-  telefono?: string;
-  email?: string;
-  email2?: string;
-  fechaNac?: string;
-  sexo?: string;
-  estadoCivil?: string;
-  estado?: string;
-  ciudad?: string;
-  direccion?: string;
-  // Pagador
-  pag_nombre?: string;
-  pag_apellido?: string;
-  pag_identificacion?: string;
-  pag_telefono?: string;
-  pag_email?: string;
-  // Asegurado
-  aseg_nombre?: string;
-  aseg_apellido?: string;
-  aseg_identificacion?: string;
-  aseg_telefono?: string;
-  aseg_email?: string;
-  aseg_sexo?: string;
-  aseg_estadoCivil?: string;
-  aseg_estado?: string;
-  aseg_ciudad?: string;
-  aseg_direccion?: string;
-  // Beneficiario
-  benef_nombre?: string;
-  benef_apellido?: string;
-  benef_identificacion?: string;
-  benef_telefono?: string;
-  benef_email?: string;
-  benef_sexo?: string;
-  benef_estadoCivil?: string;
-  benef_estado?: string;
-  benef_ciudad?: string;
-  benef_direccion?: string;
+  [key: string]: string;
 }
 
 const emailRe   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** Solo letras, tildes, ñ y espacios */
 function onlyLetters(v: string): string {
   return v.replace(/[^a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s]/g, '');
 }
@@ -111,14 +70,15 @@ function onlyLetters(v: string): string {
 export function EmissionStep() {
   const {
     tomador, setTomador,
-    differentPayer, setDifferentPayer,
-    pagador, setPagador,
+    sameInsured, setSameInsured,
+    asegurado, setAsegurado,
     hasBeneficiary, setHasBeneficiary,
     beneficiario, setBeneficiario,
   } = useWizardStore();
 
   const catalogs = useCatalogs();
   const ciudadesState = useCiudades(tomador.cestado);
+  const aseguradoCiudades = useCiudades(asegurado.cestado);
   const beneficiarioCiudades = useCiudades(beneficiario.cestado);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -128,256 +88,155 @@ export function EmissionStep() {
     const len  = (v?: string) => (v ?? '').trim().length;
     const digs = (v?: string) => (v ?? '').replace(/\D/g, '').length;
 
-    // ── Tomador ───────────────────────────────────────────────────────────
-    if (req(tomador.identificacion)) {
-      e.identificacion = 'La identificación es obligatoria';
-    } else if (digs(tomador.identificacion) < 6) {
-      e.identificacion = 'La identificación debe tener al menos 6 dígitos';
-    } else if (digs(tomador.identificacion) > 9) {
-      e.identificacion = 'La identificación no puede tener más de 9 dígitos';
-    }
-
-    if (req(tomador.nombre)) {
-      e.nombre = 'El nombre es obligatorio';
-    } else if (len(tomador.nombre) < 2) {
-      e.nombre = 'El nombre debe tener al menos 2 caracteres';
-    } else if (len(tomador.nombre) > 50) {
-      e.nombre = 'El nombre no puede superar 50 caracteres';
-    }
-
-    if (req(tomador.apellido)) {
-      e.apellido = 'El apellido es obligatorio';
-    } else if (len(tomador.apellido) < 2) {
-      e.apellido = 'El apellido debe tener al menos 2 caracteres';
-    } else if (len(tomador.apellido) > 50) {
-      e.apellido = 'El apellido no puede superar 50 caracteres';
-    }
-
-    if (req(tomador.sexo))       e.sexo        = 'Selecciona el sexo';
-    if (req(tomador.estadoCivil)) e.estadoCivil = 'Selecciona el estado civil';
-
-    if (req(tomador.telefono)) {
-      e.telefono = 'El teléfono es obligatorio';
-    } else if (digs(tomador.telefono) !== 11) {
-      e.telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
-    } else if (!isValidPhonePrefix(tomador.telefono || '')) {
-      e.telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
-    }
-
-    if (req(tomador.email)) {
-      e.email = 'El correo electrónico es obligatorio';
-    } else if (len(tomador.email) < 5) {
-      e.email = 'El correo debe tener al menos 5 caracteres';
-    } else if (len(tomador.email) > 50) {
-      e.email = 'El correo no puede superar 50 caracteres';
-    } else if (!emailRe.test(tomador.email.trim())) {
-      e.email = 'Ingresa un correo válido (ej. usuario@dominio.com)';
-    }
-
-    if (req(tomador.email2)) {
-      e.email2 = 'Confirma tu correo electrónico';
-    } else if (!emailRe.test(tomador.email2.trim())) {
-      e.email2 = 'Ingresa un correo válido para confirmar';
-    } else if (tomador.email.trim() !== tomador.email2.trim()) {
-      e.email2 = 'Los correos no coinciden';
-    }
-
-    if (req(tomador.fechaNac)) e.fechaNac = 'La fecha de nacimiento es obligatoria';
-    if (req(tomador.estado))   e.estado   = 'El estado es obligatorio';
-    if (req(tomador.ciudad))   e.ciudad   = 'La ciudad es obligatoria';
-
-    if (req(tomador.direccion)) {
-      e.direccion = 'La dirección es obligatoria';
-    } else if (len(tomador.direccion) < 5) {
-      e.direccion = 'La dirección debe tener al menos 5 caracteres';
-    } else if (len(tomador.direccion) > 200) {
-      e.direccion = 'La dirección no puede superar 200 caracteres';
-    }
-
-    // ── Pagador (solo si NO eres quien paga) ──────────────────────────────
-    if (differentPayer) {
-      if (req(pagador.nombre)) {
-        e.pag_nombre = 'El nombre del pagador es obligatorio';
-      } else if (len(pagador.nombre) < 2) {
-        e.pag_nombre = 'El nombre debe tener al menos 2 caracteres';
+    const validatePerson = (person: any, prefix: string) => {
+      if (req(person.identificacion)) {
+        e[`${prefix}identificacion`] = 'La identificación es obligatoria';
+      } else if (digs(person.identificacion) < 6) {
+        e[`${prefix}identificacion`] = 'La identificación debe tener al menos 6 dígitos';
+      } else if (digs(person.identificacion) > 9) {
+        e[`${prefix}identificacion`] = 'La identificación no puede tener más de 9 dígitos';
       }
 
-      if (req(pagador.apellido)) {
-        e.pag_apellido = 'El apellido del pagador es obligatorio';
-      } else if (len(pagador.apellido) < 2) {
-        e.pag_apellido = 'El apellido debe tener al menos 2 caracteres';
+      if (req(person.nombre)) {
+        e[`${prefix}nombre`] = 'El nombre es obligatorio';
+      } else if (len(person.nombre) < 2) {
+        e[`${prefix}nombre`] = 'El nombre debe tener al menos 2 caracteres';
       }
 
-      if (req(pagador.identificacion)) {
-        e.pag_identificacion = 'La identificación del pagador es obligatoria';
-      } else if (digs(pagador.identificacion) < 6) {
-        e.pag_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      if (req(person.apellido)) {
+        e[`${prefix}apellido`] = 'El apellido es obligatorio';
+      } else if (len(person.apellido) < 2) {
+        e[`${prefix}apellido`] = 'El apellido debe tener al menos 2 caracteres';
       }
 
-      if (req(pagador.telefono)) {
-        e.pag_telefono = 'El teléfono del pagador es obligatorio';
-      } else if (digs(pagador.telefono) !== 11) {
-        e.pag_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
-      } else if (!isValidPhonePrefix(pagador.telefono || '')) {
-        e.pag_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
+      if (req(person.sexo))       e[`${prefix}sexo`]        = 'Selecciona el sexo';
+      if (req(person.estadoCivil)) e[`${prefix}estadoCivil`] = 'Selecciona el estado civil';
+
+      if (req(person.telefono)) {
+        e[`${prefix}telefono`] = 'El teléfono es obligatorio';
+      } else if (digs(person.telefono) !== 11) {
+        e[`${prefix}telefono`] = 'El teléfono debe tener exactamente 11 dígitos';
+      } else if (!isValidPhonePrefix(person.telefono || '')) {
+        e[`${prefix}telefono`] = 'El prefijo debe ser válido en Venezuela';
       }
 
-      if (req(pagador.email ?? '')) {
-        e.pag_email = 'El correo del pagador es obligatorio';
-      } else if (!emailRe.test((pagador.email ?? '').trim())) {
-        e.pag_email = 'Ingresa un correo válido';
-      }
-    }
-
-    // ── Beneficiario (solo si está habilitado) ────────────────────────────
-    if (hasBeneficiary) {
-      if (req(beneficiario.nombre)) {
-        e.benef_nombre = 'El nombre es obligatorio';
-      } else if (len(beneficiario.nombre) < 2) {
-        e.benef_nombre = 'El nombre debe tener al menos 2 caracteres';
+      if (req(person.email)) {
+        e[`${prefix}email`] = 'El correo electrónico es obligatorio';
+      } else if (!emailRe.test((person.email || '').trim())) {
+        e[`${prefix}email`] = 'Ingresa un correo válido';
       }
 
-      if (req(beneficiario.apellido)) {
-        e.benef_apellido = 'El apellido es obligatorio';
-      } else if (len(beneficiario.apellido) < 2) {
-        e.benef_apellido = 'El apellido debe tener al menos 2 caracteres';
-      }
+      if (req(person.fechaNac)) e[`${prefix}fechaNac`] = 'La fecha de nacimiento es obligatoria';
+      if (req(person.estado))   e[`${prefix}estado`]   = 'El estado es obligatorio';
+      if (req(person.ciudad))   e[`${prefix}ciudad`]   = 'La ciudad es obligatoria';
 
-      if (req(beneficiario.identificacion)) {
-        e.benef_identificacion = 'La identificación es obligatoria';
-      } else if (digs(beneficiario.identificacion) < 6) {
-        e.benef_identificacion = 'La identificación debe tener al menos 6 dígitos';
+      if (req(person.direccion)) {
+        e[`${prefix}direccion`] = 'La dirección es obligatoria';
+      } else if (len(person.direccion) < 5) {
+        e[`${prefix}direccion`] = 'La dirección debe tener al menos 5 caracteres';
       }
+    };
 
-      if (req(beneficiario.telefono)) {
-        e.benef_telefono = 'El teléfono es obligatorio';
-      } else if (digs(beneficiario.telefono) !== 11) {
-        e.benef_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
-      } else if (!isValidPhonePrefix(beneficiario.telefono || '')) {
-        e.benef_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
-      }
-
-      if (req(beneficiario.email ?? '')) {
-        e.benef_email = 'El correo del beneficiario es obligatorio';
-      } else if (!emailRe.test((beneficiario.email ?? '').trim())) {
-        e.benef_email = 'Ingresa un correo válido';
-      }
-
-      if (req(beneficiario.sexo))           e.benef_sexo           = 'El sexo es obligatorio';
-      if (req(beneficiario.estadoCivil))    e.benef_estadoCivil    = 'El estado civil es obligatorio';
-      if (req(beneficiario.estado))         e.benef_estado         = 'El estado es obligatorio';
-      if (req(beneficiario.ciudad))         e.benef_ciudad         = 'La ciudad es obligatoria';
-      if (req(beneficiario.direccion))      e.benef_direccion      = 'La dirección es obligatoria';
-    }
+    validatePerson(tomador, 'tom_');
+    if (!sameInsured) validatePerson(asegurado, 'aseg_');
+    if (hasBeneficiary) validatePerson(beneficiario, 'benef_');
 
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  // ── Orden fijo de campos ────────────────────────────────────────────────
-  // Se calcula UNA SOLA VEZ al montar (con datos OCR que ya estaban pre-
-  // cargados). De esta forma los campos nunca saltan de posición mientras
-  // el usuario escribe. Si el campo estaba lleno al abrir → va arriba;
-  // si estaba vacío → va abajo. Esa posición no vuelve a cambiar.
-  const has = (v?: string) => Boolean((v ?? '').trim());
-  const initialOrderRef = useRef<string[] | null>(null);
-  if (initialOrderRef.current === null) {
-    const ALL_KEYS = [
-      'identificacion', 'nombre', 'apellido', 'telefono',
-      'email', 'email2', 'fechaNac', 'sexo', 'estadoCivil',
-      'estado', 'ciudad', 'direccion',
-    ];
-    const filled  = ALL_KEYS.filter((k) => {
-      if (k === 'email2') return has(tomador.email);
-      return has((tomador as unknown as Record<string, string>)[k]);
-    });
-    const unfilled = ALL_KEYS.filter((k) => !filled.includes(k));
-    initialOrderRef.current = [...filled, ...unfilled];
-  }
-  const fieldOrder = initialOrderRef.current;
+  (window as any).__validateStep2 = validate;
 
-  (window as unknown as Record<string, unknown>).__validateStep2 = validate;
-
-  // ── Mapa de campos del tomador ────────────────────────────────────────
-  const tomadorFieldMap: Record<string, React.ReactNode> = {
-    identificacion: (
-      <Field label="Identificación *" error={errors.identificacion}>
+  const renderPersonForm = (person: any, setPerson: any, prefix: string, ciuState: any) => (
+    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
+      <Field label="Cédula o documento *" error={errors[`${prefix}identificacion`]}>
         <IdentityInput
-          tipoDoc={tomador.tipoDoc}
-          identificacion={tomador.identificacion}
-          onTipoDocChange={(v) => setTomador({ tipoDoc: v })}
-          onIdentificacionChange={(v) => setTomador({ identificacion: v })}
+          tipoDoc={person.tipoDoc ?? 'V'}
+          identificacion={person.identificacion ?? ''}
+          onTipoDocChange={(v) => setPerson({ tipoDoc: v })}
+          onIdentificacionChange={(v) => setPerson({ identificacion: v })}
         />
       </Field>
-    ),
-    nombre: (
-      <Field label="Nombre *" error={errors.nombre}>
+      <div className="hidden sm:block"></div>
+      <Field label="Nombre *" error={errors[`${prefix}nombre`]}>
         <Input
-          value={tomador.nombre}
-          onChange={(e) => setTomador({ nombre: onlyLetters(e.target.value) })}
+          value={person.nombre ?? ''}
+          onChange={(e) => setPerson({ nombre: onlyLetters(e.target.value) })}
           placeholder="Nombre"
-          autoComplete="given-name"
         />
       </Field>
-    ),
-    apellido: (
-      <Field label="Apellido *" error={errors.apellido}>
+      <Field label="Apellido *" error={errors[`${prefix}apellido`]}>
         <Input
-          value={tomador.apellido}
-          onChange={(e) => setTomador({ apellido: onlyLetters(e.target.value) })}
+          value={person.apellido ?? ''}
+          onChange={(e) => setPerson({ apellido: onlyLetters(e.target.value) })}
           placeholder="Apellido"
-          autoComplete="family-name"
         />
       </Field>
-    ),
-    telefono: (
-      <Field label="Teléfono *" error={errors.telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
+      <Field label="Teléfono *" error={errors[`${prefix}telefono`]} hint="Exactamente 11 dígitos, ej. 04121234567">
         <Input
-          value={formatTelefono(tomador.telefono ?? '')}
-          onChange={(e) => setTomador({ telefono: formatTelefono(e.target.value) })}
+          value={formatTelefono(person.telefono ?? '')}
+          onChange={(e) => setPerson({ telefono: formatTelefono(e.target.value) })}
           placeholder="(0412) 123-4567"
           type="tel"
           inputMode="numeric"
           maxLength={15}
         />
       </Field>
-    ),
-    email: (
-      <Field label="Correo electrónico *" error={errors.email}>
+      <Field label="Correo electrónico *" error={errors[`${prefix}email`]}>
         <Input
-          value={tomador.email}
-          onChange={(e) => setTomador({ email: e.target.value })}
+          value={person.email ?? ''}
+          onChange={(e) => setPerson({ email: e.target.value })}
           placeholder="correo@ejemplo.com"
           type="email"
           inputMode="email"
         />
       </Field>
-    ),
-    email2: (
-      <Field label="Repite tu correo *" error={errors.email2}>
-        <Input
-          value={tomador.email2}
-          onChange={(e) => setTomador({ email2: e.target.value })}
-          placeholder="Escribe el correo otra vez"
-          type="email"
-          inputMode="email"
+      <Field label="Estado *" error={errors[`${prefix}estado`]}>
+        <SearchSelect
+          value={person.cestado}
+          options={catalogs.estados.map((s) => ({ value: String(s.code), label: s.label }))}
+          onChange={(code, label) => {
+            setPerson({
+              estado : label,
+              cestado: code ? Number(code) : undefined,
+              ciudad : '',
+              cciudad: undefined,
+            });
+          }}
+          placeholder="Seleccione Estado"
+          loading={catalogs.loading}
         />
       </Field>
-    ),
-    fechaNac: (
-      <Field label="Fecha de nacimiento *" error={errors.fechaNac}>
+      <Field
+        label="Ciudad *"
+        error={errors[`${prefix}ciudad`]}
+        hint={person.cestado ? 'Escribe para filtrar la ciudad' : 'Selecciona primero el estado'}
+      >
+        <SearchSelect
+          value={person.cciudad}
+          options={ciuState.ciudades.map((c: any) => ({ value: String(c.code), label: c.label }))}
+          onChange={(code, label) => {
+            setPerson({
+              ciudad : label,
+              cciudad: code ? Number(code) : undefined,
+            });
+          }}
+          placeholder={person.cestado ? 'Seleccione Ciudad' : 'Selecciona primero el estado'}
+          disabled={!person.cestado}
+          loading={ciuState.loading}
+        />
+      </Field>
+      <Field label="Fecha de Nac. *" error={errors[`${prefix}fechaNac`]}>
         <Input
-          value={tomador.fechaNac}
-          onChange={(e) => setTomador({ fechaNac: e.target.value })}
+          value={person.fechaNac ?? ''}
+          onChange={(e) => setPerson({ fechaNac: e.target.value })}
           type="date"
           max={new Date().toISOString().split('T')[0]}
         />
       </Field>
-    ),
-    sexo: (
-      <Field label="Sexo *" error={errors.sexo}>
+      <Field label="Sexo *" error={errors[`${prefix}sexo`]}>
         <SearchSelect
-          value={tomador.sexo}
+          value={person.sexo}
           options={
             catalogs.sexos.length > 0
               ? catalogs.sexos.map((s) => ({ value: String(s.label), label: s.label }))
@@ -386,16 +245,14 @@ export function EmissionStep() {
                   { value: 'Masculino', label: 'Masculino' },
                 ]
           }
-          onChange={(value) => setTomador({ sexo: value })}
+          onChange={(value) => setPerson({ sexo: value })}
           placeholder="— Seleccionar —"
           loading={catalogs.loading}
         />
       </Field>
-    ),
-    estadoCivil: (
-      <Field label="Estado civil *" error={errors.estadoCivil}>
+      <Field label="Estado Civil *" error={errors[`${prefix}estadoCivil`]}>
         <SearchSelect
-          value={tomador.estadoCivil}
+          value={person.estadoCivil}
           options={
             catalogs.estadosCivil.length > 0
               ? catalogs.estadosCivil.map((s) => ({ value: String(s.label), label: s.label }))
@@ -406,80 +263,35 @@ export function EmissionStep() {
                   { value: 'Viudo(a)',       label: 'Viudo(a)'       },
                 ]
           }
-          onChange={(value) => setTomador({ estadoCivil: value })}
+          onChange={(value) => setPerson({ estadoCivil: value })}
           placeholder="— Seleccionar —"
           loading={catalogs.loading}
         />
       </Field>
-    ),
-    estado: (
-      <Field label="Estado donde vives *" error={errors.estado}>
-        <SearchSelect
-          value={tomador.cestado}
-          options={catalogs.estados.map((s) => ({ value: String(s.code), label: s.label }))}
-          onChange={(code, label) => {
-            setTomador({
-              estado : label,
-              cestado: code ? Number(code) : undefined,
-              ciudad : '',
-              cciudad: undefined,
-            });
-          }}
-          placeholder="Escribe para buscar tu estado…"
-          loading={catalogs.loading}
-        />
-      </Field>
-    ),
-    ciudad: (
-      <Field
-        label="Ciudad donde vives *"
-        error={errors.ciudad}
-        hint={tomador.cestado ? 'Escribe para filtrar la ciudad' : 'Selecciona primero el estado'}
-      >
-        <SearchSelect
-          value={tomador.cciudad}
-          options={ciudadesState.ciudades.map((c) => ({ value: String(c.code), label: c.label }))}
-          onChange={(code, label) => {
-            setTomador({
-              ciudad : label,
-              cciudad: code ? Number(code) : undefined,
-            });
-          }}
-          placeholder={tomador.cestado ? 'Escribe para buscar la ciudad…' : 'Selecciona primero el estado'}
-          disabled={!tomador.cestado}
-          loading={ciudadesState.loading}
-        />
-      </Field>
-    ),
-    direccion: (
-      <Field label="Tu dirección completa *" error={errors.direccion} full>
+      <div className="hidden sm:block"></div>
+      <Field label="Dirección *" error={errors[`${prefix}direccion`]} full>
         <Textarea
-          value={tomador.direccion}
-          onChange={(e) => setTomador({ direccion: e.target.value })}
-          placeholder="Calle, urbanización, municipio..."
+          value={person.direccion ?? ''}
+          onChange={(e) => setPerson({ direccion: e.target.value })}
+          placeholder="Dirección completa"
           rows={3}
         />
       </Field>
-    ),
-  };
+    </div>
+  );
 
   return (
     <div className="animate-fade-in">
       <div className="space-y-5">
-        {/* Tomador */}
+        {/* Tomador (Base) */}
         <SectionCard
           Icon={User}
-          title="Tus datos personales"
-          description="Necesitamos saber quién está contratando el seguro"
+          title="Datos de la persona que pagará la Póliza (Tomador)"
         >
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {fieldOrder.map((key) => (
-              <Fragment key={key}>{tomadorFieldMap[key]}</Fragment>
-            ))}
-          </div>
+          {renderPersonForm(tomador, setTomador, 'tom_', ciudadesState)}
         </SectionCard>
 
-        {/* Persona Políticamente Expuesta — declaración legal requerida por La Mundial */}
+        {/* Declaración Legal */}
         <SectionCard
           Icon={ShieldAlert}
           title="Declaración legal"
@@ -487,154 +299,40 @@ export function EmissionStep() {
         >
           <div className="rounded-xl bg-amber-50 border border-amber-200 p-3.5 text-xs text-amber-800 leading-relaxed mb-4">
             <strong>¿Qué es una Persona Políticamente Expuesta (PPE)?</strong> Es aquella que desempeña o ha desempeñado
-            funciones públicas prominentes (cargos de gobierno, altos funcionarios, directivos de empresas estatales,
-            diplomáticos, etc.) en Venezuela o en el extranjero, en los últimos 5 años.
+            funciones públicas prominentes en Venezuela o en el extranjero, en los últimos 5 años.
           </div>
           <ToggleSwitch
             checked={tomador.personaPoliticamenteExpuesta}
             onChange={(v) => setTomador({ personaPoliticamenteExpuesta: v })}
             label="Soy una Persona Políticamente Expuesta (PPE)"
-            description="Declaro que ejerzo o he ejercido funciones públicas prominentes en los últimos 5 años."
           />
         </SectionCard>
 
-        {/* Pagador */}
+        {/* Asegurado (Titular) */}
         <SectionCard
-          Icon={Wallet}
-          title="¿Eres quien paga la póliza?"
-          description="Si otra persona pagará por ti, registramos sus datos para asociarlos al pago."
+          Icon={FileText}
+          title="Datos de la persona que será asegurada (Titular)"
         >
           <ToggleSwitch
-            checked={!differentPayer}
-            onChange={(v) => setDifferentPayer(!v)}
-            label="Sí, yo voy a pagar la póliza"
-            description="Usaremos los datos personales que llenaste arriba para asociar el pago."
+            checked={!sameInsured}
+            onChange={(v) => setSameInsured(!v)}
+            label="¿La persona que pagará la Póliza es diferente a la que será asegurada?"
           />
-
-          {differentPayer && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-              <Field label="Nombre del pagador *" error={errors.pag_nombre}>
-                <Input
-                  value={pagador.nombre}
-                  onChange={(e) => setPagador({ nombre: onlyLetters(e.target.value) })}
-                  placeholder="Nombre"
-                />
-              </Field>
-              <Field label="Apellido del pagador *" error={errors.pag_apellido}>
-                <Input
-                  value={pagador.apellido}
-                  onChange={(e) => setPagador({ apellido: onlyLetters(e.target.value) })}
-                  placeholder="Apellido"
-                />
-              </Field>
-              <Field label="Cédula o documento *" error={errors.pag_identificacion}>
-                <IdentityInput
-                  tipoDoc={pagador.tipoDoc ?? 'V'}
-                  identificacion={pagador.identificacion}
-                  onTipoDocChange={(v) => setPagador({ tipoDoc: v })}
-                  onIdentificacionChange={(v) => setPagador({ identificacion: v })}
-                />
-              </Field>
-              <Field label="Teléfono del pagador *" error={errors.pag_telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
-                <Input
-                  value={formatTelefono(pagador.telefono ?? '')}
-                  onChange={(e) => setPagador({ telefono: formatTelefono(e.target.value) })}
-                  placeholder="(0412) 123-4567"
-                  type="tel"
-                  inputMode="numeric"
-                  maxLength={15}
-                />
-              </Field>
-              <Field label="Correo electrónico del pagador *" error={errors.pag_email}>
-                <Input
-                  value={pagador.email ?? ''}
-                  onChange={(e) => setPagador({ email: e.target.value })}
-                  placeholder="correo@ejemplo.com"
-                  type="email"
-                  inputMode="email"
-                />
-              </Field>
-            </div>
-          )}
+          {!sameInsured && renderPersonForm(asegurado, setAsegurado, 'aseg_', aseguradoCiudades)}
         </SectionCard>
 
-        {true && (
+        {/* Beneficiario */}
         <SectionCard
           Icon={Heart}
           title="Datos del Beneficiario Preferencial"
-          description="Persona que recibe beneficios en caso de siniestro"
         >
           <ToggleSwitch
             checked={hasBeneficiary}
             onChange={setHasBeneficiary}
             label="¿Desea agregar un beneficiario preferencial a la póliza?"
           />
-
-          {hasBeneficiary && (
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-              <Field label="Cédula o documento *" error={errors.benef_identificacion}>
-                <IdentityInput
-                  tipoDoc={beneficiario.tipoDoc ?? 'V'}
-                  identificacion={beneficiario.identificacion}
-                  onTipoDocChange={(v) => setBeneficiario({ tipoDoc: v })}
-                  onIdentificacionChange={(v) => setBeneficiario({ identificacion: v })}
-                />
-              </Field>
-              <div className="hidden sm:block"></div>
-              <Field label="Nombre *" error={errors.benef_nombre}>
-                <Input value={beneficiario.nombre} onChange={(e) => setBeneficiario({ nombre: onlyLetters(e.target.value) })} placeholder="Nombre" />
-              </Field>
-              <Field label="Apellido *" error={errors.benef_apellido}>
-                <Input value={beneficiario.apellido} onChange={(e) => setBeneficiario({ apellido: onlyLetters(e.target.value) })} placeholder="Apellido" />
-              </Field>
-              <Field label="Teléfono *" error={errors.benef_telefono} hint="Exactamente 11 dígitos, ej. 04121234567">
-                <Input value={formatTelefono(beneficiario.telefono ?? '')} onChange={(e) => setBeneficiario({ telefono: formatTelefono(e.target.value) })} placeholder="(0412) 123-4567" type="tel" maxLength={15} inputMode="numeric" />
-              </Field>
-              <Field label="Correo electrónico *" error={errors.benef_email}>
-                <Input value={beneficiario.email ?? ''} onChange={(e) => setBeneficiario({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" inputMode="email" />
-              </Field>
-              <Field label="Estado *" error={errors.benef_estado}>
-                <SearchSelect
-                  value={beneficiario.cestado}
-                  options={catalogs.estados.map((s) => ({ value: String(s.code), label: s.label }))}
-                  onChange={(code, label) => setBeneficiario({ estado: label, cestado: code ? Number(code) : undefined, ciudad: '', cciudad: undefined })}
-                  placeholder="Escribe para buscar estado..." loading={catalogs.loading}
-                />
-              </Field>
-              <Field label="Ciudad *" error={errors.benef_ciudad} hint={beneficiario.cestado ? '' : 'Selecciona primero el estado'}>
-                <SearchSelect
-                  value={beneficiario.cciudad}
-                  options={beneficiarioCiudades.ciudades.map((c) => ({ value: String(c.code), label: c.label }))}
-                  onChange={(code, label) => setBeneficiario({ ciudad: label, cciudad: code ? Number(code) : undefined })}
-                  placeholder={beneficiario.cestado ? 'Escribe para buscar ciudad...' : 'Selecciona primero el estado'}
-                  disabled={!beneficiario.cestado} loading={beneficiarioCiudades.loading}
-                />
-              </Field>
-              <Field label="Fecha de nacimiento *">
-                <Input value={beneficiario.fechaNac ?? ''} onChange={(e) => setBeneficiario({ fechaNac: e.target.value })} type="date" />
-              </Field>
-              <Field label="Sexo *" error={errors.benef_sexo}>
-                <SearchSelect
-                  value={beneficiario.sexo}
-                  options={catalogs.sexos.length > 0 ? catalogs.sexos.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Femenino', label: 'Femenino' }, { value: 'Masculino', label: 'Masculino' }]}
-                  onChange={(value) => setBeneficiario({ sexo: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
-                />
-              </Field>
-              <Field label="Estado civil *" error={errors.benef_estadoCivil}>
-                <SearchSelect
-                  value={beneficiario.estadoCivil}
-                  options={catalogs.estadosCivil.length > 0 ? catalogs.estadosCivil.map((s) => ({ value: String(s.label), label: s.label })) : [{ value: 'Soltero(a)', label: 'Soltero(a)' }, { value: 'Casado(a)', label: 'Casado(a)' }, { value: 'Divorciado(a)', label: 'Divorciado(a)' }, { value: 'Viudo(a)', label: 'Viudo(a)' }]}
-                  onChange={(value) => setBeneficiario({ estadoCivil: value })} placeholder="— Seleccionar —" loading={catalogs.loading}
-                />
-              </Field>
-              <div className="hidden sm:block"></div>
-              <Field label="Dirección *" error={errors.benef_direccion} full>
-                <Textarea value={beneficiario.direccion ?? ''} onChange={(e) => setBeneficiario({ direccion: e.target.value })} placeholder="Dirección completa" rows={2} />
-              </Field>
-            </div>
-          )}
+          {hasBeneficiary && renderPersonForm(beneficiario, setBeneficiario, 'benef_', beneficiarioCiudades)}
         </SectionCard>
-        )}
       </div>
     </div>
   );
