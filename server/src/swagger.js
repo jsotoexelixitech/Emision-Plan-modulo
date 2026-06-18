@@ -18,6 +18,10 @@ Gestiona el ciclo completo de vida de una póliza RCV (Responsabilidad Civil Veh
 - Recibe el **estado del wizard** completo desde Módulo Formulario y Módulo Pagos.
 - Devuelve el número de póliza, recibo y URL del PDF al Módulo Pagos para mostrar en pantalla de éxito.
 
+### Autenticación (OAuth 2.0)
+Este módulo está protegido. Debe incluir un **Access Token** en la cabecera HTTP \`Authorization: Bearer <token>\`.
+El token se obtiene intercambiando su **API Key** en el endpoint \`/api/access/token\` del servidor central (Nexus API).
+
 ### Códigos de error comunes
 | Código | Descripción |
 |--------|-------------|
@@ -39,7 +43,20 @@ Gestiona el ciclo completo de vida de una póliza RCV (Responsabilidad Civil Veh
       { name: 'Pólizas', description: 'Cotización y emisión de pólizas RCV' },
       { name: 'Sistema',  description: 'Estado del servicio' },
     ],
+    security: [
+      {
+        bearerAuth: [],
+      },
+    ],
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Ingrese su Access Token temporal (obtenido desde Nexus API vía /api/access/token)',
+        },
+      },
       schemas: {
         WizardState: {
           type: 'object',
