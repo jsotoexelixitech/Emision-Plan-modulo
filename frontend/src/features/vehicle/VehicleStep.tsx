@@ -368,6 +368,10 @@ export function VehicleStep() {
 
       if (!licencia) {
         e.cond_licencia = 'El número de licencia es obligatorio';
+      } else if (licencia.length < 5) {
+        e.cond_licencia = 'La licencia debe tener al menos 5 caracteres';
+      } else if (licencia.length > 20) {
+        e.cond_licencia = 'La licencia no puede superar 20 caracteres';
       }
 
       if (req(conductor.identificacion)) {
@@ -384,9 +388,10 @@ export function VehicleStep() {
         e.cond_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
       }
 
-      const condEmail = (conductor.email ?? '').trim();
-      if (condEmail && !emailRe.test(condEmail)) {
-        e.cond_email = 'Ingresa un correo válido o deja el campo vacío';
+      if (req(conductor.email ?? '')) {
+        e.cond_email = 'El correo del conductor es obligatorio';
+      } else if (!emailRe.test((conductor.email ?? '').trim())) {
+        e.cond_email = 'Ingresa un correo válido';
       }
       if (req(conductor.sexo))           e.cond_sexo           = 'El sexo es obligatorio';
       if (req(conductor.estadoCivil))    e.cond_estadoCivil    = 'El estado civil es obligatorio';
@@ -849,8 +854,8 @@ export function VehicleStep() {
               <Field label="Teléfono *" error={errors.cond_telefono}>
                 <Input value={conductor.telefono ?? ''} onChange={(e) => setConductor({ telefono: formatTelefono(e.target.value) })} placeholder="04121234567" type="tel" maxLength={11} />
               </Field>
-              <Field label="Correo electrónico" error={errors.cond_email}>
-                <Input value={conductor.email ?? ''} onChange={(e) => setConductor({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" />
+              <Field label="Correo electrónico *" error={errors.cond_email}>
+                <Input value={conductor.email ?? ''} onChange={(e) => setConductor({ email: e.target.value })} placeholder="correo@ejemplo.com" type="email" inputMode="email" />
               </Field>
               <Field label="Estado *" error={errors.cond_estado}>
                 <SearchSelect
@@ -890,12 +895,13 @@ export function VehicleStep() {
               <Field label="Dirección *" error={errors.cond_direccion} full>
                 <Textarea value={conductor.direccion ?? ''} onChange={(e) => setConductor({ direccion: e.target.value })} placeholder="Dirección completa" rows={2} />
               </Field>
-              <Field label="Número de licencia de conducir *" error={errors.cond_licencia} full>
+              <Field label="Número de licencia de conducir *" error={errors.cond_licencia} hint="Máx. 20 caracteres alfanuméricos" full>
                 <Input
                   value={conductor.licencia ?? ''}
-                  onChange={(e) => setConductor({ licencia: e.target.value.toUpperCase() })}
+                  onChange={(e) => setConductor({ licencia: e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 20) })}
                   placeholder="Ej. LIC-0234567"
                   className="uppercase font-mono tracking-wider"
+                  maxLength={20}
                 />
               </Field>
           </div>
