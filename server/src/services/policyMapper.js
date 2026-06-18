@@ -237,16 +237,16 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
     // Titular del vehiculo
     tipo_cedula_titular,
-    rif_titular: sameInsured ? onlyDigits(tomador.identificacion) : (titular.identificacion ? onlyDigits(titular.identificacion) : null),
-    nombre_titular: sameInsured ? cleanString(tomador.nombre) : (titular.nombre ? cleanString(titular.nombre) : null),
-    apellido_titular: sameInsured ? cleanString(tomador.apellido) : (titular.apellido ? cleanString(titular.apellido) : null),
-    sexo_titular: sameInsured ? normalizeSexo(tomador.sexo) : (titular.sexo ? normalizeSexo(titular.sexo) : null),
-    fnac_titular: sameInsured ? normalizeDate(tomador.fechaNac) : (titular.fechaNac ? normalizeDate(titular.fechaNac) : null),
+    rif_titular: sameInsured ? onlyDigits(tomador.identificacion) : onlyDigits(titular.identificacion),
+    nombre_titular: sameInsured ? cleanString(tomador.nombre) : cleanString(titular.nombre),
+    apellido_titular: sameInsured ? cleanString(tomador.apellido) : cleanString(titular.apellido),
+    sexo_titular: sameInsured ? normalizeSexo(tomador.sexo) : (titular.sexo ? normalizeSexo(titular.sexo) : ''),
+    fnac_titular: sameInsured ? normalizeDate(tomador.fechaNac) : normalizeDate(titular.fechaNac),
     estado_titular: stateCodeTitular,
     ciudad_titular: cityCodeTitular,
-    direccion_titular: sameInsured ? cleanString(tomador.direccion) : (titular.direccion ? cleanString(titular.direccion) : null),
-    telefono_titular: sameInsured ? cleanPhone(tomador.telefono) : (titular.telefono ? cleanPhone(titular.telefono) : null),
-    correo_titular: sameInsured ? cleanString(tomador.email) : (titular.email ? cleanString(titular.email) : null),
+    direccion_titular: sameInsured ? cleanString(tomador.direccion) : cleanString(titular.direccion),
+    telefono_titular: sameInsured ? cleanPhone(tomador.telefono) : cleanPhone(titular.telefono),
+    correo_titular: sameInsured ? cleanString(tomador.email) : cleanString(titular.email),
 
     ...(cond ? {
       conductor: {
