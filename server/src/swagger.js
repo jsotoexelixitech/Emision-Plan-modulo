@@ -149,6 +149,46 @@ El token se obtiene intercambiando su **API Key** en el endpoint \`/api/access/t
         },
       },
     },
+    paths: {
+      '/api/access/token': {
+        post: {
+          tags: ['Autenticación'],
+          summary: 'Canjear API Key por Access Token',
+          description: 'Obtiene un JWT temporal de 1 hora. **Nota:** Este endpoint es atendido por el servidor central (Nexus API).',
+          servers: [{ url: 'http://192.168.8.120:3092' }],
+          security: [],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: { tenantToken: { type: 'string', example: 'sk_test_123...' } }
+                }
+              }
+            }
+          },
+          responses: {
+            200: {
+              description: 'Token generado exitosamente',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      success: { type: 'boolean', example: true },
+                      access_token: { type: 'string', example: 'eyJhbGciOiJIUzI1NiIs...' },
+                      expires_in: { type: 'integer', example: 3600 },
+                      token_type: { type: 'string', example: 'Bearer' }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   },
   apis: ['./src/routes/*.js'],
 };
