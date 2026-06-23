@@ -7,7 +7,8 @@ const api = axios.create({ baseURL: '/api' });
 api.interceptors.request.use((config) => {
   const token =
     new URLSearchParams(window.location.search).get('nexus_token') ||
-    sessionStorage.getItem('nexus_access_token_emision');
+    sessionStorage.getItem('nexus_access_token_emision') ||
+    sessionStorage.getItem('nexus_access_token');
   if (token) {
     config.headers.set('Authorization', `Bearer ${token}`);
   }
