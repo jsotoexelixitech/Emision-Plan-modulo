@@ -33,7 +33,7 @@ function validateEmissionPayload(p) {
 
   // Identificadores
   if (!p.poliza || !String(p.poliza).trim()) errors.push('poliza (id interno) requerido');
-  if (p.cramo !== 18) errors.push('cramo debe ser 18 (RCV)');
+  if (!p.cramo) errors.push('cramo requerido');
   if (!p.plan || !String(p.plan).trim()) errors.push('plan requerido (vacío)');
   if (!['A', 'S', 'C', 'T', 'M'].includes(p.frecuencia)) errors.push(`frecuencia invalida: ${p.frecuencia}`);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fecha_emision || '')) errors.push('fecha_emision formato YYYY-MM-DD');
