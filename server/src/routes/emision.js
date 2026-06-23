@@ -142,9 +142,14 @@ router.post('/policies/emit', async (req, res) => {
       });
     }
 
+    console.log('[routes/emision.js] req.nexusMetadata:', JSON.stringify(req.nexusMetadata));
+    console.log('[routes/emision.js] state.metadataCanal (antes):', JSON.stringify(state.metadataCanal));
+
     if (req.nexusMetadata && Object.keys(req.nexusMetadata).length > 0) {
       state.metadataCanal = { ...state.metadataCanal, ...req.nexusMetadata };
     }
+
+    console.log('[routes/emision.js] state.metadataCanal (después):', JSON.stringify(state.metadataCanal));
 
     const result = await policyService.quoteAndEmit(state, { plan, frecuencia });
     return res.status(201).json({
