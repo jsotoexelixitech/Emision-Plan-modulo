@@ -80,6 +80,17 @@ async function nexusAuth(req, res, next) {
   if (isBypass) {
     req.empresa = { id: 1 };
     req.submoduloId = EXPECTED_SUBMODS.length > 0 ? EXPECTED_SUBMODS[0] : 17;
+    
+    // Extraer metadata si el token viene presente (para canal alterno, productor, etc)
+    if (token) {
+      try {
+        const decoded = jwt.decode(token);
+        if (decoded && typeof decoded === 'object') {
+          req.nexusMetadata = decoded.metadata || {};
+        }
+      } catch { /* ignore */ }
+    }
+    
     return next();
   }
   // -----------------------------------
