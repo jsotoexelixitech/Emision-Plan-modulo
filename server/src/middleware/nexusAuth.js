@@ -142,6 +142,7 @@ async function nexusAuth(req, res, next) {
     req.empresa = { id: payload.empresaId };
     req.submoduloId = payload.submoduloId;
     req.nexusToken = token;
+    req.nexusMetadata = payload.metadata || {};
 
     // ── Heartbeat: renueva el token en BD y verifica empresa activa ──────────
     const NEXUS_API = (process.env.NEXUS_API_URL || 'http://192.168.8.120:3092').replace(/\/$/, '');

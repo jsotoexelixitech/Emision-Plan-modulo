@@ -142,6 +142,10 @@ router.post('/policies/emit', async (req, res) => {
       });
     }
 
+    if (req.nexusMetadata && Object.keys(req.nexusMetadata).length > 0) {
+      state.metadataCanal = { ...state.metadataCanal, ...req.nexusMetadata };
+    }
+
     const result = await policyService.quoteAndEmit(state, { plan, frecuencia });
     return res.status(201).json({
       success: true, message: 'Poliza emitida exitosamente.',
