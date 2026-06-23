@@ -81,14 +81,19 @@ async function nexusAuth(req, res, next) {
     req.empresa = { id: 1 };
     req.submoduloId = EXPECTED_SUBMODS.length > 0 ? EXPECTED_SUBMODS[0] : 17;
     
+    console.log('[nexusAuth] isBypass active. token present?', !!token);
     // Extraer metadata si el token viene presente (para canal alterno, productor, etc)
     if (token) {
       try {
         const decoded = jwt.decode(token);
+        console.log('[nexusAuth] decoded token:', decoded ? 'YES' : 'NO');
         if (decoded && typeof decoded === 'object') {
           req.nexusMetadata = decoded.metadata || {};
+          console.log('[nexusAuth] extracted metadata:', JSON.stringify(req.nexusMetadata));
         }
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.log('[nexusAuth] error decoding token:', err.message);
+      }
     }
     
     return next();

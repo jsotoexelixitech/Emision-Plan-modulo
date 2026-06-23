@@ -220,7 +220,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     frecuencia,
     fecha_emision,
 
-    productor,
+    productor: productor != null ? String(productor) : undefined,
     cusuario,
     ...(ctipocanal !== undefined ? { ctipocanal } : {}),
     ...(ccanalalt !== undefined ? { ccanalalt } : {}),
