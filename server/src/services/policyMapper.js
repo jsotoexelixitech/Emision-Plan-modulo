@@ -190,10 +190,12 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
   const metadata = state.metadataCanal || {};
 
-  const productor = metadata.cproductor ? parseInt(metadata.cproductor, 10) : (parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080);
-  const cusuario = metadata.cusuario ? parseInt(metadata.cusuario, 10) : (parseInt(process.env.LAMUNDIAL_CUSUARIO, 10) || 4);
-  const cramo = metadata.cramo ? parseInt(metadata.cramo, 10) : (parseInt(process.env.LAMUNDIAL_RAMO, 10) || 18);
-  const ctipocanal = metadata.ctipocanal ? parseInt(metadata.ctipocanal, 10) : undefined;
+  const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
+  const cusuario = metadata.cusuario !== undefined ? metadata.cusuario : (process.env.LAMUNDIAL_CUSUARIO || 4);
+  const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
+  const ctipocanal = metadata.ctipocanal !== undefined ? metadata.ctipocanal : undefined;
+  const ccanalalt = metadata.ccanalalt_in !== undefined ? metadata.ccanalalt_in : undefined;
+  const cscanalalt = metadata.cscanalalt_in !== undefined ? metadata.cscanalalt_in : undefined;
   
   const plan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
   const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
@@ -221,6 +223,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     productor,
     cusuario,
     ...(ctipocanal !== undefined ? { ctipocanal } : {}),
+    ...(ccanalalt !== undefined ? { ccanalalt } : {}),
+    ...(cscanalalt !== undefined ? { cscanalalt } : {}),
 
     // Tomador
     tipo_cedula_tomador,
