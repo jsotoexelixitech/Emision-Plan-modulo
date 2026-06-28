@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Middleware de autenticación multi-tenant via Nexus token.
  *
  * Valida que cada request lleve un `nexus_token` válido firmado por
@@ -160,7 +160,10 @@ async function nexusAuth(req, res, next) {
     req.nexusToken = token;
     req.nexusMetadata = payload.metadata || {};
 
-    // ── Heartbeat: renueva el token en BD y verifica empresa activa ──────────
+    // ── Heartbeat: renueva el token en BD, verifica empresa activa y
+    //    obtiene un nuevo access_token (1h) con la misma metadata original.
+    //    Si el servidor devuelve access_token, se reemplaza en req.nexusToken
+    //    para que las capas siguientes (y el cliente via header) usen el fresco.
     const NEXUS_API = (process.env.NEXUS_API_URL || 'http://192.168.8.120:3092').replace(/\/$/, '');
     try {
       const hbRes = await fetch(`${NEXUS_API}/api/access/heartbeat`, {
@@ -172,6 +175,11 @@ async function nexusAuth(req, res, next) {
         const hb = await hbRes.json();
         if (hb.active === false) {
           return res.status(403).json({ success: false, code: 'ACCESS_SUSPENDED', message: hb.reason || 'Acceso suspendido. Contacte a su administrador.' });
+        }
+        // Token renovado: actualizar en req para que rutas aguas abajo lo lean
+        if (hb.access_token) {
+          req.nexusToken = hb.access_token;
+          res.setHeader('X-Nexus-Token-Refreshed', hb.access_token);
         }
       }
     } catch (_hbErr) {
