@@ -80,22 +80,16 @@ async function nexusAuth(req, res, next) {
   if (isBypass) {
     req.empresa = { id: 1 };
     req.submoduloId = EXPECTED_SUBMODS.length > 0 ? EXPECTED_SUBMODS[0] : 17;
-    
-    console.log('[nexusAuth] isBypass active. token present?', !!token);
-    // Extraer metadata si el token viene presente (para canal alterno, productor, etc)
+
     if (token) {
       try {
         const decoded = jwt.decode(token);
-        console.log('[nexusAuth] decoded token:', decoded ? 'YES' : 'NO');
         if (decoded && typeof decoded === 'object') {
           req.nexusMetadata = decoded.metadata || {};
-          console.log('[nexusAuth] extracted metadata:', JSON.stringify(req.nexusMetadata));
         }
-      } catch (err) {
-        console.log('[nexusAuth] error decoding token:', err.message);
-      }
+      } catch { /* ignorar token malformado en bypass */ }
     }
-    
+
     return next();
   }
   // -----------------------------------
@@ -180,11 +174,10 @@ async function nexusAuth(req, res, next) {
         if (hb.access_token) {
           req.nexusToken = hb.access_token;
           res.setHeader('X-Nexus-Token-Refreshed', hb.access_token);
+          res.setHeader('Access-Control-Expose-Headers', 'X-Nexus-Token-Refreshed');
         }
       }
-    } catch (_hbErr) {
-      console.warn('[nexusAuth] heartbeat no disponible, continuando:', _hbErr.message);
-    }
+    } catch { /* heartbeat no crítico: continuar si nexus-api no responde */ }
     // ────────────────────────────────────────────────────────────────────────
 
     return next();
