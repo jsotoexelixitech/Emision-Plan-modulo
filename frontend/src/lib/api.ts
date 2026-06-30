@@ -1,7 +1,8 @@
 import axios, { AxiosError } from 'axios';
 import type { DocType, OcrResult, DocumentFile } from '../types';
+import { moduleApiBase } from './app-base';
 
-const api = axios.create({ baseURL: '/api' });
+const api = axios.create({ baseURL: moduleApiBase() });
 
 // Inyecta el nexus_token (multi-tenant) en cada request al backend del módulo.
 api.interceptors.request.use((config) => {
