@@ -40,6 +40,12 @@ export async function verifyNexusAccess(nexusApiUrl: string): Promise<NexusVerif
     const data = await res.json();
 
     if (data.active) {
+      // Token deslizante: el backend reemite un nexus_token fresco en cada
+      // verify. Se guarda para que la sesión no caduque (el token del navegador
+      // expira en 1 h; así se renueva en cada verify sin recargar la página).
+      if (data.access_token) {
+        sessionStorage.setItem(STORAGE_KEY, data.access_token);
+      }
       return { active: true, empresa: data.empresa, submodulo: data.submodulo };
     }
 
