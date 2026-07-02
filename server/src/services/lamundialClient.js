@@ -18,6 +18,7 @@ const axios = require('axios');
 
 const DEFAULT_BASE = 'https://qaapisys2000.lamundialdeseguros.com';
 const PATH_PREFIX = process.env.LAMUNDIAL_PATH_PREFIX || '/CorreccionCalculo/api/v1/external';
+const EMISSION_PATH_PREFIX = process.env.LAMUNDIAL_EMISSION_PATH_PREFIX || '/api/v1/external';
 const INMA_PREFIX  = process.env.LAMUNDIAL_INMA_PREFIX || '/CorreccionCalculo/api/v1/inma';
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -64,10 +65,9 @@ function getClient() {
 
 function getEmissionClient() {
   const cfg = getConfig();
-  // El cliente de emision usa una URL distinta (test)
-  const emissionBaseUrl = process.env.LAMUNDIAL_EMISSION_URL || 'http://192.168.10.213:3000';
+  const emissionBaseUrl = process.env.LAMUNDIAL_EMISSION_URL || cfg.baseUrl || DEFAULT_BASE;
   return axios.create({
-    baseURL: `${emissionBaseUrl.replace(/\/$/, '')}${PATH_PREFIX}`,
+    baseURL: `${emissionBaseUrl.replace(/\/$/, '')}${EMISSION_PATH_PREFIX}`,
     timeout: cfg.timeout,
     headers: {
       'Content-Type': 'application/json',
@@ -240,8 +240,8 @@ async function createEmissionAuto(payload) {
   ];
   keysToRemove.forEach(k => delete cleanPayload[k]);
 
-  const emisionUrl = process.env.LAMUNDIAL_EMISSION_URL || 'http://192.168.10.213:3000';
-  console.log(`[createEmissionAuto] → enviando a ${emisionUrl}${PATH_PREFIX}${endpoint}`);
+  const emisionUrl = process.env.LAMUNDIAL_EMISSION_URL || getConfig().baseUrl || DEFAULT_BASE;
+  console.log(`[createEmissionAuto] → enviando a ${emisionUrl}${EMISSION_PATH_PREFIX}${endpoint}`);
   console.log(`[createEmissionAuto] → payload limpio:`, JSON.stringify(cleanPayload, null, 2));
 
   try {

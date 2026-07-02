@@ -26,8 +26,8 @@ const { getCotizacionFromSis2000 } = require('./quoteSis2000');
  * @param {object} cotizacion - { mprima, mprimaext, ptasa }
  */
 async function createEmissionAutoViaSysip(payload, cotizacion) {
-  const sysipUrl = (process.env.SYSIP_API_URL || 'http://localhost:3002').replace(/\/$/, '');
-  const apikey   = process.env.LAMUNDIAL_APIKEY || '';
+  const laMundialUrl = (process.env.LAMUNDIAL_BASE_URL || 'https://qaapisys2000.lamundialdeseguros.com').replace(/\/$/, '');
+  const apikey       = process.env.LAMUNDIAL_APIKEY || '';
 
   // Calcular fechas de vigencia (emisión + 1 año)
   const femision = payload.fecha_emision || new Date().toISOString().slice(0, 10);
@@ -70,13 +70,13 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
   };
 
   const ts = new Date().toISOString();
-  console.log(`[sysip][${ts}] -> createEmissionAuto placa=${sysipPayload.placa} plan=${sysipPayload.plan}`);
-  console.log('[sysip] payload completo:', JSON.stringify(sysipPayload));
+  console.log(`[lamundial][${ts}] -> createEmissionAuto placa=${sysipPayload.placa} plan=${sysipPayload.plan}`);
+  console.log('[lamundial] payload completo:', JSON.stringify(sysipPayload));
 
   let response;
   try {
     response = await axios.post(
-      `${sysipUrl}/api/v1/external/createEmissionAuto`,
+      `${laMundialUrl}/api/v1/external/createEmissionAuto`,
       sysipPayload,
       {
         headers: { 'Content-Type': 'application/json', apikey },
@@ -85,12 +85,12 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
       },
     );
   } catch (netErr) {
-    const err = new Error(`Red no disponible llamando sysip-nest-api: ${netErr.message}`);
+    const err = new Error(`Red no disponible llamando createEmissionAuto: ${netErr.message}`);
     err.code = 'LAMUNDIAL_NETWORK';
     throw err;
   }
 
-  console.log(`[sysip][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
+  console.log(`[lamundial][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
 
   if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
     const r = response.data.result || {};
@@ -110,7 +110,7 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
 
   // Error de negocio de sysip-nest-api
   const errMsg = response.data?.message || JSON.stringify(response.data).slice(0, 300);
-  const err = new Error(errMsg || 'Error al emitir en sysip-nest-api');
+  const err = new Error(errMsg || 'Error al emitir en La Mundial');
   err.code = response.status === 401 ? 'LAMUNDIAL_UNAUTHORIZED' : 'LAMUNDIAL_ERROR';
   err.httpStatus = response.status;
   err.raw = response.data;
