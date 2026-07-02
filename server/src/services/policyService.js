@@ -13,7 +13,7 @@
  *      (idempotencia manual: si la red falla justo despues de emitir,
  *      el log permite al operador escalar a La Mundial con la placa).
  */
-const { getCotizacionAuto } = require('./lamundialClient');
+const { getCotizacionAuto, _internal: { buildLaMundialError } } = require('./lamundialClient');
 const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 
@@ -90,13 +90,7 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
     };
   }
 
-  // Error de negocio de sysip-nest-api
-  const errMsg = response.data?.message || JSON.stringify(response.data).slice(0, 300);
-  const err = new Error(errMsg || 'Error al emitir en La Mundial');
-  err.code = response.status === 401 ? 'LAMUNDIAL_UNAUTHORIZED' : 'LAMUNDIAL_ERROR';
-  err.httpStatus = response.status;
-  err.raw = response.data;
-  throw err;
+  throw buildLaMundialError(response.status, response.data, { endpoint: 'createEmissionAuto' });
 }
 const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
