@@ -353,7 +353,7 @@ function toLaMundialEmissionPayload(p, cotizacion) {
   const body = {
     cnpoliza_rel: '',
     cnpoliza: '',
-    cramo: p.cramo,
+    cramo: parseInt(p.cramo, 10),
     cplan: p.plan,
     icedula_tomador: p.tipo_cedula_tomador,
     xrif_tomador: rifTom,
@@ -412,7 +412,9 @@ function toLaMundialEmissionPayload(p, cotizacion) {
   };
 
   if (p.ccanalalt != null) body.ccanalalt = p.ccanalalt;
+  else body.ccanalalt = parseInt(process.env.LAMUNDIAL_CCANALALT || '27', 10);
   if (p.cscanalalt != null) body.cscanalalt = p.cscanalalt;
+  else body.cscanalalt = parseInt(process.env.LAMUNDIAL_CSCANALALT || '1', 10);
   if (p.conductor) body.conductor = p.conductor;
 
   return body;

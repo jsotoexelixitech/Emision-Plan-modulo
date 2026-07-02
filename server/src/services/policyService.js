@@ -30,7 +30,7 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
     process.env.LAMUNDIAL_EMISSION_URL ||
     'https://qaapisys2000.lamundialdeseguros.com'
   ).replace(/\/$/, '');
-  const apikey = process.env.LAMUNDIAL_APIKEY || '';
+  const apikey = (process.env.LAMUNDIAL_APIKEY || '').trim();
   const emitUrl = `${laMundialUrl}/api/v1/external/createEmissionAuto`;
 
   if (!apikey) {
@@ -42,13 +42,13 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
   const laMundialPayload = toLaMundialEmissionPayload(payload, cotizacion);
 
   const ts = new Date().toISOString();
-  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
+  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} apikey=${apikey ? 'ok' : 'MISSING'} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
   console.log('[lamundial] payload:', JSON.stringify(laMundialPayload));
 
   let response;
   try {
     response = await axios.post(emitUrl, laMundialPayload, {
-      headers: { 'Content-Type': 'application/json', apikey },
+      headers: { 'Content-Type': 'application/json', apikey: apikey },
       timeout: 60_000,
       validateStatus: () => true,
     });
