@@ -331,9 +331,97 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   };
 }
 
+/**
+ * Transforma el payload interno (mapper) al formato que espera La Mundial
+ * POST /api/v1/external/createEmissionAuto (mismo esquema que usaba sysip-nest-api).
+ * @param {object} p Payload de buildEmissionRequest
+ * @param {{ mprima: number, mprimaext: number, ptasa: number }} cotizacion
+ * @returns {object}
+ */
+function toLaMundialEmissionPayload(p, cotizacion) {
+  const femision = p.femision || p.fecha_emision || todayYmd();
+  const fdesde = p.fdesde || femision;
+  const dHasta = new Date(`${femision}T00:00:00Z`);
+  dHasta.setUTCFullYear(dHasta.getUTCFullYear() + 1);
+  const fhasta = p.fhasta || dHasta.toISOString().slice(0, 10);
+
+  const rifTom = parseInt(String(p.rif_tomador).replace(/\D/g, ''), 10);
+  const rifTit = parseInt(String(p.rif_titular).replace(/\D/g, ''), 10);
+  const ecTom = p.iestado_civil_tomador || p.estado_civil_tomador || 'S';
+  const ecTit = p.iestado_civil_titular || p.estado_civil_titular || ecTom;
+
+  const body = {
+    cnpoliza_rel: '',
+    cnpoliza: '',
+    cramo: p.cramo,
+    cplan: p.plan,
+    icedula_tomador: p.tipo_cedula_tomador,
+    xrif_tomador: rifTom,
+    xnombre_tomador: p.nombre_tomador,
+    xapellido_tomador: p.apellido_tomador,
+    isexo_tomador: p.sexo_tomador,
+    iestado_civil_tomador: ecTom,
+    fnac_tomador: p.fnac_tomador,
+    cestado_tomador: p.estado_tomador,
+    cciudad_tomador: p.ciudad_tomador,
+    xdireccion_tomador: p.direccion_tomador,
+    xtelefono_tomador: p.telefono_tomador,
+    xcorreo_tomador: p.correo_tomador,
+    icedula_titular: p.tipo_cedula_titular,
+    xrif_titular: rifTit,
+    xnombre_titular: p.nombre_titular,
+    xapellido_titular: p.apellido_titular,
+    isexo_titular: p.sexo_titular,
+    iestado_civil_titular: ecTit,
+    fnac_titular: p.fnac_titular,
+    cestado_titular: p.estado_titular,
+    cciudad_titular: p.ciudad_titular,
+    xdireccion_titular: p.direccion_titular,
+    xtelefono_titular: p.telefono_titular || p.telefono_tomador,
+    xcorreo_titular: p.correo_titular || p.correo_tomador,
+    cmarca: p.marca,
+    xmarca: p.xmarca,
+    cmodelo: p.modelo,
+    xmodelo: p.xmodelo,
+    cversion: p.version,
+    xversion: p.xversion,
+    cano: p.fano,
+    xcolor: p.color,
+    xplaca: p.placa,
+    xsercar: p.serial_carroceria,
+    xsermot: p.serial_motor || null,
+    ccategoria_uso: p.ccategoria_uso,
+    npuestos: p.npuestos ?? 5,
+    ntoneladas: p.ntoneladas ?? 60,
+    iplaca: p.iplaca || 'N',
+    precargorcv: 0,
+    cpersona_politica: parseInt(p.dec_persona_politica || '0', 10),
+    cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
+    cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
+    ctipocanal: p.ctipocanal ?? 'E',
+    cusuario: parseInt(p.cusuario || process.env.LAMUNDIAL_CUSUARIO || 4, 10),
+    ptasamon: cotizacion.ptasa,
+    ptasamon_pago: cotizacion.ptasa,
+    cmoneda: 'USD',
+    msumaaseg: 0,
+    mprima: cotizacion.mprimaext,
+    ifrecuencia: p.frecuencia || 'A',
+    femision,
+    fdesde,
+    fhasta,
+  };
+
+  if (p.ccanalalt != null) body.ccanalalt = p.ccanalalt;
+  if (p.cscanalalt != null) body.cscanalalt = p.cscanalalt;
+  if (p.conductor) body.conductor = p.conductor;
+
+  return body;
+}
+
 module.exports = {
   buildQuoteRequest,
   buildEmissionRequest,
+  toLaMundialEmissionPayload,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,

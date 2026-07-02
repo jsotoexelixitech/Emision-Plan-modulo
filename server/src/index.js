@@ -67,5 +67,7 @@ app.use((err, _req, res, _next) => {
 app.listen(PORT, () => {
   console.log(`[modulo-emision] escuchando en http://localhost:${PORT}`);
   console.log(`[modulo-emision] LAMUNDIAL_BASE_URL=${process.env.LAMUNDIAL_BASE_URL || '(no set)'}`);
+  console.log(`[modulo-emision] LAMUNDIAL_EMISSION_URL=${process.env.LAMUNDIAL_EMISSION_URL || 'https://qaapisys2000.lamundialdeseguros.com (default)'}`);
+  console.log(`[modulo-emision] LAMUNDIAL_APIKEY=${process.env.LAMUNDIAL_APIKEY ? 'configurada' : 'NO CONFIGURADA'}`);
   console.log(`[modulo-emision] Swagger UI → http://localhost:${PORT}/docs`);
 });

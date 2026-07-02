@@ -26,75 +26,39 @@ const { getCotizacionFromSis2000 } = require('./quoteSis2000');
  * @param {object} cotizacion - { mprima, mprimaext, ptasa }
  */
 async function createEmissionAutoViaSysip(payload, cotizacion) {
-  // Base dedicada para emisión — no usar LAMUNDIAL_BASE_URL (puede apuntar a otro upstream)
   const laMundialUrl = (
     process.env.LAMUNDIAL_EMISSION_URL ||
     'https://qaapisys2000.lamundialdeseguros.com'
   ).replace(/\/$/, '');
   const apikey = process.env.LAMUNDIAL_APIKEY || '';
+  const emitUrl = `${laMundialUrl}/api/v1/external/createEmissionAuto`;
 
-  // Calcular fechas de vigencia (emisión + 1 año)
-  const femision = payload.fecha_emision || new Date().toISOString().slice(0, 10);
-  const fdesde   = femision;
-  const dHasta   = new Date(femision + 'T00:00:00Z');
-  dHasta.setUTCFullYear(dHasta.getUTCFullYear() + 1);
-  dHasta.setUTCDate(dHasta.getUTCDate() - 1);
-  const fhasta   = dHasta.toISOString().slice(0, 10);
+  if (!apikey) {
+    const err = new Error('LAMUNDIAL_APIKEY no configurada en .env de emision-api');
+    err.code = 'LAMUNDIAL_APIKEY_MISSING';
+    throw err;
+  }
 
-  // El DTO de sysip-nest-api valida los mismos nombres que buildEmissionRequest produce.
-  // Solo hay que: convertir rif a número, añadir alias x* que el service lee directamente,
-  // y añadir las fechas femision/fdesde/fhasta que el service escribe en la BD.
-  const sysipPayload = {
-    // Pasa TODO el payload original (DTO acepta los mismos nombres)
-    ...payload,
-    // rif como número (@IsNumber en DTO); cusuario como string (@IsString en DTO)
-    rif_tomador: parseInt(String(payload.rif_tomador).replace(/\D/g, ''), 10),
-    rif_titular: parseInt(String(payload.rif_titular).replace(/\D/g, ''), 10),
-    cusuario: payload.cusuario != null ? String(payload.cusuario) : undefined,
-    // Alias que el service lee directamente (sin fallback a nombres sin prefijo)
-    femision,               // service: b.femision
-    fdesde,                 // service: b.fdesde
-    fhasta,                 // service: b.fhasta
-    // Campos requeridos por QA La Mundial para createEmissionAuto
-    iplaca: payload.iplaca || 'N',
-    estado_civil_tomador: payload.estado_civil_tomador || 'S',
-    iestado_civil_tomador: payload.iestado_civil_tomador || payload.estado_civil_tomador || 'S',
-    estado_civil_titular: payload.estado_civil_titular || payload.estado_civil_tomador || 'S',
-    iestado_civil_titular: payload.iestado_civil_titular || payload.estado_civil_titular || 'S',
-    xnombre_tomador:    payload.nombre_tomador,
-    xapellido_tomador:  payload.apellido_tomador,
-    isexo_tomador:      payload.sexo_tomador,
-    xnombre_titular:    payload.nombre_titular,
-    xapellido_titular:  payload.apellido_titular,
-    isexo_titular:      payload.sexo_titular,
-    // Campos financieros (la BD los necesita pero no están en el DTO)
-    mprima:     cotizacion.mprima,
-    mprima_ext: cotizacion.mprimaext,
-    ptasa:      cotizacion.ptasa,
-  };
+  const laMundialPayload = toLaMundialEmissionPayload(payload, cotizacion);
 
   const ts = new Date().toISOString();
-  console.log(`[lamundial][${ts}] -> createEmissionAuto placa=${sysipPayload.placa} plan=${sysipPayload.plan}`);
-  console.log('[lamundial] payload completo:', JSON.stringify(sysipPayload));
+  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
+  console.log('[lamundial] payload:', JSON.stringify(laMundialPayload));
 
   let response;
   try {
-    response = await axios.post(
-      `${laMundialUrl}/api/v1/external/createEmissionAuto`,
-      sysipPayload,
-      {
-        headers: { 'Content-Type': 'application/json', apikey },
-        timeout: 60_000,
-        validateStatus: () => true,
-      },
-    );
+    response = await axios.post(emitUrl, laMundialPayload, {
+      headers: { 'Content-Type': 'application/json', apikey },
+      timeout: 60_000,
+      validateStatus: () => true,
+    });
   } catch (netErr) {
     const err = new Error(`Red no disponible llamando createEmissionAuto: ${netErr.message}`);
     err.code = 'LAMUNDIAL_NETWORK';
     throw err;
   }
 
-  console.log(`[lamundial][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
+  console.log(`[lamundial][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`, JSON.stringify(response.data));
 
   if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
     const r = response.data.result || {};
@@ -120,7 +84,7 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
   err.raw = response.data;
   throw err;
 }
-const { buildQuoteRequest, buildEmissionRequest } = require('./policyMapper');
+const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
 
