@@ -26,8 +26,12 @@ const { getCotizacionFromSis2000 } = require('./quoteSis2000');
  * @param {object} cotizacion - { mprima, mprimaext, ptasa }
  */
 async function createEmissionAutoViaSysip(payload, cotizacion) {
-  const laMundialUrl = (process.env.LAMUNDIAL_BASE_URL || 'https://qaapisys2000.lamundialdeseguros.com').replace(/\/$/, '');
-  const apikey       = process.env.LAMUNDIAL_APIKEY || '';
+  // Base dedicada para emisión — no usar LAMUNDIAL_BASE_URL (puede apuntar a otro upstream)
+  const laMundialUrl = (
+    process.env.LAMUNDIAL_EMISSION_URL ||
+    'https://qaapisys2000.lamundialdeseguros.com'
+  ).replace(/\/$/, '');
+  const apikey = process.env.LAMUNDIAL_APIKEY || '';
 
   // Calcular fechas de vigencia (emisión + 1 año)
   const femision = payload.fecha_emision || new Date().toISOString().slice(0, 10);
