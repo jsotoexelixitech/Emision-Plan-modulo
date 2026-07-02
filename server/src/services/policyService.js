@@ -30,25 +30,39 @@ async function createEmissionAutoViaSysip(payload, cotizacion) {
     process.env.LAMUNDIAL_EMISSION_URL ||
     'https://qaapisys2000.lamundialdeseguros.com'
   ).replace(/\/$/, '');
-  const apikey = (process.env.LAMUNDIAL_APIKEY || '').trim();
+  const apikey = (
+    process.env.LAMUNDIAL_EMISSION_APIKEY ||
+    process.env.LAMUNDIAL_APIKEY ||
+    ''
+  ).trim();
+  const basicAuth = (process.env.LAMUNDIAL_BASIC_AUTH || '').trim();
   const emitUrl = `${laMundialUrl}/api/v1/external/createEmissionAuto`;
 
   if (!apikey) {
-    const err = new Error('LAMUNDIAL_APIKEY no configurada en .env de emision-api');
+    const err = new Error('LAMUNDIAL_EMISSION_APIKEY (o LAMUNDIAL_APIKEY) no configurada en .env');
     err.code = 'LAMUNDIAL_APIKEY_MISSING';
+    throw err;
+  }
+  if (!basicAuth) {
+    const err = new Error('LAMUNDIAL_BASIC_AUTH no configurada en .env (requerida por La Mundial QA)');
+    err.code = 'LAMUNDIAL_BASIC_AUTH_MISSING';
     throw err;
   }
 
   const laMundialPayload = toLaMundialEmissionPayload(payload, cotizacion);
 
   const ts = new Date().toISOString();
-  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} apikey=${apikey ? 'ok' : 'MISSING'} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
+  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} apikey=${apikey ? 'ok' : 'MISSING'} basicAuth=${basicAuth ? 'ok' : 'MISSING'} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
   console.log('[lamundial] payload:', JSON.stringify(laMundialPayload));
 
   let response;
   try {
     response = await axios.post(emitUrl, laMundialPayload, {
-      headers: { 'Content-Type': 'application/json', apikey: apikey },
+      headers: {
+        'Content-Type': 'application/json',
+        apikey,
+        Authorization: basicAuth,
+      },
       timeout: 60_000,
       validateStatus: () => true,
     });
