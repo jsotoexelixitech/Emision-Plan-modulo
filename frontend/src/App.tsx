@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useWizardStore } from './store/wizardStore';
-import { SidebarNav } from './components/SidebarNav';
+import { TopStepper } from './components/TopStepper';
 import { TopProgressBar } from './components/TopProgressBar';
 import { AuroraBackground } from './components/AuroraBackground';
 import { Toaster } from './components/Toaster';
@@ -83,12 +83,13 @@ export default function App() {
       <WelcomeSplash />
       <Toaster />
       <AuroraBackground />
-      <TopProgressBar />
+      <TopStepper />
+      <div className="lg:hidden">
+        <TopProgressBar />
+      </div>
 
-      <div className="lg:flex">
-        <SidebarNav />
-
-        <main className="flex-1 lg:ml-[300px] min-h-screen pt-[72px] lg:pt-20 px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
+      <div>
+        <main className="flex-1 min-h-screen pt-[72px] lg:pt-[120px] px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
           <div className="max-w-5xl mx-auto">
 
             <header className="mb-8 animate-fade-in">
