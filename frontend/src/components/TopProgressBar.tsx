@@ -1,6 +1,7 @@
 import { useWizardStore } from '../store/wizardStore';
 
 import { getProductConfig } from '../lib/product';
+import { publicAsset } from '../lib/app-base';
 
 const TOTAL_STEPS = 5;
 
@@ -29,7 +30,7 @@ export function TopProgressBar() {
           <div className="flex items-center gap-2 min-w-0">
             <div className="relative w-7 h-7 rounded-lg bg-white grid place-items-center shadow-[0_4px_12px_rgba(15,26,90,0.32)] ring-1 ring-slate-200 flex-shrink-0 overflow-hidden">
               <img
-                src="/logo-isotipo-transparente.png"
+                src={publicAsset('logo-isotipo-transparente.png')}
                 alt="La Mundial"
                 className="w-5 h-5 object-contain"
                 draggable={false}

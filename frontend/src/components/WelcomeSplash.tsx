@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
+import { publicAsset } from '../lib/app-base';
 
 const VISIBLE_MS = 2400;
 const FADE_MS = 700;
@@ -116,7 +117,7 @@ export function WelcomeSplash() {
 
           {/* Isotipo (M-symbol) */}
           <img
-            src="/logo-isotipo-transparente.png"
+            src={publicAsset('logo-isotipo-transparente.png')}
             alt="La Mundial de Seguros"
             draggable={false}
             className="relative w-[110px] sm:w-[140px] h-auto select-none"
