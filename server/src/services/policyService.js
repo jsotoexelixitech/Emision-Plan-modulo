@@ -144,20 +144,38 @@ async function quote(state, overrides = {}) {
   }
 
   const { payload, metadata } = buildQuoteRequest(enrichedState, overrides);
-  const quoteSource = (process.env.QUOTE_SOURCE || 'sis2000').toLowerCase();
+  if (!payload?.cplan) {
+    throw new PolicyError(
+      'MISSING_PLAN',
+      'Se requiere cplan para cotizar (plan seleccionado o LAMUNDIAL_PLAN_DEFAULT en .env).',
+      400,
+      { stage: 'quote' },
+    );
+  }
+  if (!payload.cmarca || !payload.cmodelo || !payload.cversion) {
+    throw new PolicyError(
+      'MISSING_VEHICLE_CODES',
+      'Faltan códigos de vehículo (marca/modelo/versión) para cotizar.',
+      400,
+      { stage: 'quote' },
+    );
+  }
+
+  const quoteSource = (process.env.QUOTE_SOURCE || 'lamundial_api').toLowerCase();
   console.log(`[Policy][quote] source=${quoteSource} payload:`, JSON.stringify(payload));
 
   try {
     let result;
-    if (quoteSource === 'lamundial_api') {
-      result = await getCotizacionAuto(payload);
-    } else {
+    if (quoteSource === 'sis2000') {
       result = await getCotizacionFromSis2000({
         ...payload,
-        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10) || 18,
+        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
         iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
       });
       metadata.quoteSource = 'sis2000';
+    } else {
+      result = await getCotizacionAuto(payload);
+      metadata.quoteSource = 'lamundial_api';
     }
     return {
       mprima: result.mprima,

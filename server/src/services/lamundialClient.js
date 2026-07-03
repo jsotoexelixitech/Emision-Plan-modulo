@@ -1,78 +1,132 @@
 /**
  * Cliente HTTP de La Mundial de Seguros (API externa RCV).
  *
- * Endpoints (todos POST, header `apikey`, JSON):
+ * Endpoints (POST, header `apikey`, JSON):
  *   - getCotizacionAuto   -> { mprima, mprimaext, ptasa }
  *   - createEmissionAuto  -> { cnpoliza, cnrecibo, urlpoliza, ncuota }
  *
- * Reglas duras:
- *   1. SIEMPRE usar el prefijo /CorreccionCalculo/api/v1/external (la ruta vieja
- *      sin "CorreccionCalculo" tiene SP desactualizado y no emite RCVBAS).
- *   2. El header se llama LITERALMENTE "apikey" (minusculas, sin Bearer).
- *   3. La Mundial responde 200 con `status: false` cuando hay error de negocio.
- *      NO confiar solo en el status HTTP.
- *   4. Mensajes de error vienen anidados en `result.result.error` (anidacion
- *      rara pero estable).
+ * URLs y credenciales: variables LAMUNDIAL_QUOTE_* / LAMUNDIAL_EMISSION_* en .env.
+ * La Mundial responde 200 con `status: false` cuando hay error de negocio.
  */
 const axios = require('axios');
 
-const DEFAULT_BASE = 'https://qaapisys2000.lamundialdeseguros.com';
-const PATH_PREFIX = process.env.LAMUNDIAL_PATH_PREFIX || '/CorreccionCalculo/api/v1/external';
-const EMISSION_PATH_PREFIX = process.env.LAMUNDIAL_EMISSION_PATH_PREFIX || '/api/v1/external';
-const INMA_PREFIX  = process.env.LAMUNDIAL_INMA_PREFIX || '/CorreccionCalculo/api/v1/inma';
 const DEFAULT_TIMEOUT = 30_000;
+const INMA_PREFIX = process.env.LAMUNDIAL_INMA_PREFIX || '/CorreccionCalculo/api/v1/inma';
+const LEGACY_PATH_PREFIX = process.env.LAMUNDIAL_PATH_PREFIX || '/CorreccionCalculo/api/v1/external';
 
-let _client = null;
-let _clientCfg = null;
 let _inmaClient = null;
 let _inmaClientCfg = null;
+let _legacyClient = null;
+let _legacyClientCfg = null;
 
-function getConfig() {
+/**
+ * Configuración de cotización HTTP (getCotizacionAuto).
+ * @returns {{ baseUrl: string, pathPrefix: string, apikey: string, basicAuth: string, timeout: number }}
+ */
+function getQuoteConfig() {
+  const baseUrl = (
+    process.env.LAMUNDIAL_QUOTE_URL ||
+    process.env.LAMUNDIAL_EMISSION_URL ||
+    process.env.LAMUNDIAL_BASE_URL ||
+    ''
+  ).replace(/\/$/, '');
   return {
-    baseUrl: process.env.LAMUNDIAL_BASE_URL || DEFAULT_BASE,
-    apiKey: process.env.LAMUNDIAL_APIKEY || '',
+    baseUrl,
+    pathPrefix: (
+      process.env.LAMUNDIAL_QUOTE_PATH_PREFIX ||
+      process.env.LAMUNDIAL_EMISSION_PATH_PREFIX ||
+      '/api/v1/external'
+    ).replace(/\/$/, ''),
+    apikey: (
+      process.env.LAMUNDIAL_QUOTE_APIKEY ||
+      process.env.LAMUNDIAL_EMISSION_APIKEY ||
+      process.env.LAMUNDIAL_APIKEY ||
+      ''
+    ).trim(),
+    basicAuth: (process.env.LAMUNDIAL_BASIC_AUTH || '').trim(),
+    timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || DEFAULT_TIMEOUT,
+  };
+}
+
+/**
+ * Configuración de emisión HTTP (createEmissionAuto).
+ */
+function getEmissionConfig() {
+  const baseUrl = (process.env.LAMUNDIAL_EMISSION_URL || process.env.LAMUNDIAL_BASE_URL || '').replace(/\/$/, '');
+  return {
+    baseUrl,
+    pathPrefix: (process.env.LAMUNDIAL_EMISSION_PATH_PREFIX || '/api/v1/external').replace(/\/$/, ''),
+    apikey: (
+      process.env.LAMUNDIAL_EMISSION_APIKEY ||
+      process.env.LAMUNDIAL_APIKEY ||
+      ''
+    ).trim(),
+    basicAuth: (process.env.LAMUNDIAL_BASIC_AUTH || '').trim(),
+    timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || DEFAULT_TIMEOUT,
+  };
+}
+
+/** Cliente legacy (INMA / rutas CorreccionCalculo). */
+function getLegacyConfig() {
+  return {
+    baseUrl: (process.env.LAMUNDIAL_BASE_URL || '').replace(/\/$/, ''),
+    apiKey: (process.env.LAMUNDIAL_APIKEY || '').trim(),
     timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || DEFAULT_TIMEOUT,
   };
 }
 
 function getClient() {
-  const cfg = getConfig();
-  // Reusa el cliente solo si la configuracion no cambio (util en tests).
-  if (_client && _clientCfg &&
-      _clientCfg.baseUrl === cfg.baseUrl &&
-      _clientCfg.apiKey === cfg.apiKey &&
-      _clientCfg.timeout === cfg.timeout) {
-    return _client;
+  const cfg = getLegacyConfig();
+  if (_legacyClient && _legacyClientCfg &&
+      _legacyClientCfg.baseUrl === cfg.baseUrl &&
+      _legacyClientCfg.apiKey === cfg.apiKey &&
+      _legacyClientCfg.timeout === cfg.timeout) {
+    return _legacyClient;
   }
   if (!cfg.apiKey) {
     const err = new Error('LAMUNDIAL_APIKEY no configurada en .env');
     err.code = 'LAMUNDIAL_APIKEY_MISSING';
     throw err;
   }
-  _client = axios.create({
-    baseURL: `${cfg.baseUrl.replace(/\/$/, '')}${PATH_PREFIX}`,
+  if (!cfg.baseUrl) {
+    const err = new Error('LAMUNDIAL_BASE_URL no configurada en .env');
+    err.code = 'LAMUNDIAL_BASE_URL_MISSING';
+    throw err;
+  }
+  _legacyClient = axios.create({
+    baseURL: `${cfg.baseUrl}${LEGACY_PATH_PREFIX}`,
     timeout: cfg.timeout,
     headers: {
       'Content-Type': 'application/json',
       apikey: cfg.apiKey,
     },
-    // Aceptar todo y decidir nosotros que es error.
     validateStatus: () => true,
   });
-  _clientCfg = cfg;
-  return _client;
+  _legacyClientCfg = cfg;
+  return _legacyClient;
 }
 
 function getEmissionClient() {
-  const cfg = getConfig();
-  const emissionBaseUrl = process.env.LAMUNDIAL_EMISSION_URL || cfg.baseUrl || DEFAULT_BASE;
+  const cfg = getEmissionConfig();
+  if (!cfg.baseUrl) {
+    const err = new Error('LAMUNDIAL_EMISSION_URL no configurada en .env');
+    err.code = 'LAMUNDIAL_EMISSION_URL_MISSING';
+    throw err;
+  }
+  if (!cfg.apikey) {
+    const err = new Error('LAMUNDIAL_EMISSION_APIKEY no configurada en .env');
+    err.code = 'LAMUNDIAL_APIKEY_MISSING';
+    throw err;
+  }
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: cfg.apikey,
+  };
+  if (cfg.basicAuth) headers.Authorization = cfg.basicAuth;
   return axios.create({
-    baseURL: `${emissionBaseUrl.replace(/\/$/, '')}${EMISSION_PATH_PREFIX}`,
+    baseURL: `${cfg.baseUrl}${cfg.pathPrefix}`,
     timeout: cfg.timeout,
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: cfg.apiKey,
-    },
+    headers,
     validateStatus: () => true,
   });
 }
@@ -168,29 +222,69 @@ function logResponse(endpoint, httpStatus, durationMs, data) {
 }
 
 /**
- * Cotiza un vehiculo. Devuelve { mprima, mprimaext, ptasa }.
+ * Payload exacto que espera La Mundial en getCotizacionAuto.
+ * @param {object} input
+ */
+function toQuoteApiBody(input) {
+  return {
+    fano: Number(input.fano),
+    cmarca: String(input.cmarca ?? '').trim(),
+    cmodelo: String(input.cmodelo ?? '').trim(),
+    cversion: String(input.cversion ?? '').trim(),
+    cplan: String(input.cplan ?? '').trim(),
+    ccategoria_uso: Number(input.ccategoria_uso),
+  };
+}
+
+/**
+ * Cotiza un vehiculo vía POST .../api/v1/external/getCotizacionAuto.
+ * Devuelve { mprima, mprimaext, ptasa }.
  *
  * @param {{ cmarca:string, cmodelo:string, cversion:string, fano:number,
- *   cplan:'RCVBAS'|'RUSPAT', ccategoria_uso:number, ntoneladas:number }} input
+ *   cplan:string, ccategoria_uso:number }} input
  */
 async function getCotizacionAuto(input) {
-  const client = getClient();
+  const cfg = getQuoteConfig();
+  if (!cfg.baseUrl) {
+    const err = new Error('LAMUNDIAL_QUOTE_URL o LAMUNDIAL_EMISSION_URL no configurada en .env');
+    err.code = 'LAMUNDIAL_QUOTE_URL_MISSING';
+    throw err;
+  }
+  if (!cfg.apikey) {
+    const err = new Error('LAMUNDIAL_QUOTE_APIKEY (o LAMUNDIAL_EMISSION_APIKEY) no configurada en .env');
+    err.code = 'LAMUNDIAL_APIKEY_MISSING';
+    throw err;
+  }
+
   const endpoint = '/getCotizacionAuto';
+  const body = toQuoteApiBody(input);
+  const url = `${cfg.baseUrl}${cfg.pathPrefix}${endpoint}`;
   const summary = {
-    plan: input.cplan,
-    marca: input.cmarca,
-    modelo: input.cmodelo,
-    version: input.cversion,
-    ano: input.fano,
+    plan: body.cplan,
+    marca: body.cmarca,
+    modelo: body.cmodelo,
+    version: body.cversion,
+    ano: body.fano,
+    uso: body.ccategoria_uso,
   };
-  logRequest(endpoint, summary);
+  logRequest(url, summary);
+
+  const headers = {
+    'Content-Type': 'application/json',
+    apikey: cfg.apikey,
+  };
+  if (cfg.basicAuth) headers.Authorization = cfg.basicAuth;
 
   const t0 = Date.now();
   let response;
   try {
-    response = await client.post(endpoint, input);
+    response = await axios.post(url, body, {
+      headers,
+      timeout: cfg.timeout,
+      validateStatus: () => true,
+    });
   } catch (netErr) {
-    const err = new Error(`Red no disponible llamando ${endpoint}: ${netErr.message}`);
+    const err = new Error(`Red no disponible llamando getCotizacionAuto: ${netErr.message}`);
     err.code = 'LAMUNDIAL_NETWORK';
     err.endpoint = endpoint;
     err.cause = netErr;
@@ -240,8 +334,8 @@ async function createEmissionAuto(payload) {
   ];
   keysToRemove.forEach(k => delete cleanPayload[k]);
 
-  const emisionUrl = process.env.LAMUNDIAL_EMISSION_URL || getConfig().baseUrl || DEFAULT_BASE;
-  console.log(`[createEmissionAuto] → enviando a ${emisionUrl}${EMISSION_PATH_PREFIX}${endpoint}`);
+  const emCfg = getEmissionConfig();
+  console.log(`[createEmissionAuto] → enviando a ${emCfg.baseUrl}${emCfg.pathPrefix}${endpoint}`);
   console.log(`[createEmissionAuto] → payload limpio:`, JSON.stringify(cleanPayload, null, 2));
 
   try {
@@ -274,7 +368,7 @@ async function createEmissionAuto(payload) {
 // ── Catálogo INMA ─────────────────────────────────────────────────────────────
 
 function getInmaClient() {
-  const cfg = getConfig();
+  const cfg = getLegacyConfig();
   if (_inmaClient && _inmaClientCfg &&
       _inmaClientCfg.baseUrl === cfg.baseUrl &&
       _inmaClientCfg.apiKey === cfg.apiKey) {
@@ -285,8 +379,13 @@ function getInmaClient() {
     err.code = 'LAMUNDIAL_APIKEY_MISSING';
     throw err;
   }
+  if (!cfg.baseUrl) {
+    const err = new Error('LAMUNDIAL_BASE_URL no configurada en .env');
+    err.code = 'LAMUNDIAL_BASE_URL_MISSING';
+    throw err;
+  }
   _inmaClient = axios.create({
-    baseURL: `${cfg.baseUrl.replace(/\/$/, '')}${INMA_PREFIX}`,
+    baseURL: `${cfg.baseUrl}${INMA_PREFIX}`,
     timeout: cfg.timeout,
     headers: { 'Content-Type': 'application/json', apikey: cfg.apiKey },
     validateStatus: () => true,
@@ -377,5 +476,5 @@ module.exports = {
   getInmaVersiones,
   getCategoriasUso,
   // Helpers expuestos para tests / debug:
-  _internal: { getClient, getConfig, extractErrorMessage, buildLaMundialError, PATH_PREFIX, INMA_PREFIX },
+  _internal: { getClient, getLegacyConfig, getQuoteConfig, getEmissionConfig, extractErrorMessage, buildLaMundialError, LEGACY_PATH_PREFIX, INMA_PREFIX },
 };

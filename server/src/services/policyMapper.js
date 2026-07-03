@@ -141,24 +141,28 @@ function resolveCodesFromVehicle(v) {
 function buildQuoteRequest(state, overrides = {}) {
   const v = state.vehicle || {};
   const codes = resolveCodesFromVehicle(v);
-  const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
-  // Prioridad: código real del selector dinámico (getCategoriasUso) → fallback al mapa estático por texto
+  const ano = parseInt(String(v.año || v.ano || ''), 10);
+  if (!ano || Number.isNaN(ano)) {
+    return { payload: null, metadata: { error: 'MISSING_YEAR' } };
+  }
   const ccategoria_uso = (v.ccategoria_uso != null && v.ccategoria_uso !== '')
     ? parseInt(v.ccategoria_uso, 10)
     : resolveUsageCategory(v.uso);
-  const cplan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
+  const cplan = (
+    overrides.plan ||
+    state.selectedPlan?.cplan ||
+    process.env.LAMUNDIAL_PLAN_DEFAULT ||
+    ''
+  ).trim();
 
   return {
     payload: {
+      fano: ano,
       cmarca: codes.cmarca,
       cmodelo: codes.cmodelo,
       cversion: codes.cversion,
-      fano: ano,
       cplan,
       ccategoria_uso,
-      ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
-        ? parseInt(v.ntoneladas, 10)
-        : 60,
     },
     metadata: {
       vehicleLabel: codes.label,
