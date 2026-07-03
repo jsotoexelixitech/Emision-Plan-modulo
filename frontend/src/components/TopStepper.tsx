@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useState } from 'react';
 import {
   Check, ChevronLeft, ChevronRight, FileText, UserCog, ShieldCheck, CreditCard, Car, Users,
 } from 'lucide-react';
@@ -7,12 +7,12 @@ import { getProductConfig } from '../lib/product';
 
 /**
  * Stepper horizontal en barra blanca (estilo píldora).
- * Sustituye la barra azul fija: pasos completados en verde, activo resaltado, futuros en gris.
+ * Flechas ◀ ▶ navegan entre pasos del flujo guardando estado vía bridge.
  */
 export function TopStepper() {
   const step = useWizardStore((s) => s.step);
   const product = getProductConfig();
-  const scrollRef = useRef<HTMLElement>(null);
+  const [navigating, setNavigating] = useState(false);
 
   const STEPS = [
     { n: 1, label: 'Documentos', Icon: FileText },
@@ -24,28 +24,39 @@ export function TopStepper() {
     { n: 5, label: 'Pago', Icon: CreditCard },
   ];
 
-  /** Desplaza horizontalmente la píldora de pasos. */
-  function scrollSteps(direction: 'left' | 'right') {
-    const el = scrollRef.current;
-    if (!el) return;
-    const amount = direction === 'left' ? -220 : 220;
-    el.scrollBy({ left: amount, behavior: 'smooth' });
+  async function goToStep(target: number) {
+    if (navigating || target === step || target < 1 || target > 5) return;
+    setNavigating(true);
+    try {
+      await window.__bridge?.ready;
+      const fn = window.__bridgeNavigateStep ?? window.__bridge?.navigateToStep;
+      if (fn) {
+        await fn(target);
+      } else {
+        useWizardStore.getState().goTo(target);
+      }
+    } finally {
+      setNavigating(false);
+    }
   }
+
+  const canPrev = step > 1 && !navigating;
+  const canNext = step < 5 && !navigating;
 
   return (
     <div className="hidden lg:block w-full mb-8 animate-fade-in">
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-          onClick={() => scrollSteps('left')}
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors"
-          aria-label="Ver pasos anteriores"
+          onClick={() => goToStep(step - 1)}
+          disabled={!canPrev}
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-700"
+          aria-label="Paso anterior"
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
 
         <nav
-          ref={scrollRef}
           className="flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-white rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.09)] border border-slate-200/70 px-5 py-3.5"
           aria-label="Progreso de suscripción"
         >
@@ -53,47 +64,57 @@ export function TopStepper() {
             {STEPS.map(({ n, label, Icon }) => {
               const isComplete = n < step;
               const isActive = n === step;
+              const isClickable = n !== step && n <= step && !navigating;
 
               return (
                 <li key={n} className="flex items-center gap-2.5 flex-shrink-0">
-                  <div
-                    className={`
-                      w-10 h-10 rounded-full grid place-items-center flex-shrink-0 transition-colors duration-200
-                      ${isComplete
-                        ? 'bg-emerald-500 shadow-[0_4px_12px_rgba(16,185,129,0.35)]'
-                        : isActive
-                        ? 'bg-sky-50 ring-2 ring-sky-200/80'
-                        : 'bg-slate-100'
-                      }
-                    `}
+                  <button
+                    type="button"
+                    disabled={!isClickable}
+                    onClick={() => isClickable && goToStep(n)}
+                    className={`flex items-center gap-2.5 text-left rounded-lg transition-opacity ${
+                      isClickable ? 'cursor-pointer hover:opacity-80' : 'cursor-default'
+                    }`}
                   >
-                    {isComplete ? (
-                      <Check size={18} className="text-white" strokeWidth={3} />
-                    ) : (
-                      <Icon
-                        size={18}
-                        className={isActive ? 'text-slate-600' : 'text-slate-400'}
-                        strokeWidth={2}
-                      />
-                    )}
-                  </div>
+                    <div
+                      className={`
+                        w-10 h-10 rounded-full grid place-items-center flex-shrink-0 transition-colors duration-200
+                        ${isComplete
+                          ? 'bg-emerald-500 shadow-[0_4px_12px_rgba(16,185,129,0.35)]'
+                          : isActive
+                          ? 'bg-sky-50 ring-2 ring-sky-200/80'
+                          : 'bg-slate-100'
+                        }
+                      `}
+                    >
+                      {isComplete ? (
+                        <Check size={18} className="text-white" strokeWidth={3} />
+                      ) : (
+                        <Icon
+                          size={18}
+                          className={isActive ? 'text-slate-600' : 'text-slate-400'}
+                          strokeWidth={2}
+                        />
+                      )}
+                    </div>
 
-                  <div className="min-w-0">
-                    <p
-                      className={`text-[0.62rem] font-bold tracking-[0.12em] uppercase leading-none ${
-                        isComplete ? 'text-emerald-500' : isActive ? 'text-sky-600' : 'text-slate-400'
-                      }`}
-                    >
-                      PASO 0{n}
-                    </p>
-                    <p
-                      className={`mt-1 text-[0.88rem] font-bold leading-tight truncate max-w-[9.5rem] ${
-                        isComplete || isActive ? 'text-[#0f1a5a]' : 'text-slate-400'
-                      }`}
-                    >
-                      {label}
-                    </p>
-                  </div>
+                    <div className="min-w-0">
+                      <p
+                        className={`text-[0.62rem] font-bold tracking-[0.12em] uppercase leading-none ${
+                          isComplete ? 'text-emerald-500' : isActive ? 'text-sky-600' : 'text-slate-400'
+                        }`}
+                      >
+                        PASO 0{n}
+                      </p>
+                      <p
+                        className={`mt-1 text-[0.88rem] font-bold leading-tight truncate max-w-[9.5rem] ${
+                          isComplete || isActive ? 'text-[#0f1a5a]' : 'text-slate-400'
+                        }`}
+                      >
+                        {label}
+                      </p>
+                    </div>
+                  </button>
                 </li>
               );
             })}
@@ -102,9 +123,10 @@ export function TopStepper() {
 
         <button
           type="button"
-          onClick={() => scrollSteps('right')}
-          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors"
-          aria-label="Ver pasos siguientes"
+          onClick={() => goToStep(step + 1)}
+          disabled={!canNext}
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-700"
+          aria-label="Paso siguiente"
         >
           <ChevronRight size={18} strokeWidth={2.5} />
         </button>

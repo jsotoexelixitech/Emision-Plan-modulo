@@ -13,11 +13,8 @@ import { toast } from './store/toastStore';
 import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 
 export default function App() {
-  const { category, selectedPlan, quoteState, quote, goTo, setMetadataCanal } = useWizardStore();
+  const { category, selectedPlan, quoteState, quote, setMetadataCanal } = useWizardStore();
   const product = getProductConfig();
-
-  // Inicializa el store en el paso 4 para que el sidebar lo resalte correctamente
-  useEffect(() => { goTo(4); }, [goTo]);
 
   // Interceptar SSO Delegation
   useEffect(() => {

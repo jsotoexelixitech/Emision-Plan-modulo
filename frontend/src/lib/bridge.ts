@@ -19,6 +19,7 @@
 
 import { useWizardStore } from '../store/wizardStore';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
+import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
 const PORT_TO_ORDER: Record<string, number> = {
@@ -171,15 +172,17 @@ interface BridgeAPI {
   active: boolean;
   sid:    string | null;
   order:  number | null;
+  ready:  Promise<void>;
   hydrate: () => Promise<void>;
   save:    (extra?: Record<string, unknown>) => Promise<void>;
   advance: (extra?: Record<string, unknown>) => Promise<{ finished: boolean; nextUrl?: string }>;
+  navigateToStep: (targetStep: number) => Promise<boolean>;
 }
 
 declare global {
   interface Window {
-    __bridge?: BridgeAPI;
     __bridgeAdvance?: (extra?: Record<string, unknown>) => Promise<void>;
+    __bridgeNavigateStep?: (targetStep: number) => Promise<boolean>;
   }
 }
 
@@ -292,7 +295,47 @@ function makeBridge(): BridgeAPI {
     }
   };
 
-  return { active, sid, order, hydrate, save, advance };
+  const navigateToStep = async (targetStep: number): Promise<boolean> => {
+    const goTo = useWizardStore.getState().goTo;
+    const currentStep = useWizardStore.getState().step;
+    if (targetStep < 1 || targetStep > 5 || targetStep === currentStep) return false;
+
+    const currentModule = stepToModuleOrder(currentStep);
+    const targetModule = stepToModuleOrder(targetStep);
+
+    if (active && sid) await save();
+
+    if (currentModule === targetModule) {
+      goTo(targetStep);
+      return true;
+    }
+
+    if (!active || !sid) {
+      console.warn('[bridge] navigateToStep: se requiere sesión encadenada (?sid=)');
+      return false;
+    }
+
+    try {
+      const r = await fetchJson<{
+        success: boolean;
+        data: { url: string };
+      }>(`${BRIDGE_HOST}/api/flow/navigate/${sid}?to=${targetModule}`, {
+        method: 'POST',
+        body: JSON.stringify(collectState()),
+      });
+      if (r?.data?.url) {
+        const url = new URL(r.data.url);
+        url.searchParams.set('wizardStep', String(targetStep));
+        window.location.href = url.toString();
+        return true;
+      }
+    } catch (e) {
+      console.warn('[bridge] navigateToStep failed', e);
+    }
+    return false;
+  };
+
+  return { active, sid, order, ready: Promise.resolve(), hydrate, save, advance, navigateToStep };
 }
 
 // ── Auto-init ───────────────────────────────────────────────────────────────
@@ -313,11 +356,18 @@ async function init() {
   }
 
   if (bridge.active && typeof window !== 'undefined') {
+    const hydratePromise = bridge.hydrate().then(() => {
+      const goTo = useWizardStore.getState().goTo;
+      const applied = applyWizardStepFromUrl(goTo);
+      if (applied == null && bridge.order != null) {
+        goTo(defaultStepForModule(bridge.order));
+      }
+    });
+
+    bridge.ready = hydratePromise;
     window.__bridge        = bridge;
     window.__bridgeAdvance = (extra) => bridge.advance(extra ?? {}).then(() => undefined);
-
-    // Hidrata al cargar
-    bridge.hydrate();
+    window.__bridgeNavigateStep = (targetStep) => bridge.navigateToStep(targetStep);
 
   // Auto-advance para módulos cuyo "fin" es un cambio de step en el store:
   //   OCR (1):    step 1 → 2
