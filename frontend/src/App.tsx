@@ -83,14 +83,14 @@ export default function App() {
       <WelcomeSplash />
       <Toaster />
       <AuroraBackground />
-      <TopStepper />
       <div className="lg:hidden">
         <TopProgressBar />
       </div>
 
       <div>
-        <main className="flex-1 min-h-screen pt-[72px] lg:pt-[120px] px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
+        <main className="flex-1 min-h-screen pt-[72px] lg:pt-10 px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
           <div className="max-w-5xl mx-auto">
+            <TopStepper />
 
             <header className="mb-8 animate-fade-in">
               <div className="flex items-start justify-between gap-4 flex-wrap">

@@ -1,17 +1,18 @@
+import { useRef } from 'react';
 import {
-  Check, FileText, UserCog, ShieldCheck, CreditCard, Car, Users,
+  Check, ChevronLeft, ChevronRight, FileText, UserCog, ShieldCheck, CreditCard, Car, Users,
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
-import { publicAsset } from '../lib/app-base';
 
 /**
- * Stepper horizontal superior (desktop). Reemplaza al sidebar lateral:
- * logo a la izquierda, pasos al centro con progreso, sello de seguridad a la derecha.
+ * Stepper horizontal en barra blanca (estilo píldora).
+ * Sustituye la barra azul fija: pasos completados en verde, activo resaltado, futuros en gris.
  */
 export function TopStepper() {
   const step = useWizardStore((s) => s.step);
   const product = getProductConfig();
+  const scrollRef = useRef<HTMLElement>(null);
 
   const STEPS = [
     { n: 1, label: 'Documentos', Icon: FileText },
@@ -23,94 +24,91 @@ export function TopStepper() {
     { n: 5, label: 'Pago', Icon: CreditCard },
   ];
 
+  /** Desplaza horizontalmente la píldora de pasos. */
+  function scrollSteps(direction: 'left' | 'right') {
+    const el = scrollRef.current;
+    if (!el) return;
+    const amount = direction === 'left' ? -220 : 220;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+  }
+
   return (
-    <header className="hidden lg:block fixed top-0 left-0 right-0 z-40">
-      <div className="sidebar-gradient border-b border-white/[0.08] shadow-[0_14px_44px_-14px_rgba(9,17,51,0.55)]">
-        <div className="max-w-[1400px] mx-auto pl-6 pr-8 h-[88px] flex items-center gap-8">
+    <div className="hidden lg:block w-full mb-8 animate-fade-in">
+      <div className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={() => scrollSteps('left')}
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors"
+          aria-label="Ver pasos anteriores"
+        >
+          <ChevronLeft size={18} strokeWidth={2.5} />
+        </button>
 
-          {/* Brand */}
-          <div className="flex items-center flex-shrink-0">
-            <img
-              src={publicAsset('logo-lamundial-sidebar.png')}
-              alt="La Mundial de Seguros"
-              className="h-14 w-auto object-contain"
-              draggable={false}
-            />
-          </div>
+        <nav
+          ref={scrollRef}
+          className="flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-white rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.09)] border border-slate-200/70 px-5 py-3.5"
+          aria-label="Progreso de suscripción"
+        >
+          <ol className="flex items-center gap-5 xl:gap-8 min-w-max">
+            {STEPS.map(({ n, label, Icon }) => {
+              const isComplete = n < step;
+              const isActive = n === step;
 
-          {/* Stepper */}
-          <nav className="flex-1 min-w-0" aria-label="Progreso de suscripción">
-            <ol className="flex items-center justify-center">
-              {STEPS.map(({ n, label, Icon }, i) => {
-                const isComplete = n < step;
-                const isActive = n === step;
-                const isLast = i === STEPS.length - 1;
-
-                return (
-                  <li key={n} className={`flex items-center min-w-0 ${isLast ? '' : 'flex-1 max-w-[210px]'}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`
-                          relative w-11 h-11 rounded-2xl grid place-items-center flex-shrink-0 transition-all duration-300
-                          ${isActive
-                            ? 'bg-gradient-to-br from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_8px_24px_rgba(99,102,241,0.45)] scale-105'
-                            : isComplete
-                            ? 'bg-emerald-500/90 shadow-[0_4px_14px_rgba(16,185,129,0.32)]'
-                            : 'bg-white/[0.05] border border-white/[0.1]'
-                          }
-                        `}
-                      >
-                        {isComplete ? (
-                          <Check size={17} className="text-white" strokeWidth={3} />
-                        ) : (
-                          <Icon
-                            size={17}
-                            className={isActive ? 'text-white' : 'text-slate-500'}
-                            strokeWidth={isActive ? 2.5 : 2}
-                          />
-                        )}
-                        {isActive && <span className="absolute inset-0 rounded-2xl animate-glow" />}
-                      </div>
-
-                      <div className="min-w-0 hidden xl:block">
-                        <p className={`text-[0.58rem] font-black tracking-[0.18em] font-mono leading-none ${
-                          isActive ? 'text-indigo-300' : isComplete ? 'text-emerald-400' : 'text-slate-500'
-                        }`}>
-                          PASO 0{n}
-                        </p>
-                        <p className={`mt-1 font-display text-[0.88rem] font-bold leading-tight truncate ${
-                          isActive ? 'text-white' : isComplete ? 'text-slate-300' : 'text-slate-500'
-                        }`}>
-                          {label}
-                        </p>
-                      </div>
-                    </div>
-
-                    {!isLast && (
-                      <div className="flex-1 mx-3 xl:mx-4 h-[3px] rounded-full bg-white/[0.08] overflow-hidden min-w-[24px]">
-                        <div
-                          className={`h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-500 to-fuchsia-500 transition-all duration-700 ease-out ${
-                            isComplete ? 'w-full' : isActive ? 'w-1/2' : 'w-0'
-                          }`}
-                        />
-                      </div>
+              return (
+                <li key={n} className="flex items-center gap-2.5 flex-shrink-0">
+                  <div
+                    className={`
+                      w-10 h-10 rounded-full grid place-items-center flex-shrink-0 transition-colors duration-200
+                      ${isComplete
+                        ? 'bg-emerald-500 shadow-[0_4px_12px_rgba(16,185,129,0.35)]'
+                        : isActive
+                        ? 'bg-sky-50 ring-2 ring-sky-200/80'
+                        : 'bg-slate-100'
+                      }
+                    `}
+                  >
+                    {isComplete ? (
+                      <Check size={18} className="text-white" strokeWidth={3} />
+                    ) : (
+                      <Icon
+                        size={18}
+                        className={isActive ? 'text-slate-600' : 'text-slate-400'}
+                        strokeWidth={2}
+                      />
                     )}
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
+                  </div>
 
-          {/* Sello de seguridad */}
-          <div className="flex items-center gap-2 flex-shrink-0 py-1.5 px-3.5 rounded-full bg-emerald-500/8 border border-emerald-500/15">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[0.6rem] font-bold text-emerald-300 tracking-wider uppercase whitespace-nowrap">
-              Conexión segura
-            </span>
-          </div>
+                  <div className="min-w-0">
+                    <p
+                      className={`text-[0.62rem] font-bold tracking-[0.12em] uppercase leading-none ${
+                        isComplete ? 'text-emerald-500' : isActive ? 'text-sky-600' : 'text-slate-400'
+                      }`}
+                    >
+                      PASO 0{n}
+                    </p>
+                    <p
+                      className={`mt-1 text-[0.88rem] font-bold leading-tight truncate max-w-[9.5rem] ${
+                        isComplete || isActive ? 'text-[#0f1a5a]' : 'text-slate-400'
+                      }`}
+                    >
+                      {label}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
 
-        </div>
+        <button
+          type="button"
+          onClick={() => scrollSteps('right')}
+          className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors"
+          aria-label="Ver pasos siguientes"
+        >
+          <ChevronRight size={18} strokeWidth={2.5} />
+        </button>
       </div>
-    </header>
+    </div>
   );
 }
