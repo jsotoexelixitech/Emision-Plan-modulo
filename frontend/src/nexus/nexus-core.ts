@@ -4,6 +4,27 @@
 
 const STORAGE_KEY = 'nexus_access_token_emision';
 
+const INTERNAL_HTTP_RE = /^http:\/\/(192\.168\.|10\.|127\.0\.0\.1|localhost)(:\d+)?/i;
+
+/**
+ * Resuelve la URL de nexus-api en el navegador.
+ * En páginas HTTPS no se puede llamar a IP interna HTTP (mixed content).
+ */
+export function resolveNexusApiUrl(configured?: string): string {
+  const trimmed = configured?.trim().replace(/\/$/, '');
+  const pageIsHttps =
+    typeof window !== 'undefined' && window.location.protocol === 'https:';
+
+  if (pageIsHttps && trimmed && INTERNAL_HTTP_RE.test(trimmed)) {
+    return `${window.location.origin}/nexus-api`;
+  }
+  if (trimmed) return trimmed;
+  if (typeof window !== 'undefined' && pageIsHttps) {
+    return `${window.location.origin}/nexus-api`;
+  }
+  return 'http://localhost:3092';
+}
+
 export interface NexusVerifyResult {
   active: boolean;
   empresa?: { id: number; nombre: string; rif: string };

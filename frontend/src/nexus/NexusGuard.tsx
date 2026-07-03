@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
-import { verifyNexusAccess, type NexusVerifyResult } from './nexus-core';
+import { verifyNexusAccess, resolveNexusApiUrl, type NexusVerifyResult } from './nexus-core';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 interface NexusContextValue {
@@ -117,7 +117,7 @@ export function NexusGuard({ children, recheckInterval = 30 }: NexusGuardProps) 
   // de inmediato y verificamos en background para no interrumpir la UX.
   const chained = isChainedFlow();
   const [state, setState] = useState<GuardState>({ status: chained ? 'active' : 'loading' });
-  const nexusApiUrl = import.meta.env.VITE_NEXUS_API_URL as string;
+  const nexusApiUrl = resolveNexusApiUrl(import.meta.env.VITE_NEXUS_API_URL);
   const isMounted = useRef(true);
 
   const doVerify = useCallback(async () => {

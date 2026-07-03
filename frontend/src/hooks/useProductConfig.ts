@@ -5,8 +5,9 @@
  * de un módulo desde el servidor Nexus.
  */
 import { useEffect, useState, useCallback } from 'react';
+import { resolveNexusApiUrl } from '../nexus/nexus-core';
 
-const NEXUS_URL = import.meta.env.VITE_NEXUS_API_URL ?? 'http://localhost:3091';
+const NEXUS_URL = resolveNexusApiUrl(import.meta.env.VITE_NEXUS_API_URL);
 const NEXUS_KEY = import.meta.env.VITE_NEXUS_API_KEY ?? '';
 
 export type LoadState = 'loading' | 'ready' | 'error';

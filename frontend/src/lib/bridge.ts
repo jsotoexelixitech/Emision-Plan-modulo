@@ -18,6 +18,7 @@
  */
 
 import { useWizardStore } from '../store/wizardStore';
+import { resolveNexusApiUrl } from '../nexus/nexus-core';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
 const PORT_TO_ORDER: Record<string, number> = {
@@ -82,7 +83,7 @@ function getModuleTokenKey(): string {
   return PORT_TO_TOKEN_KEY[window.location.port ?? ''] ?? 'nexus_access_token';
 }
 
-const BRIDGE_HOST = (import.meta.env?.VITE_NEXUS_API_URL as string | undefined)?.replace(/\/$/, '') ?? 'http://localhost:3092';
+const BRIDGE_HOST = resolveNexusApiUrl(import.meta.env?.VITE_NEXUS_API_URL as string | undefined);
 const QUERY_KEY   = 'sid';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
