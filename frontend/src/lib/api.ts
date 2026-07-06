@@ -450,7 +450,7 @@ export const catalogoApi = {
   resolver: (fano: number, marca: string, modelo: string) =>
     api.get<ResolverResult>(`/catalogo/resolver?fano=${fano}&marca=${encodeURIComponent(marca)}&modelo=${encodeURIComponent(modelo)}`),
   /**
-   * Planes RCV disponibles desde Sis2000 vía backend-api-sys.
+   * Planes RCV — La Mundial valrep/planes/v2 filtrados por cproductor del token SSO.
    * ctipo: 1=particular, 4=moto, 3=pick-up, etc.
    */
   planesRcv: (ctipo?: number) =>

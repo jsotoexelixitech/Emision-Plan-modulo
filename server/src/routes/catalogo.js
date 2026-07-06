@@ -7,6 +7,7 @@
  */
 const express = require('express');
 const { getSis2000Pool, sql } = require('../services/sis2000Pool');
+const { fetchPlanesV2, fetchPlanesSis2000 } = require('../services/planesClient');
 
 const router = express.Router();
 
@@ -217,40 +218,29 @@ router.get('/resolver', async (req, res) => {
 });
 
 // ── Planes RCV ──────────────────────────────────────────────────────────────
-// Consulta spBuscaPlan directamente en Sis2000 (igual que el resto de catálogos).
-// No usa sysip-nest-api para evitar dependencias de auth externas.
+// Prioridad: La Mundial POST /api/v1/valrep/planes/v2 con metadata del token.
+// cproductor del SSO → citem (productor emisor). Sin metadata → default 80080.
+// Fallback: spBuscaPlan en Sis2000 si la API HTTP no responde.
 
 router.get('/planes', async (req, res) => {
-  const cramo      = parseInt(process.env.LAMUNDIAL_RAMO      ?? '18',    10);
-  const cproductor = parseInt(process.env.LAMUNDIAL_PRODUCTOR ?? '80080', 10);
-  const cusuario   = String(process.env.LAMUNDIAL_CUSUARIO    ?? '4');
-  const ctipo      = req.query.ctipo ? parseInt(req.query.ctipo, 10) : null;
+  const meta = req.nexusMetadata || {};
+  const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
 
   try {
-    const pool    = await getSis2000Pool();
-    const request = pool.request();
+    let result;
+    try {
+      result = await fetchPlanesV2(meta, ctipo);
+    } catch (apiErr) {
+      console.warn('[catalogo/planes] valrep v2 no disponible, fallback SQL:', apiErr.message);
+      result = await fetchPlanesSis2000(meta, ctipo);
+    }
 
-    request.input('cramo',      sql.Int,          cramo);
-    request.input('cproductor', sql.Numeric(17),  cproductor);
-    request.input('ctipo',      sql.Numeric(4),   ctipo);
-    request.input('cusuario',   sql.NVarChar(60), cusuario);
-    request.input('citem',      sql.NVarChar(50), null);
-    request.input('centidad',   sql.NVarChar(6),  null);
-    request.input('bnacional',  sql.Bit,          false);
-    request.output('mensaje',   sql.NVarChar(6),  '');
-
-    const result = await request.execute('spBuscaPlan');
-    const planes = (result.recordset ?? [])
-      .map((p) => ({
-        cplan:   String(p.cplan   ?? p.CPLAN   ?? '').trim(),
-        xplan:   String(p.xplan   ?? p.XPLAN   ?? '').trim(),
-        xplan_c: String(p.xplan_c ?? p.XPLAN_C ?? p.xplan ?? p.XPLAN ?? '').trim(),
-        cramo:   Number(p.cramo   ?? p.CRAMO   ?? cramo),
-        cmoneda: String(p.cmoneda ?? p.CMONEDA ?? 'USD').trim(),
-      }))
-      .filter((p) => p.cplan);
-
-    res.json({ success: true, planes });
+    res.json({
+      success: true,
+      planes: result.planes,
+      source: result.source,
+      productor: result.request?.citem ?? result.request?.cproductor,
+    });
   } catch (err) {
     console.error('[catalogo/planes]', err.message);
     res.status(502).json({ success: false, message: `No se pudieron obtener los planes: ${err.message}` });
