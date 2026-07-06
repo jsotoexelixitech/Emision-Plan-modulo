@@ -2,8 +2,15 @@ import { useState } from 'react';
 import {
   Check, ChevronLeft, ChevronRight, FileText, UserCog, ShieldCheck, CreditCard, Car, Users,
 } from 'lucide-react';
+import {
+  canNavigateToStep,
+  getDefaultRequiredDocs,
+  getNavigationBlockReason,
+  getPreviousAllowedStep,
+} from '../lib/wizard-navigation';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
+import { toast } from '../store/toastStore';
 
 /**
  * Stepper horizontal en barra blanca (estilo píldora).
@@ -11,8 +18,19 @@ import { getProductConfig } from '../lib/product';
  */
 export function TopStepper() {
   const step = useWizardStore((s) => s.step);
+  const ocrDone = useWizardStore((s) => s.ocrDone);
+  const documents = useWizardStore((s) => s.documents);
+  const selectedPlan = useWizardStore((s) => s.selectedPlan);
   const product = getProductConfig();
   const [navigating, setNavigating] = useState(false);
+
+  const navSnapshot = {
+    step,
+    ocrDone,
+    documents,
+    selectedPlan,
+    requiredDocTypes: getDefaultRequiredDocs(product.id),
+  };
 
   const STEPS = [
     { n: 1, label: 'Documentos', Icon: FileText },
@@ -24,8 +42,19 @@ export function TopStepper() {
     { n: 5, label: 'Pago', Icon: CreditCard },
   ];
 
+  function canGoTo(target: number): boolean {
+    return canNavigateToStep(step, target, navSnapshot);
+  }
+
   async function goToStep(target: number) {
     if (navigating || target === step || target < 1 || target > 5) return;
+
+    if (!canGoTo(target)) {
+      const reason = getNavigationBlockReason(step, target, navSnapshot);
+      toast.warning('Navegación bloqueada', reason ?? 'No puedes ir a ese paso todavía.');
+      return;
+    }
+
     setNavigating(true);
     try {
       await window.__bridge?.ready;
@@ -40,15 +69,16 @@ export function TopStepper() {
     }
   }
 
-  const canPrev = step > 1 && !navigating;
-  const canNext = step < 5 && !navigating;
+  const prevStep = getPreviousAllowedStep(step);
+  const canPrev = prevStep != null && !navigating && canGoTo(prevStep);
+  const canNext = step < 5 && !navigating && canGoTo(step + 1);
 
   return (
     <div className="hidden lg:block w-full mb-8 animate-fade-in">
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-          onClick={() => goToStep(step - 1)}
+          onClick={() => prevStep != null && goToStep(prevStep)}
           disabled={!canPrev}
           className="flex-shrink-0 w-9 h-9 rounded-full bg-slate-700 text-white grid place-items-center shadow-md hover:bg-slate-800 transition-colors disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-slate-700"
           aria-label="Paso anterior"
@@ -64,7 +94,7 @@ export function TopStepper() {
             {STEPS.map(({ n, label, Icon }) => {
               const isComplete = n < step;
               const isActive = n === step;
-              const isClickable = n !== step && n <= step && !navigating;
+              const isClickable = n !== step && !navigating && canGoTo(n);
 
               return (
                 <li key={n} className="flex items-center gap-2.5 flex-shrink-0">

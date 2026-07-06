@@ -19,6 +19,8 @@
 
 import { useWizardStore } from '../store/wizardStore';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
+import { canNavigateToStep, getDefaultRequiredDocs } from './wizard-navigation';
+import { getProductConfig } from './product';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
@@ -297,8 +299,21 @@ function makeBridge(): BridgeAPI {
 
   const navigateToStep = async (targetStep: number): Promise<boolean> => {
     const goTo = useWizardStore.getState().goTo;
-    const currentStep = useWizardStore.getState().step;
+    const state = useWizardStore.getState();
+    const currentStep = state.step;
     if (targetStep < 1 || targetStep > 5 || targetStep === currentStep) return false;
+
+    const navSnapshot = {
+      step: currentStep,
+      ocrDone: state.ocrDone,
+      documents: state.documents,
+      selectedPlan: state.selectedPlan,
+      requiredDocTypes: getDefaultRequiredDocs(getProductConfig().id),
+    };
+    if (!canNavigateToStep(currentStep, targetStep, navSnapshot)) {
+      console.warn('[bridge] navigateToStep blocked', currentStep, '->', targetStep);
+      return false;
+    }
 
     const currentModule = stepToModuleOrder(currentStep);
     const targetModule = stepToModuleOrder(targetStep);
