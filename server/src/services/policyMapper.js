@@ -7,7 +7,7 @@
  *   - Fechas en formato YYYY-MM-DD. Aceptamos varios formatos de entrada
  *     (ISO, DD/MM/YYYY, DD-MM-YYYY).
  *   - `placa` mayusculas, sin guiones ni espacios. La Mundial valida 6-8 alfanum.
- *   - mprima/mprimaext se envian como Number, NO como string.
+ *   - mprima/mprimaext/ptasa se usan solo en validacion interna; no se envian a La Mundial.
  *   - Los codigos numericos de catalogo (marca/modelo/version/estado/ciudad)
  *     pasan por `catalogs.js`. Si no se conoce, cae al default validado.
  */
@@ -353,13 +353,13 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 }
 
 /**
- * Transforma el payload interno (mapper) al formato que espera La Mundial
- * POST /api/v1/external/createEmissionAuto (mismo esquema que usaba sysip-nest-api).
+ * Transforma el payload interno al formato POST /api/v1/external/createEmissionAuto.
+ * Prima, moneda y tasa los calcula La Mundial desde su BD — no se incluyen en el body.
  * @param {object} p Payload de buildEmissionRequest
- * @param {{ mprima: number, mprimaext: number, ptasa: number }} cotizacion
+ * @param {{ mprima: number, mprimaext: number, ptasa: number }} _cotizacion Reservado (validacion previa en orquestador)
  * @returns {object}
  */
-function toLaMundialEmissionPayload(p, cotizacion) {
+function toLaMundialEmissionPayload(p, _cotizacion) {
   const femision = p.femision || p.fecha_emision || todayYmd();
   const fdesde = p.fdesde || femision;
   const dHasta = new Date(`${femision}T00:00:00Z`);
@@ -421,11 +421,7 @@ function toLaMundialEmissionPayload(p, cotizacion) {
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
     cusuario: parseInt(p.cusuario || process.env.LAMUNDIAL_CUSUARIO || 4, 10),
-    ptasamon: cotizacion.ptasa,
-    ptasamon_pago: cotizacion.ptasa,
-    cmoneda: 'USD',
     msumaaseg: 0,
-    mprima: cotizacion.mprimaext,
     ifrecuencia: p.frecuencia || 'A',
     femision,
     fdesde,
