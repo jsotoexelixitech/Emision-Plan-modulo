@@ -37,6 +37,19 @@ function cleanPhone(v) {
   return String(v).replace(/\D/g, '');
 }
 
+/**
+ * Entero opcional desde metadata SSO: ignora null, undefined y strings vacíos.
+ * @param {unknown} value
+ * @returns {number|undefined}
+ */
+function parseOptionalInt(value) {
+  if (value === undefined || value === null) return undefined;
+  const s = String(value).trim();
+  if (!s) return undefined;
+  const n = parseInt(s, 10);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function upperPlate(v) {
   return cleanString(v).toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -197,9 +210,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
   const cusuario = metadata.cusuario !== undefined ? metadata.cusuario : (process.env.LAMUNDIAL_CUSUARIO || 4);
   const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
-  const ctipocanal = metadata.ctipocanal !== undefined ? metadata.ctipocanal : undefined;
-  const ccanalalt = metadata.ccanalalt_in !== undefined ? metadata.ccanalalt_in : undefined;
-  const cscanalalt = metadata.cscanalalt_in !== undefined ? metadata.cscanalalt_in : undefined;
+  const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
+    ? metadata.ctipocanal
+    : undefined;
+  const ccanalalt = parseOptionalInt(metadata.ccanalalt_in);
+  const cscanalalt = parseOptionalInt(metadata.cscanalalt_in);
   
   const plan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
   const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
@@ -415,10 +430,8 @@ function toLaMundialEmissionPayload(p, cotizacion) {
     fhasta,
   };
 
-  if (p.ccanalalt != null) body.ccanalalt = p.ccanalalt;
-  else body.ccanalalt = parseInt(process.env.LAMUNDIAL_CCANALALT || '27', 10);
-  if (p.cscanalalt != null) body.cscanalalt = p.cscanalalt;
-  else body.cscanalalt = parseInt(process.env.LAMUNDIAL_CSCANALALT || '1', 10);
+  body.ccanalalt = parseOptionalInt(p.ccanalalt) ?? parseInt(process.env.LAMUNDIAL_CCANALALT || '27', 10);
+  body.cscanalalt = parseOptionalInt(p.cscanalalt) ?? parseInt(process.env.LAMUNDIAL_CSCANALALT || '1', 10);
   if (p.conductor) body.conductor = p.conductor;
 
   return body;
