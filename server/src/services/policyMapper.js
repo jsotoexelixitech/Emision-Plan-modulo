@@ -38,16 +38,18 @@ function cleanPhone(v) {
 }
 
 /**
- * Canal alterno La Mundial (ccanalalt / cscanalalt): vacío, null o ausente → 0.
+ * Canal alterno La Mundial (ccanalalt / cscanalalt): vacío/ausente → null;
+ * valor numérico válido → entero positivo. La API no acepta 0 ni strings vacíos.
  * @param {unknown} value
- * @returns {number}
+ * @returns {number|null}
  */
-function parseCanalAltInt(value) {
-  if (value === undefined || value === null) return 0;
+function parseCanalAltOptional(value) {
+  if (value === undefined || value === null) return null;
   const s = String(value).trim();
-  if (!s) return 0;
+  if (!s) return null;
   const n = parseInt(s, 10);
-  return Number.isFinite(n) ? n : 0;
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
 }
 
 function upperPlate(v) {
@@ -213,8 +215,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
     : undefined;
-  const ccanalalt = parseCanalAltInt(metadata.ccanalalt_in);
-  const cscanalalt = parseCanalAltInt(metadata.cscanalalt_in);
+  const ccanalalt = parseCanalAltOptional(metadata.ccanalalt_in);
+  const cscanalalt = parseCanalAltOptional(metadata.cscanalalt_in);
   
   const plan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
   const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
@@ -430,8 +432,8 @@ function toLaMundialEmissionPayload(p, cotizacion) {
     fhasta,
   };
 
-  body.ccanalalt = parseCanalAltInt(p.ccanalalt);
-  body.cscanalalt = parseCanalAltInt(p.cscanalalt);
+  body.ccanalalt = parseCanalAltOptional(p.ccanalalt);
+  body.cscanalalt = parseCanalAltOptional(p.cscanalalt);
   if (p.conductor) body.conductor = p.conductor;
 
   return body;
