@@ -1,8 +1,9 @@
 /** Utilidades compartidas: base path HTTPS (cierrelmds) en vite.config. */
 
-/** Normaliza VITE_APP_BASE a formato Vite (`/` o `/ocr/`). */
+/** Normaliza VITE_APP_BASE a formato Vite (`/`, `/ocr/` o `./`). */
 export function resolveAppBase(env: Record<string, string>): string {
   const raw = env.VITE_APP_BASE?.trim() || '/';
+  if (raw === './' || raw === '.') return './';
   if (raw === '/') return '/';
   return raw.endsWith('/') ? raw : `${raw}/`;
 }
@@ -15,7 +16,7 @@ export function prefixDevProxy(
   string,
   { target: string; changeOrigin?: boolean; rewrite?: (path: string) => string }
 > {
-  if (base === '/') return routes;
+  if (base === '/' || base === './') return routes;
 
   const root = base.replace(/\/$/, '');
   const out: Record<
