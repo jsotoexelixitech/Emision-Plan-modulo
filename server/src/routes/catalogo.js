@@ -7,7 +7,7 @@
  */
 const express = require('express');
 const { getSis2000Pool, sql } = require('../services/sis2000Pool');
-const { fetchPlanesV2, fetchPlanesSis2000 } = require('../services/planesClient');
+const { fetchPlanesV2 } = require('../services/planesClient');
 
 const router = express.Router();
 
@@ -218,9 +218,7 @@ router.get('/resolver', async (req, res) => {
 });
 
 // ── Planes RCV ──────────────────────────────────────────────────────────────
-// Prioridad: La Mundial POST /api/v1/valrep/planes/v2 con metadata del token.
-// cproductor del SSO → citem (productor emisor). Sin metadata → default 80080.
-// Fallback: spBuscaPlan en Sis2000 si la API HTTP no responde.
+// Solo API La Mundial: POST /api/v1/valrep/planes/v2 (sin fallback SQL a Sis2000).
 
 router.get('/planes', async (req, res) => {
   const meta = req.nexusMetadata || {};
@@ -231,13 +229,7 @@ router.get('/planes', async (req, res) => {
   );
 
   try {
-    let result;
-    try {
-      result = await fetchPlanesV2(meta, ctipo);
-    } catch (apiErr) {
-      console.warn('[catalogo/planes] valrep v2 no disponible, fallback SQL:', apiErr.message);
-      result = await fetchPlanesSis2000(meta, ctipo);
-    }
+    const result = await fetchPlanesV2(meta, ctipo);
 
     res.json({
       success: true,
@@ -247,7 +239,12 @@ router.get('/planes', async (req, res) => {
     });
   } catch (err) {
     console.error('[catalogo/planes]', err.message);
-    res.status(502).json({ success: false, message: `No se pudieron obtener los planes: ${err.message}` });
+    const status = err.status === 401 || err.status === 403 ? err.status : 502;
+    res.status(status).json({
+      success: false,
+      message: `No se pudieron obtener los planes vía API La Mundial: ${err.message}`,
+      code: err.code || 'PLANES_API_ERROR',
+    });
   }
 });
 
