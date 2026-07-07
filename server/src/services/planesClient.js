@@ -155,16 +155,37 @@ function normalizePlanRow(p, defaultRamo) {
 }
 
 /**
- * Base URL del servicio de planes (sysip-nest-api interno por defecto).
+ * Base URL del servicio de planes.
+ * PLANES_SOURCE=sysip (default srv001) | lamundial (API QA La Mundial + Bearer).
  * @returns {string}
  */
 function getValrepBaseUrl() {
-  return (
-    process.env.PLANES_API_URL ||
-    process.env.SYSIP_API_URL ||
-    process.env.LAMUNDIAL_VALREP_URL ||
-    'http://127.0.0.1:3002'
-  ).replace(/\/$/, '');
+  if (process.env.PLANES_API_URL?.trim()) {
+    return process.env.PLANES_API_URL.trim().replace(/\/$/, '');
+  }
+  const source = (process.env.PLANES_SOURCE || 'sysip').toLowerCase();
+  if (source === 'lamundial') {
+    return (
+      process.env.LAMUNDIAL_VALREP_URL ||
+      process.env.LAMUNDIAL_BASE_URL ||
+      'https://qaapisys2000.lamundialdeseguros.com'
+    ).replace(/\/$/, '');
+  }
+  return (process.env.SYSIP_API_URL || 'http://127.0.0.1:3002').replace(/\/$/, '');
+}
+
+/**
+ * Bearer JWT para valrep/planes/v2 en La Mundial QA (sin prefijo "Bearer ").
+ * @returns {string}
+ */
+function getValrepBearerToken() {
+  const raw = (
+    process.env.LAMUNDIAL_VALREP_BEARER_TOKEN ||
+    process.env.LAMUNDIAL_BEARER_TOKEN ||
+    ''
+  ).trim();
+  if (!raw) return '';
+  return raw.startsWith('Bearer ') ? raw.slice(7).trim() : raw;
 }
 
 /**
@@ -184,7 +205,7 @@ function isInternalPlanesApi(baseUrl) {
 }
 
 /**
- * Headers HTTP según destino (interno sin apikey; externo La Mundial QA).
+ * Headers HTTP según destino (interno sin auth; externo La Mundial Bearer o apikey).
  * @param {string} baseUrl
  * @returns {Record<string, string>}
  */
@@ -196,14 +217,24 @@ function getValrepAuthHeaders(baseUrl) {
   if (isInternalPlanesApi(baseUrl)) {
     return headers;
   }
+
+  const bearer = getValrepBearerToken();
+  if (bearer) {
+    headers.Authorization = `Bearer ${bearer}`;
+    return headers;
+  }
+
   const apikey = (
     process.env.LAMUNDIAL_VALREP_APIKEY ||
     process.env.LAMUNDIAL_APIKEY ||
     ''
   ).trim();
   if (apikey) headers.apikey = apikey;
+
   const basicAuth = (process.env.LAMUNDIAL_BASIC_AUTH || '').trim();
-  if (basicAuth) headers.Authorization = basicAuth;
+  if (basicAuth && !headers.Authorization) {
+    headers.Authorization = basicAuth;
+  }
   return headers;
 }
 
@@ -221,11 +252,11 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
     : 'valrep/planes/v2';
   const headers = getValrepAuthHeaders(baseUrl);
 
-  if (!isInternalPlanesApi(baseUrl) && !headers.apikey) {
+  if (!isInternalPlanesApi(baseUrl) && !headers.Authorization && !headers.apikey) {
     const err = new Error(
-      'Falta apikey para valrep/planes/v2 externo (LAMUNDIAL_VALREP_APIKEY o LAMUNDIAL_APIKEY)',
+      'Falta auth para valrep/planes/v2 externo (LAMUNDIAL_VALREP_BEARER_TOKEN o LAMUNDIAL_VALREP_APIKEY)',
     );
-    err.code = 'PLANES_V2_APIKEY_MISSING';
+    err.code = 'PLANES_V2_AUTH_MISSING';
     throw err;
   }
 
