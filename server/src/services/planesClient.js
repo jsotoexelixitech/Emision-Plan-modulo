@@ -1,8 +1,11 @@
 /**
- * Cliente de planes RCV — La Mundial POST /api/v1/valrep/planes/v2
+ * Cliente de planes RCV — POST /api/v1/valrep/planes/v2
+ *
+ * Destino por defecto: sysip-nest-api (SYSIP_API_URL, :3002 en srv001).
+ * No conecta emision-api a Sis2000; el nest-api expone la API HTTP.
  *
  * Mapeo metadata SSO → payload:
- *   cproductor → citem (productor que emite la póliza)
+ *   cproductor → cproductor + citem (productor emisor)
  *   cusuario   → cusuario
  *   cramo      → cramo (default 18)
  *   ctipo      → query ?ctipo= o metadata.ctipo
@@ -42,7 +45,7 @@ function summarizePlanes(planes) {
 }
 
 /**
- * @param {'valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
  * @param {string} target URL o nombre SP
  * @param {object} payload
  */
@@ -52,7 +55,7 @@ function logPlanesRequest(source, target, payload) {
 }
 
 /**
- * @param {'valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
  * @param {number} httpOrRowsStatus HTTP status o 200 para SQL
  * @param {number} elapsedMs
  * @param {Array<{ cplan: string, xplan?: string }>} planes
@@ -70,7 +73,7 @@ function logPlanesResponse(source, httpOrRowsStatus, elapsedMs, planes, rawBody)
 }
 
 /**
- * @param {'valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
  * @param {number} httpStatus
  * @param {number} elapsedMs
  * @param {unknown} data
@@ -124,7 +127,8 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
   const body = {
     centidad: 'P',
     citem: cproductor,
-    cusuario,
+    cproductor: parseInt(cproductor, 10),
+    cusuario: String(cusuario),
     cramo,
   };
 
@@ -150,29 +154,53 @@ function normalizePlanRow(p, defaultRamo) {
   };
 }
 
+/**
+ * Base URL del servicio de planes (sysip-nest-api interno por defecto).
+ * @returns {string}
+ */
 function getValrepBaseUrl() {
   return (
+    process.env.PLANES_API_URL ||
+    process.env.SYSIP_API_URL ||
     process.env.LAMUNDIAL_VALREP_URL ||
-    process.env.LAMUNDIAL_BASE_URL ||
-    'https://qaapisys2000.lamundialdeseguros.com'
+    'http://127.0.0.1:3002'
   ).replace(/\/$/, '');
 }
 
 /**
- * Headers de autenticación para valrep/planes/v2 (misma cadena que emisión/cotización).
+ * @param {string} baseUrl
+ * @returns {boolean}
+ */
+function isInternalPlanesApi(baseUrl) {
+  try {
+    const { hostname, port } = new URL(baseUrl);
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+    if (port === '3002') return true;
+  } catch {
+    /* ignore */
+  }
+  return (process.env.PLANES_API_INTERNAL || 'true').toLowerCase() !== 'false'
+    && !baseUrl.includes('qaapisys2000.lamundialdeseguros.com');
+}
+
+/**
+ * Headers HTTP según destino (interno sin apikey; externo La Mundial QA).
+ * @param {string} baseUrl
  * @returns {Record<string, string>}
  */
-function getValrepAuthHeaders() {
-  const apikey = (
-    process.env.LAMUNDIAL_VALREP_APIKEY ||
-    process.env.LAMUNDIAL_EMISSION_APIKEY ||
-    process.env.LAMUNDIAL_APIKEY ||
-    ''
-  ).trim();
+function getValrepAuthHeaders(baseUrl) {
   const headers = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
+  if (isInternalPlanesApi(baseUrl)) {
+    return headers;
+  }
+  const apikey = (
+    process.env.LAMUNDIAL_VALREP_APIKEY ||
+    process.env.LAMUNDIAL_APIKEY ||
+    ''
+  ).trim();
   if (apikey) headers.apikey = apikey;
   const basicAuth = (process.env.LAMUNDIAL_BASIC_AUTH || '').trim();
   if (basicAuth) headers.Authorization = basicAuth;
@@ -186,13 +214,16 @@ function getValrepAuthHeaders() {
  */
 async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
   const body = buildPlanesV2Body(nexusMetadata, ctipoQuery);
-  const url = `${getValrepBaseUrl()}/api/v1/valrep/planes/v2`;
-  const source = 'valrep/planes/v2';
-  const headers = getValrepAuthHeaders();
+  const baseUrl = getValrepBaseUrl();
+  const url = `${baseUrl}/api/v1/valrep/planes/v2`;
+  const source = isInternalPlanesApi(baseUrl)
+    ? 'sysip-nest-api/valrep/planes/v2'
+    : 'valrep/planes/v2';
+  const headers = getValrepAuthHeaders(baseUrl);
 
-  if (!headers.apikey) {
+  if (!isInternalPlanesApi(baseUrl) && !headers.apikey) {
     const err = new Error(
-      'Falta apikey para valrep/planes/v2 (LAMUNDIAL_VALREP_APIKEY o LAMUNDIAL_EMISSION_APIKEY)',
+      'Falta apikey para valrep/planes/v2 externo (LAMUNDIAL_VALREP_APIKEY o LAMUNDIAL_APIKEY)',
     );
     err.code = 'PLANES_V2_APIKEY_MISSING';
     throw err;
