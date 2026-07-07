@@ -226,6 +226,10 @@ router.get('/planes', async (req, res) => {
   const meta = req.nexusMetadata || {};
   const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
 
+  console.log(
+    `[catalogo/planes] GET ctipo=${ctipo ?? 'null'} cproductor=${meta.cproductor ?? '(default)'} cramo=${meta.cramo ?? '(default)'}`,
+  );
+
   try {
     let result;
     try {
