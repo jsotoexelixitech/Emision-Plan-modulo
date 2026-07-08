@@ -25,6 +25,44 @@ export const PRODUCTS: Record<ProductId, ProductConfig> = {
 const VALID_PRODUCTS: ProductId[] = ['rcv', 'funerario'];
 const STORAGE_KEY = 'exelixi_product';
 
+export interface ProductDetectHints {
+  url?: string | null;
+  nombre?: string | null;
+  moduloNombre?: string | null;
+  product?: string | null;
+}
+
+/**
+ * Detecta rcv|funerario y lo persiste en sessionStorage (Nexus verify / bridge).
+ * @param {ProductDetectHints} [hints]
+ * @returns {ProductId | null}
+ */
+export function persistProductFromHints(hints?: ProductDetectHints): ProductId | null {
+  if (hints?.product === 'funerario') {
+    try { sessionStorage.setItem(STORAGE_KEY, 'funerario'); } catch { /* ignore */ }
+    return 'funerario';
+  }
+  if (hints?.product === 'rcv') {
+    try { sessionStorage.setItem(STORAGE_KEY, 'rcv'); } catch { /* ignore */ }
+    return 'rcv';
+  }
+  if (hints?.url) {
+    try {
+      const fromUrl = new URL(hints.url, window.location.origin).searchParams.get('product');
+      if (fromUrl === 'funerario' || fromUrl === 'rcv') {
+        sessionStorage.setItem(STORAGE_KEY, fromUrl);
+        return fromUrl as ProductId;
+      }
+    } catch { /* ignore */ }
+  }
+  const label = `${hints?.nombre ?? ''} ${hints?.moduloNombre ?? ''}`.toLowerCase();
+  if (label.includes('funerar')) {
+    try { sessionStorage.setItem(STORAGE_KEY, 'funerario'); } catch { /* ignore */ }
+    return 'funerario';
+  }
+  return null;
+}
+
 export function getProductId(): ProductId {
   try {
     const fromUrl = new URL(window.location.href).searchParams.get('product');

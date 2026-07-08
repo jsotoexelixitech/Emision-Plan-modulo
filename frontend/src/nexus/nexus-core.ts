@@ -27,8 +27,15 @@ export function resolveNexusApiUrl(configured?: string): string {
 
 export interface NexusVerifyResult {
   active: boolean;
+  product?: 'rcv' | 'funerario';
   empresa?: { id: number; nombre: string; rif: string };
-  submodulo?: { id: number; nombre: string; url: string | null; accessUrl: string | null };
+  submodulo?: {
+    id: number;
+    nombre: string;
+    url: string | null;
+    moduloNombre?: string | null;
+    accessUrl: string | null;
+  };
   reason?: string;
 }
 
@@ -67,7 +74,12 @@ export async function verifyNexusAccess(nexusApiUrl: string): Promise<NexusVerif
       if (data.access_token) {
         sessionStorage.setItem(STORAGE_KEY, data.access_token);
       }
-      return { active: true, empresa: data.empresa, submodulo: data.submodulo };
+      return {
+        active: true,
+        product: data.product,
+        empresa: data.empresa,
+        submodulo: data.submodulo,
+      };
     }
 
     return { active: false, reason: data.reason ?? 'Servicio no disponible para esta empresa.' };

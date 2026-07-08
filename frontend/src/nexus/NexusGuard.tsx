@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { verifyNexusAccess, resolveNexusApiUrl, type NexusVerifyResult } from './nexus-core';
+import { persistProductFromHints } from '../lib/product';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 interface NexusContextValue {
@@ -128,6 +129,14 @@ export function NexusGuard({ children, recheckInterval = 30 }: NexusGuardProps) 
     const result = await verifyNexusAccess(nexusApiUrl);
     if (!isMounted.current) return;
     if (result.active) {
+      if (result.submodulo) {
+        persistProductFromHints({
+          url: result.submodulo.url,
+          nombre: result.submodulo.nombre,
+          moduloNombre: result.submodulo.moduloNombre,
+          product: result.product,
+        });
+      }
       setState({ status: 'active', empresa: result.empresa, submodulo: result.submodulo });
     } else {
       setState({ status: 'blocked', reason: result.reason });
