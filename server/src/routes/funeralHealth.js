@@ -8,8 +8,17 @@
 const express = require('express');
 const { getQuestionsForPlan } = require('../config/funeralHealthQuestions');
 const { upsertHealthAnswers, getHealthAnswers } = require('../services/healthDb');
+const { isFunerarioCplan } = require('../lib/funerarioPlan');
 
 const router = express.Router();
+
+function rejectNonFunerarioPlan(res, cplan) {
+  return res.status(400).json({
+    success: false,
+    code: 'NOT_FUNERARIO_PLAN',
+    message: `El cplan "${cplan}" no corresponde a un plan funerario. Este endpoint es solo para ramo 9.`,
+  });
+}
 
 router.get('/health-questions', (req, res) => {
   const cplan = String(req.query.cplan || '').trim();
@@ -19,6 +28,9 @@ router.get('/health-questions', (req, res) => {
       code: 'MISSING_PLAN',
       message: 'El parámetro cplan es obligatorio.',
     });
+  }
+  if (!isFunerarioCplan(cplan)) {
+    return rejectNonFunerarioPlan(res, cplan);
   }
   const questions = getQuestionsForPlan(cplan);
   res.json({ success: true, cplan, questions });
@@ -40,6 +52,9 @@ router.post('/health-answers', (req, res) => {
       code: 'MISSING_FIELDS',
       message: 'sessionId y cplan son obligatorios.',
     });
+  }
+  if (!isFunerarioCplan(cplan)) {
+    return rejectNonFunerarioPlan(res, cplan);
   }
   if (!answers || typeof answers !== 'object') {
     return res.status(400).json({
@@ -83,6 +98,9 @@ router.get('/health-answers', (req, res) => {
       code: 'MISSING_FIELDS',
       message: 'sessionId y cplan son obligatorios.',
     });
+  }
+  if (!isFunerarioCplan(cplan)) {
+    return rejectNonFunerarioPlan(res, cplan);
   }
   const record = getHealthAnswers(sessionId, cplan);
   if (!record) {
