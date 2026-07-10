@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useWizardStore } from './store/wizardStore';
 import { TopStepper } from './components/TopStepper';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -8,13 +8,55 @@ import { WelcomeSplash } from './components/WelcomeSplash';
 import { Button } from './components/ui/Button';
 import { PlansStep } from './features/plans/PlansStep';
 import { FuneralPlansStep } from './features/plans/FuneralPlansStep';
+import { FuneralHealthModal } from './features/plans/FuneralHealthModal';
 import { getProductConfig } from './lib/product';
 import { toast } from './store/toastStore';
+import {
+  fetchFuneralHealthQuestions,
+  saveFuneralHealthAnswers,
+  type HealthQuestion,
+} from './lib/api';
 import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
 
+const FREC_LABELS: Record<string, string> = {
+  M: 'Pago mensual',
+  T: 'Pago trimestral',
+  C: 'Pago cuatrimestral',
+  S: 'Pago semestral',
+  A: 'Pago anual',
+};
+
+function getSessionId(): string {
+  try {
+    return new URLSearchParams(window.location.search).get('sid') || 'standalone';
+  } catch {
+    return 'standalone';
+  }
+}
+
+/** Mapea respuestas del cuestionario a campos legacy del wizard (emisión La Mundial). */
+function mapHealthToFuneral(answers: Record<string, unknown>) {
+  return {
+    diagnosticoEnfermedad: answers.diagnosticoEnfermedad === true,
+    descripcionEnfermedad: String(answers.descripcionEnfermedad ?? ''),
+    aceptaTerminos: answers.aceptaTerminos === true,
+    healthAnswers: answers,
+    healthQuestionnaireDone: true,
+  };
+}
+
 export default function App() {
-  const { category, selectedPlan, quoteState, quote, setMetadataCanal } = useWizardStore();
+  const {
+    category, selectedPlan, quoteState, quote, funeral,
+    tomador, setFuneral, setMetadataCanal,
+  } = useWizardStore();
   const product = getProductConfig();
+  const isFunerario = !product.hasVehicle;
+
+  const [healthModalOpen, setHealthModalOpen] = useState(false);
+  const [healthQuestions, setHealthQuestions] = useState<HealthQuestion[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [savingHealth, setSavingHealth] = useState(false);
 
   // Interceptar SSO Delegation
   useEffect(() => {
@@ -50,7 +92,6 @@ export default function App() {
       );
       return;
     }
-    // Esperar a que la cotización esté lista para que pagos reciba el monto real
     if (quoteState === 'loading') {
       toast.warning(
         'Cotización en proceso',
@@ -67,12 +108,65 @@ export default function App() {
       );
       return;
     }
+
+    // Funerario: abrir modal de salud antes de avanzar al pago
+    if (isFunerario) {
+      openHealthModal();
+      return;
+    }
+
     toast.success(
       '¡Plan seleccionado!',
       `Categoría ${category} · Plan ${selectedPlan.name} listo para emitir.`,
     );
-    // Si el bridge está activo (flujo completo en cadena), avanzar al siguiente módulo
     window.__bridgeAdvance?.();
+  }
+
+  async function openHealthModal() {
+    if (!selectedPlan?.cplan) return;
+    setHealthModalOpen(true);
+    setLoadingQuestions(true);
+    try {
+      const qs = await fetchFuneralHealthQuestions(selectedPlan.cplan);
+      setHealthQuestions(qs);
+    } catch {
+      toast.error(
+        'Error al cargar preguntas',
+        'No pudimos obtener el cuestionario de salud. Intenta de nuevo.',
+      );
+      setHealthModalOpen(false);
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
+
+  async function handleHealthConfirm(answers: Record<string, unknown>) {
+    if (!selectedPlan?.cplan) return;
+    setSavingHealth(true);
+    try {
+      await saveFuneralHealthAnswers({
+        sessionId: getSessionId(),
+        cplan: selectedPlan.cplan,
+        cramo: product.cramo,
+        tomadorRif: `${tomador.tipoDoc}-${tomador.identificacion}`,
+        planName: selectedPlan.name,
+        answers,
+      });
+      setFuneral(mapHealthToFuneral(answers));
+      setHealthModalOpen(false);
+      toast.success(
+        'Cuestionario completado',
+        'Tus respuestas fueron guardadas. Continuando al pago…',
+      );
+      window.__bridgeAdvance?.();
+    } catch {
+      toast.error(
+        'No se pudo guardar',
+        'Verifica tu conexión e intenta confirmar de nuevo.',
+      );
+    } finally {
+      setSavingHealth(false);
+    }
   }
 
   return (
@@ -141,6 +235,21 @@ export default function App() {
           Confirmar plan
         </Button>
       </div>
+
+      {isFunerario && selectedPlan && (
+        <FuneralHealthModal
+          open={healthModalOpen}
+          plan={selectedPlan}
+          quote={quote}
+          frecuenciaLabel={FREC_LABELS[funeral.frecuencia ?? 'A'] ?? 'Pago anual'}
+          questions={healthQuestions}
+          loadingQuestions={loadingQuestions}
+          initialAnswers={funeral.healthAnswers}
+          saving={savingHealth}
+          onClose={() => !savingHealth && setHealthModalOpen(false)}
+          onConfirm={handleHealthConfirm}
+        />
+      )}
     </div>
   );
 }

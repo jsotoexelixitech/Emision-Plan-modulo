@@ -48,6 +48,7 @@ coverage/
 
 # Uploads / archivos temporales del servidor
 server/uploads/
+server/data/
 
 # Misc
 .cache/

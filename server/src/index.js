@@ -19,6 +19,7 @@ const emisionRoutes  = require('./routes/emision');
 const valrepRoutes   = require('./routes/valrep');
 const catalogoRoutes = require('./routes/catalogo');
 const personasRoutes = require('./routes/personas');
+const funeralHealthRoutes = require('./routes/funeralHealth');
 const nexusAuth      = require('./middleware/nexusAuth');
 
 const app = express();
@@ -56,6 +57,8 @@ app.use('/api/valrep',   nexusAuth, valrepRoutes);
 app.use('/api/catalogo', nexusAuth, catalogoRoutes);
 // Producto Funerario (personas) — planes y cotización vía API de Personas
 app.use('/api/personas', nexusAuth, personasRoutes);
+// Cuestionario de salud funerario (preguntas Exélixi + persistencia local)
+app.use('/api/funeral', nexusAuth, funeralHealthRoutes);
 // Cotizaciones y emisiones
 app.use('/api', nexusAuth, emisionRoutes);
 

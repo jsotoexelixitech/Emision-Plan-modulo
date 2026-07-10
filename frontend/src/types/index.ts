@@ -123,6 +123,10 @@ export interface FuneralData {
   diagnosticoEnfermedad: boolean;
   descripcionEnfermedad: string;
   aceptaTerminos: boolean;
+  /** Respuestas completas del cuestionario de salud (por plan). */
+  healthAnswers?: Record<string, unknown>;
+  /** true cuando el cuestionario fue completado y guardado en BD. */
+  healthQuestionnaireDone?: boolean;
 }
 
 export interface VehicleData {

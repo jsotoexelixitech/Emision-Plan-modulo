@@ -543,3 +543,40 @@ export async function getFrecuenciasByPlan(cplan: string, cramo: number = 9): Pr
   const { data } = await api.post<{ ok: boolean; items: CatalogItem[] }>('/valrep/frecuencia', { cplan, cramo });
   return data?.items ?? [];
 }
+
+// ──────────────────────────────────────────────────────────────────────
+//  Cuestionario de salud funerario (preguntas Exélixi + persistencia BD)
+// ──────────────────────────────────────────────────────────────────────
+
+export type HealthQuestionType = 'boolean' | 'text' | 'select';
+
+export interface HealthQuestion {
+  id: string;
+  type: HealthQuestionType;
+  label: string;
+  description?: string;
+  required?: boolean;
+  plans: string[];
+  showIf?: { field: string; equals: boolean | string };
+  options?: { value: string; label: string }[];
+}
+
+export async function fetchFuneralHealthQuestions(cplan: string): Promise<HealthQuestion[]> {
+  const { data } = await api.get<{ success: boolean; questions: HealthQuestion[] }>(
+    `/funeral/health-questions?cplan=${encodeURIComponent(cplan)}`,
+  );
+  return data?.questions ?? [];
+}
+
+export interface SaveHealthAnswersPayload {
+  sessionId: string;
+  cplan: string;
+  cramo?: number;
+  tomadorRif?: string;
+  planName?: string;
+  answers: Record<string, unknown>;
+}
+
+export async function saveFuneralHealthAnswers(payload: SaveHealthAnswersPayload): Promise<void> {
+  await api.post('/funeral/health-answers', payload);
+}
