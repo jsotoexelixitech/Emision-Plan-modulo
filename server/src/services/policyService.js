@@ -13,7 +13,6 @@
  *      (idempotencia manual: si la red falla justo despues de emitir,
  *      el log permite al operador escalar a La Mundial con la placa).
  */
-const { getCotizacionAuto } = require('./lamundialClient');
 const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
@@ -129,31 +128,26 @@ async function quote(state, overrides = {}) {
 
   try {
     let result;
-    if (quoteSource === 'sysip' || quoteSource === 'nest_api' || quoteSource === 'sis2000') {
-      if (quoteSource === 'sis2000') {
-        result = await getCotizacionFromSis2000({
-          ...payload,
-          cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
-          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
-        });
-        metadata.quoteSource = 'sis2000';
-      } else {
-        result = await getCotizacionViaSysip({
-          cmarca: payload.cmarca,
-          cmodelo: payload.cmodelo,
-          cversion: payload.cversion,
-          fano: payload.fano,
-          cplan: payload.cplan,
-          ccategoria_uso: payload.ccategoria_uso,
-          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
-          ntoneladas: payload.ntoneladas,
-          cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-        });
-        metadata.quoteSource = 'sysip';
-      }
+    if (quoteSource === 'sis2000') {
+      result = await getCotizacionFromSis2000({
+        ...payload,
+        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
+        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+      });
+      metadata.quoteSource = 'sis2000';
     } else {
-      result = await getCotizacionAuto(payload);
-      metadata.quoteSource = 'lamundial_api';
+      result = await getCotizacionViaSysip({
+        cmarca: payload.cmarca,
+        cmodelo: payload.cmodelo,
+        cversion: payload.cversion,
+        fano: payload.fano,
+        cplan: payload.cplan,
+        ccategoria_uso: payload.ccategoria_uso,
+        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+        ntoneladas: payload.ntoneladas,
+        cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      });
+      metadata.quoteSource = 'sysip';
     }
     return {
       mprima: result.mprima,

@@ -14,8 +14,12 @@
  * usa `resolveVehicleCodesLive(fano, marcaTexto, modeloTexto)`.
  */
 
-const lamundialClient = require('./lamundialClient');
-const { getSis2000Pool, sql } = require('./sis2000Pool');
+const {
+  getInmaMarcas,
+  getInmaModelos,
+  getInmaVersiones,
+  getCategoriasUso,
+} = require('./sysipClient');
 
 // ── Catálogo estático corregido ────────────────────────────────────────────
 // cmarca / cmodelo / cversion → confirmados via POST /api/v1/inma/*
@@ -142,7 +146,7 @@ function resolveVehicleCodes(marcaTexto, modeloTexto) {
 }
 
 /**
- * Resuelve marca/modelo consultando el catálogo vivo de La Mundial.
+ * Resuelve marca/modelo consultando sysip-nest-api (INMA / VInma).
  * Más preciso que `resolveVehicleCodes` pero requiere llamada HTTP.
  *
  * @param {number} fano
@@ -153,20 +157,20 @@ function resolveVehicleCodes(marcaTexto, modeloTexto) {
 async function resolveVehicleCodesLive(fano, marcaTexto, modeloTexto) {
   try {
     // 1. Buscar cmarca
-    const marcas = await lamundialClient.getInmaMarcas(fano);
+    const marcas = await getInmaMarcas(fano);
     const mNorm  = norm(marcaTexto);
     const marca  = marcas.find((m) => norm(m.xmarca) === mNorm);
     if (!marca) return { ...DEFAULT_BRAND, fallback: true, fallbackReason: 'marca no encontrada en catálogo INMA' };
 
     // 2. Buscar cmodelo
-    const modelos = await lamundialClient.getInmaModelos(fano, marca.cmarca);
+    const modelos = await getInmaModelos(fano, marca.cmarca);
     const modNorm = norm(modeloTexto);
     const modelo  = modelos.find((m) => norm(m.xmodelo) === modNorm);
     if (!modelo) {
       // Marca encontrada, modelo no — primer modelo de la marca
       const primerModelo = modelos[0];
       if (!primerModelo) return { ...DEFAULT_BRAND, fallback: true, fallbackReason: 'sin modelos para esta marca' };
-      const versiones = await lamundialClient.getInmaVersiones(fano, marca.cmarca, primerModelo.cmodelo);
+      const versiones = await getInmaVersiones(fano, marca.cmarca, primerModelo.cmodelo);
       const cversion  = versiones[0]?.cversion ?? '01';
       return {
         cmarca: marca.cmarca, cmodelo: primerModelo.cmodelo, cversion,
@@ -176,7 +180,7 @@ async function resolveVehicleCodesLive(fano, marcaTexto, modeloTexto) {
     }
 
     // 3. Buscar primera versión del modelo
-    const versiones = await lamundialClient.getInmaVersiones(fano, marca.cmarca, modelo.cmodelo);
+    const versiones = await getInmaVersiones(fano, marca.cmarca, modelo.cmodelo);
     const cversion  = versiones[0]?.cversion ?? '01';
     return {
       cmarca: marca.cmarca, cmodelo: modelo.cmodelo, cversion,
@@ -204,20 +208,10 @@ function resolveUsageCategory(usoTexto) {
  */
 async function resolveCategoriaUsoFromVinma(fano, cmarca, cmodelo, cversion) {
   try {
-    const pool = await getSis2000Pool();
-    const req  = pool.request();
-    req.input('fano',     sql.Int,         fano);
-    req.input('cmarca',   sql.VarChar(20), String(cmarca));
-    req.input('cmodelo',  sql.VarChar(20), String(cmodelo));
-    req.input('cversion', sql.VarChar(20), String(cversion));
-    const result = await req.query(`
-      SELECT DISTINCT ccategotr
-      FROM   VInma
-      WHERE  cano = @fano AND cmarca = @cmarca AND cmodelo = @cmodelo AND cversion = @cversion
-    `);
-    const row = result.recordset?.[0];
-    if (row?.ccategotr != null && row.ccategotr !== '') {
-      return parseInt(String(row.ccategotr), 10);
+    const categorias = await getCategoriasUso(fano, cmarca, cmodelo, cversion);
+    const first = categorias[0];
+    if (first?.ccategoria_uso != null && first.ccategoria_uso !== '') {
+      return parseInt(String(first.ccategoria_uso), 10);
     }
   } catch (err) {
     console.warn('[Catalogs] resolveCategoriaUsoFromVinma falló:', err.message);

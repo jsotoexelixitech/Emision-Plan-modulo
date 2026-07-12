@@ -18,7 +18,7 @@
  */
 const axios = require('axios');
 
-const DEFAULT_BASE = 'http://apiqa.exelixitech.com:3003';
+const DEFAULT_BASE = 'http://127.0.0.1:3002';
 const PATH_PREFIX = '/api/v1/personas';
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -27,7 +27,7 @@ let _clientCfg = null;
 
 function getConfig() {
   return {
-    baseUrl: process.env.PERSONAS_API_URL || process.env.NESTAPI_BASE_URL || DEFAULT_BASE,
+    baseUrl: process.env.PERSONAS_API_URL || process.env.SYSIP_API_URL || process.env.NESTAPI_BASE_URL || DEFAULT_BASE,
     // apikey solo se usa en la emisión (canal maclient_api).
     apiKey: process.env.PERSONAS_API_KEY || process.env.LAMUNDIAL_PERSON_APIKEY || '',
     timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || DEFAULT_TIMEOUT,

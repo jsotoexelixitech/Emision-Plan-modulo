@@ -3,7 +3,7 @@
  * POST /api/v1/external/collection/activate (notific + collect).
  */
 const axios = require('axios');
-const { getBaseUrl, getApiKey } = require('./sysipClient');
+const { getBaseUrl, buildHeaders } = require('./sysipClient');
 
 /**
  * @param {{ cnrecibo: string, mpago: number, xreferencia: string, fpago?: string, cusuario?: number }} params
@@ -12,13 +12,6 @@ async function activateReceiptAfterPayment(params) {
   if (process.env.COLLECTION_ENABLED === 'false') {
     console.log('[sysip-collection] COLLECTION_ENABLED=false — omitiendo activación de recibo.');
     return { skipped: true };
-  }
-
-  const apikey = getApiKey();
-  if (!apikey) {
-    const err = new Error('SYSIP_API_KEY requerida para collection/activate');
-    err.code = 'SYSIP_APIKEY_MISSING';
-    throw err;
   }
 
   const fpago = params.fpago || new Date().toISOString().slice(0, 10);
@@ -38,7 +31,7 @@ async function activateReceiptAfterPayment(params) {
       ...(params.cusuario != null ? { cusuario: params.cusuario } : {}),
     },
     {
-      headers: { 'Content-Type': 'application/json', apikey },
+      headers: buildHeaders(),
       timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || 60_000,
       validateStatus: () => true,
     },

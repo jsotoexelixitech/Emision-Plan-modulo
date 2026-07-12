@@ -1,142 +1,50 @@
 /**
- * /api/valrep — Catálogos de La Mundial de Seguros.
+ * /api/valrep — Catálogos de estados, ciudades y dominios.
  *
- * Endpoints expuestos:
- *   GET /api/valrep/state          → estados   (Sis2000 maestados)
- *   GET /api/valrep/city?cestado=N → ciudades  (Sis2000 maciudades)
- *   GET /api/valrep/list/:domain   → lista genérica (La Mundial GET /api/v1/valrep/list/:tipo)
- *
- * Listas SEXO | EDOCIVIL | PARENTESCOS | FRECUENCIAS | MATIPCANAL:
- *   Fuente primaria: La Mundial QA  GET /api/v1/valrep/list/{domain}
- *   Fallback: Sis2000 macatvalores / maparent
+ * Fuente única: sysip-nest-api (:3002).
  */
 const express = require('express');
-const axios = require('axios');
-const { getSis2000Pool, sql } = require('../services/sis2000Pool');
+const {
+  getValrepStates,
+  getValrepCities,
+  getValrepList,
+  getValrepFrecuencias,
+} = require('../services/sysipClient');
 
 const router = express.Router();
 
 const ALLOWED_LIST_DOMAINS = ['SEXO', 'EDOCIVIL', 'PARENTESCOS', 'FRECUENCIAS', 'MATIPCANAL'];
 
-function laMundialBaseUrl() {
-  return (process.env.LAMUNDIAL_BASE_URL || 'https://qaapisys2000.lamundialdeseguros.com').replace(/\/$/, '');
+function logError(tag, err) {
+  console.error(`[valrep/${tag}]`, err?.response?.status, err?.message);
 }
 
-/** GET /api/v1/valrep/list/:domain — respuesta La Mundial */
-async function getListFromLaMundial(domain) {
-  const url = `${laMundialBaseUrl()}/api/v1/valrep/list/${domain}`;
-  const apikey = process.env.LAMUNDIAL_APIKEY || '';
-  const timeout = Number(process.env.LAMUNDIAL_TIMEOUT_MS || 30000);
-
-  const response = await axios.get(url, {
-    headers: {
-      Accept: 'application/json',
-      ...(apikey ? { apikey } : {}),
-    },
-    timeout,
-    validateStatus: () => true,
-  });
-
-  if (response.status >= 400) {
-    throw new Error(`La Mundial HTTP ${response.status}: ${JSON.stringify(response.data)}`);
-  }
-
-  const json = response.data;
-  if (!json?.status) {
-    throw new Error(json?.message || 'La Mundial devolvió status=false');
-  }
-
-  const raw = Array.isArray(json.data) ? json.data : [];
-  if (!raw.length) throw new Error('La Mundial devolvió lista vacía');
-
-  return raw.map((row) => {
-    // PARENTESCOS: { cparen, xparentesco, bunavez }
-    if (domain === 'PARENTESCOS') {
-      return {
-        code: String(row.cparen ?? ''),
-        label: String(row.xparentesco ?? ''),
-        bunavez: row.bunavez === true,
-      };
-    }
-    // SEXO, EDOCIVIL, etc.: { cvalor, xdescripcion }
-    return {
-      code: String(row.cvalor ?? row.cparen ?? ''),
-      label: String(row.xdescripcion ?? row.xparentesco ?? ''),
-    };
-  }).filter((it) => it.code !== '' && it.label !== '');
-}
-
-async function getListFromSis2000(domain) {
-  const pool = await getSis2000Pool();
-  const req  = pool.request();
-  req.input('cdom', sql.NVarChar(30), domain);
-
-  const result = await req.query(`
-    SELECT TRIM(cvalor)       AS cvalor,
-           TRIM(xdescripcion) AS xdescripcion
-    FROM   macatvalores
-    WHERE  cdominio = @cdom
-      AND  bactivo  = 1
-    ORDER  BY iorden, cvalor
-  `);
-
-  if (!result.recordset?.length) {
-    throw new Error(`Dominio ${domain} no encontrado en macatvalores (Sis2000)`);
-  }
-
-  return result.recordset;
-}
-
-// GET /api/valrep/state — Sis2000 producción (maestados)
 router.get('/state', async (_req, res) => {
   try {
-    const pool   = await getSis2000Pool();
-    const result = await pool.request().query(`
-      SELECT cestado AS code, TRIM(xdescripcion_l) AS label
-      FROM   maestados
-      WHERE  cpais = 58
-      ORDER  BY xdescripcion_l
-    `);
-    res.json({ ok: true, source: 'sis2000', items: result.recordset });
+    const items = await getValrepStates();
+    res.json({ ok: true, source: 'sysip-nest-api', items });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[valrep/state] sis2000 error:', msg);
-    res.status(502).json({ ok: false, error: 'No se pudo obtener estados de Sis2000', detail: msg });
+    logError('state', err);
+    res.status(502).json({ ok: false, error: 'No se pudo obtener estados' });
   }
 });
 
-// GET /api/valrep/city?cestado=<codigo> — Sis2000 producción (maciudades)
 router.get('/city', async (req, res) => {
   const cestado = req.query.cestado ?? req.query.estado ?? null;
   try {
-    const pool = await getSis2000Pool();
-    const req2 = pool.request();
-    let query;
-    if (cestado) {
-      req2.input('cestado', sql.Int, parseInt(String(cestado), 10));
-      query = `
-        SELECT cciudad AS code, TRIM(xdescripcion_l) AS label
-        FROM   maciudades
-        WHERE  cestado = @cestado
-        ORDER  BY xdescripcion_l
-      `;
-    } else {
-      query = `
-        SELECT cciudad AS code, TRIM(xdescripcion_l) AS label
-        FROM   maciudades
-        ORDER  BY xdescripcion_l
-      `;
-    }
-    const result = await req2.query(query);
-    res.json({ ok: true, source: 'sis2000', cestado: cestado ? parseInt(cestado, 10) : null, items: result.recordset });
+    const items = await getValrepCities(cestado ? parseInt(String(cestado), 10) : null);
+    res.json({
+      ok: true,
+      source: 'sysip-nest-api',
+      cestado: cestado ? parseInt(String(cestado), 10) : null,
+      items,
+    });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('[valrep/city] sis2000 error:', msg);
-    res.status(502).json({ ok: false, error: 'No se pudo obtener ciudades de Sis2000', detail: msg });
+    logError('city', err);
+    res.status(502).json({ ok: false, error: 'No se pudo obtener ciudades' });
   }
 });
 
-// GET /api/valrep/list/:domain
 router.get('/list/:domain', async (req, res) => {
   const domain = (req.params.domain || '').toUpperCase();
   if (!ALLOWED_LIST_DOMAINS.includes(domain)) {
@@ -146,82 +54,23 @@ router.get('/list/:domain', async (req, res) => {
     });
   }
 
-  // 1. La Mundial GET /api/v1/valrep/list/:tipo
   try {
-    const items = await getListFromLaMundial(domain);
-    console.log(`[valrep/list/${domain}] La Mundial OK — ${items.length} items`);
-    return res.json({ ok: true, domain, source: 'lamundial', items });
+    const items = await getValrepList(domain);
+    res.json({ ok: true, domain, source: 'sysip-nest-api', items });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[valrep/list/${domain}] La Mundial falló (${msg}), probando Sis2000…`);
-  }
-
-  // 2. Fallback Sis2000 macatvalores
-  try {
-    const raw = await getListFromSis2000(domain);
-    const items = (Array.isArray(raw) ? raw : [])
-      .map((i) => ({ code: String(i.cvalor ?? ''), label: String(i.xdescripcion ?? '') }))
-      .filter((it) => it.code !== '' && it.label !== '');
-    console.log(`[valrep/list/${domain}] Sis2000 fallback — ${items.length} items`);
-    return res.json({ ok: true, domain, source: 'sis2000', items });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[valrep/list/${domain}] sis2000 error:`, msg);
-    return res.status(502).json({
-      ok: false,
-      error: `No se pudo obtener la lista ${domain}`,
-      detail: msg,
-    });
+    logError(`list/${domain}`, err);
+    res.status(502).json({ ok: false, error: `No se pudo obtener la lista ${domain}` });
   }
 });
 
-// POST /api/valrep/frecuencia
-// Proxy al nest-api (sysip-nest-api)
 router.post('/frecuencia', async (req, res) => {
   try {
     const { cplan, cramo } = req.body;
-    // URL del sysip-nest-api
-    const baseUrl = (process.env.NESTAPI_BASE_URL || process.env.LAMUNDIAL_BASE_URL || 'http://apiqa.exelixitech.com:3003').replace(/\/$/, '');
-    const url = `${baseUrl}/api/v1/valrep/frecuencia`;
-    
-    const response = await axios.post(url, { cplan, cramo }, {
-      headers: { 'Content-Type': 'application/json' },
-      validateStatus: () => true,
-    });
-    
-    if (response.status >= 400 || !response.data || !response.data.status) {
-      return res.status(response.status >= 400 ? response.status : 502).json({
-        ok: false,
-        error: 'Error al consultar frecuencias',
-        detail: response.data
-      });
-    }
-    
-    // El upstream puede devolver { status: true, data: { frecuencias: [...] } } o { status: true, frecuencias: [...] } o { status: true, plan: [...] }
-    const payload = response.data.data || response.data;
-    let rawItems = payload.frecuencias || payload.plan || payload.items || [];
-    
-    // Fallback: si el API upstream devuelve vacío (p. ej. la API legacy de QA),
-    // inyectamos las frecuencias por defecto tal como lo hace el Nest API.
-    if (!rawItems || rawItems.length === 0) {
-      rawItems = [
-        { cvalor: 'A', xdescripcion: 'Anual' },
-        { cvalor: 'S', xdescripcion: 'Semestral' },
-        { cvalor: 'T', xdescripcion: 'Trimestral' },
-        { cvalor: 'M', xdescripcion: 'Mensual' }
-      ];
-    }
-    
-    // Mapear al formato CatalogItem { code, label }
-    const items = rawItems.map((f) => ({
-      code: f.cvalor || f.ifrecuencia || f.code,
-      label: f.xdescripcion || f.xfrecuencia || f.label || String(f.cvalor || f.ifrecuencia)
-    }));
-    
+    const items = await getValrepFrecuencias(cplan, cramo);
     res.json({ ok: true, items });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[valrep/frecuencia] proxy error:`, msg);
+    console.error('[valrep/frecuencia]', msg);
     res.status(502).json({
       ok: false,
       error: 'No se pudo conectar con el servicio de frecuencias',

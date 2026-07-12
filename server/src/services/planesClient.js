@@ -1,8 +1,7 @@
 /**
  * Cliente de planes RCV — POST /api/v1/valrep/planes/v2
  *
- * Destino por defecto: sysip-nest-api (SYSIP_API_URL, :3002 en srv001).
- * No conecta emision-api a Sis2000; el nest-api expone la API HTTP.
+ * Destino: sysip-nest-api (SYSIP_API_URL, :3002 en srv001).
  *
  * Mapeo metadata SSO → payload:
  *   cproductor → cproductor + citem (productor emisor)
@@ -155,28 +154,19 @@ function normalizePlanRow(p, defaultRamo) {
 }
 
 /**
- * Base URL del servicio de planes.
- * PLANES_SOURCE=sysip (default srv001) | lamundial (API QA La Mundial + Bearer).
+ * Base URL del servicio de planes (sysip-nest-api por defecto).
  * @returns {string}
  */
 function getValrepBaseUrl() {
   if (process.env.PLANES_API_URL?.trim()) {
     return process.env.PLANES_API_URL.trim().replace(/\/$/, '');
   }
-  const source = (process.env.PLANES_SOURCE || 'sysip').toLowerCase();
-  if (source === 'lamundial') {
-    return (
-      process.env.LAMUNDIAL_VALREP_URL ||
-      process.env.LAMUNDIAL_BASE_URL ||
-      'https://qaapisys2000.lamundialdeseguros.com'
-    ).replace(/\/$/, '');
-  }
   return (process.env.SYSIP_API_URL || 'http://127.0.0.1:3002').replace(/\/$/, '');
 }
 
 /**
- * Bearer JWT para valrep/planes/v2 en La Mundial QA (sin prefijo "Bearer ").
- * @returns {string}
+ * Bearer JWT legacy (ya no se usa — planes vía sysip-nest-api interno).
+ * @deprecated
  */
 function getValrepBearerToken() {
   const raw = (
@@ -200,8 +190,7 @@ function isInternalPlanesApi(baseUrl) {
   } catch {
     /* ignore */
   }
-  return (process.env.PLANES_API_INTERNAL || 'true').toLowerCase() !== 'false'
-    && !baseUrl.includes('qaapisys2000.lamundialdeseguros.com');
+  return (process.env.PLANES_API_INTERNAL || 'true').toLowerCase() !== 'false';
 }
 
 /**
@@ -210,32 +199,10 @@ function isInternalPlanesApi(baseUrl) {
  * @returns {Record<string, string>}
  */
 function getValrepAuthHeaders(baseUrl) {
-  const headers = {
+  return {
     'Content-Type': 'application/json',
     Accept: 'application/json',
   };
-  if (isInternalPlanesApi(baseUrl)) {
-    return headers;
-  }
-
-  const bearer = getValrepBearerToken();
-  if (bearer) {
-    headers.Authorization = `Bearer ${bearer}`;
-    return headers;
-  }
-
-  const apikey = (
-    process.env.LAMUNDIAL_VALREP_APIKEY ||
-    process.env.LAMUNDIAL_APIKEY ||
-    ''
-  ).trim();
-  if (apikey) headers.apikey = apikey;
-
-  const basicAuth = (process.env.LAMUNDIAL_BASIC_AUTH || '').trim();
-  if (basicAuth && !headers.Authorization) {
-    headers.Authorization = basicAuth;
-  }
-  return headers;
 }
 
 /**
@@ -251,14 +218,6 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
     ? 'sysip-nest-api/valrep/planes/v2'
     : 'valrep/planes/v2';
   const headers = getValrepAuthHeaders(baseUrl);
-
-  if (!isInternalPlanesApi(baseUrl) && !headers.Authorization && !headers.apikey) {
-    const err = new Error(
-      'Falta auth para valrep/planes/v2 externo (LAMUNDIAL_VALREP_BEARER_TOKEN o LAMUNDIAL_VALREP_APIKEY)',
-    );
-    err.code = 'PLANES_V2_AUTH_MISSING';
-    throw err;
-  }
 
   logPlanesRequest(source, url, body);
 
