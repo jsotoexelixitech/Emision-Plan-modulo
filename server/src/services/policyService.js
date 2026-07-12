@@ -16,28 +16,29 @@
 const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
-  getCotizacionViaSysip,
-  createEmissionAutoViaSysip: emitViaSysipNest,
-} = require('./sysipClient');
-const { activateReceiptAfterPayment } = require('./sysipCollectionClient');
+  getCotizacionViaNestApi,
+  createEmissionAutoViaNestApi: emitViaNestApi,
+  getBaseUrl: getNestApiUrl,
+} = require('./nestApiClient');
+const { activateReceiptAfterPayment } = require('./nestApiCollectionClient');
 const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
 
 /**
- * Emite la póliza vía sysip-nest-api (Sis2000 directo, sin HTTP La Mundial).
+ * Emite la póliza vía nest-api (Sis2000 directo, sin HTTP La Mundial).
  *
  * @param {object} payload - payload ya construido por buildEmissionRequest
  * @param {object} cotizacion - { mprima, mprimaext, ptasa }
  */
-async function createEmissionAutoViaSysip(payload, cotizacion) {
+async function createEmissionAutoViaNestApi(payload, cotizacion) {
   const laMundialPayload = toLaMundialEmissionPayload(payload, cotizacion);
   const ts = new Date().toISOString();
   console.log(
-    `[sysip][${ts}] EMITIENDO placa=${laMundialPayload.xplaca ?? payload.placa} plan=${laMundialPayload.cplan ?? payload.plan}`,
+    `[nest-api][${ts}] EMITIENDO placa=${laMundialPayload.xplaca ?? payload.placa} plan=${laMundialPayload.cplan ?? payload.plan}`,
   );
 
-  const emission = await emitViaSysipNest({
+  const emission = await emitViaNestApi({
     ...payload,
     ...laMundialPayload,
     mprima: cotizacion.mprima,
@@ -123,7 +124,8 @@ async function quote(state, overrides = {}) {
     );
   }
 
-  const quoteSource = (process.env.QUOTE_SOURCE || 'sysip').toLowerCase();
+  const quoteSourceRaw = (process.env.QUOTE_SOURCE || 'nest-api').toLowerCase();
+  const quoteSource = quoteSourceRaw === 'sysip' ? 'nest-api' : quoteSourceRaw;
   console.log(`[Policy][quote] source=${quoteSource} payload:`, JSON.stringify(payload));
 
   try {
@@ -137,7 +139,7 @@ async function quote(state, overrides = {}) {
       metadata.quoteSource = 'sis2000';
     } else {
       try {
-        result = await getCotizacionViaSysip({
+        result = await getCotizacionViaNestApi({
           cmarca: payload.cmarca,
           cmodelo: payload.cmodelo,
           cversion: payload.cversion,
@@ -148,10 +150,15 @@ async function quote(state, overrides = {}) {
           ntoneladas: payload.ntoneladas,
           cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
         });
-        metadata.quoteSource = 'sysip';
-      } catch (sysipErr) {
-        if (process.env.SIS2000_SERVER && (sysipErr.code === 'SYSIP_QUOTE_ERROR' || sysipErr.code === 'SYSIP_QUOTE_ZERO')) {
-          console.warn(`[Policy][quote] sysip falló (${sysipErr.message}), reintentando SQL local`);
+        metadata.quoteSource = 'nest-api';
+      } catch (nestApiErr) {
+        const isNestQuoteErr =
+          nestApiErr.code === 'NEST_API_QUOTE_ERROR' ||
+          nestApiErr.code === 'NEST_API_QUOTE_ZERO' ||
+          nestApiErr.code === 'SYSIP_QUOTE_ERROR' ||
+          nestApiErr.code === 'SYSIP_QUOTE_ZERO';
+        if (process.env.SIS2000_SERVER && isNestQuoteErr) {
+          console.warn(`[Policy][quote] nest-api falló (${nestApiErr.message}), reintentando SQL local`);
           result = await getCotizacionFromSis2000({
             ...payload,
             cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
@@ -159,7 +166,7 @@ async function quote(state, overrides = {}) {
           });
           metadata.quoteSource = 'sis2000_fallback';
         } else {
-          throw sysipErr;
+          throw nestApiErr;
         }
       }
     }
@@ -173,7 +180,12 @@ async function quote(state, overrides = {}) {
     if (err.code === 'SIS2000_QUOTE_ZERO' || err.code === 'SIS2000_QUOTE_ERROR') {
       throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
     }
-    if (err.code === 'SYSIP_QUOTE_ZERO' || err.code === 'SYSIP_QUOTE_ERROR') {
+    if (
+      err.code === 'NEST_API_QUOTE_ZERO' ||
+      err.code === 'NEST_API_QUOTE_ERROR' ||
+      err.code === 'SYSIP_QUOTE_ZERO' ||
+      err.code === 'SYSIP_QUOTE_ERROR'
+    ) {
       throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
     }
     throw mapClientError(err, 'quote');
@@ -238,10 +250,10 @@ async function quoteAndEmit(state, overrides = {}) {
   const ts = new Date().toISOString();
   console.log(`[Policy][${ts}] EMITIENDO internalId=${payload.poliza} placa=${payload.placa}`);
 
-  // 5) Emitir via sysip-nest-api (inserta en eePoliza_Automovil_RCV2)
+  // 5) Emitir via nest-api (inserta en eePoliza_Automovil_RCV2)
   let emission;
   try {
-    emission = await createEmissionAutoViaSysip(payload, {
+    emission = await createEmissionAutoViaNestApi(payload, {
       mprima:    quoteResult.mprima,
       mprimaext: quoteResult.mprimaext,
       ptasa:     quoteResult.ptasa,
@@ -286,7 +298,7 @@ async function quoteAndEmit(state, overrides = {}) {
   let url_conductor_habitual = undefined;
   if (payload.conductor && payload.conductor.xrif_conductor) {
     try {
-      const SYSIP_URL = (process.env.SYSIP_API_URL || 'http://localhost:3002').replace(/\/$/, '');
+      const nestApiUrl = getNestApiUrl();
       const femision = payload.fecha_emision || payload.femision || new Date().toISOString().slice(0, 10);
       const fdesde = payload.fdesde || femision;
       const dHasta = new Date(femision + 'T00:00:00Z');
@@ -294,7 +306,7 @@ async function quoteAndEmit(state, overrides = {}) {
       dHasta.setUTCDate(dHasta.getUTCDate() - 1);
       const fhasta = payload.fhasta || dHasta.toISOString().slice(0, 10);
 
-      const docRes = await axios.post(`${SYSIP_URL}/api/v1/documents/conductor-habitual`, {
+      const docRes = await axios.post(`${nestApiUrl}/api/v1/documents/conductor-habitual`, {
         poliza: emission.cnpoliza,
         certificado: "0",
         fechaEmision: femision,
@@ -308,10 +320,10 @@ async function quoteAndEmit(state, overrides = {}) {
         conductorRif: String(payload.conductor.xrif_conductor)
       });
       if (docRes.data && docRes.data.url) {
-        // En srv001, sysip-nest-api devuelve localhost:3002 en la URL a veces
+        // En srv001, nest-api devuelve localhost:3002 en la URL a veces
         // Vamos a parchear la IP para asegurar que el cliente pueda abrir el PDF
         let url = docRes.data.url;
-        console.log(`[Policy] URL de anexo devuelta por sysip-nest-api: ${url}`);
+        console.log(`[Policy] URL de anexo devuelta por nest-api: ${url}`);
         url = url.replace('localhost', '192.168.8.120');
         url_conductor_habitual = url;
         console.log(`[Policy] URL final mapeada para el frontend: ${url_conductor_habitual}`);
@@ -371,6 +383,7 @@ function mapClientError(err, stage, extra = {}) {
       httpStatus = 504;
       break;
     case 'LAMUNDIAL_APIKEY_MISSING':
+    case 'NEST_API_KEY_MISSING':
     case 'SYSIP_APIKEY_MISSING':
       httpStatus = 500;
       break;

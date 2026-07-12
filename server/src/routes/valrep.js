@@ -1,7 +1,7 @@
 /**
  * /api/valrep — Catálogos de estados, ciudades y dominios.
  *
- * Fuente única: sysip-nest-api (:3002).
+ * Fuente única: nest-api (:3002).
  */
 const express = require('express');
 const {
@@ -9,7 +9,7 @@ const {
   getValrepCities,
   getValrepList,
   getValrepFrecuencias,
-} = require('../services/sysipClient');
+} = require('../services/nestApiClient');
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ function logError(tag, err) {
 router.get('/state', async (_req, res) => {
   try {
     const items = await getValrepStates();
-    res.json({ ok: true, source: 'sysip-nest-api', items });
+    res.json({ ok: true, source: 'nest-api', items });
   } catch (err) {
     logError('state', err);
     res.status(502).json({ ok: false, error: 'No se pudo obtener estados' });
@@ -53,7 +53,7 @@ router.get('/city', async (req, res) => {
     const items = await getValrepCities(cestado ? parseInt(String(cestado), 10) : null);
     res.json({
       ok: true,
-      source: 'sysip-nest-api',
+      source: 'nest-api',
       cestado: cestado ? parseInt(String(cestado), 10) : null,
       items,
     });
@@ -77,7 +77,7 @@ router.get('/list/:domain', async (req, res) => {
     if (!items.length && LIST_FALLBACKS[domain]) {
       items = LIST_FALLBACKS[domain];
     }
-    res.json({ ok: true, domain, source: 'sysip-nest-api', items });
+    res.json({ ok: true, domain, source: 'nest-api', items });
   } catch (err) {
     logError(`list/${domain}`, err);
     if (LIST_FALLBACKS[domain]) {

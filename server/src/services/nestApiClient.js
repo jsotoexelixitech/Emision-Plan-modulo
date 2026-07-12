@@ -1,11 +1,16 @@
 /**
- * Cliente HTTP hacia sysip-nest-api (puente Exelixi → Sis2000).
- * Cotización, emisión, INMA y valrep sin depender de qaapisys2000 La Mundial.
+ * Cliente HTTP hacia nest-api (puente Exelixi → Sis2000).
+ * Cotización, emisión, INMA y valrep sin depender de APIs externas La Mundial.
  */
 const axios = require('axios');
 
+/** @returns {string} Base URL de nest-api (:3002 en srv001). */
 function getBaseUrl() {
-  return (process.env.SYSIP_API_URL || 'http://127.0.0.1:3002').replace(/\/$/, '');
+  return (
+    process.env.NEST_API_URL ||
+    process.env.SYSIP_API_URL ||
+    'http://127.0.0.1:3002'
+  ).replace(/\/$/, '');
 }
 
 function getTimeout() {
@@ -14,6 +19,7 @@ function getTimeout() {
 
 function getApiKey() {
   return (
+    process.env.NEST_API_KEY ||
     process.env.SYSIP_API_KEY ||
     process.env.LAMUNDIAL_APIKEY ||
     process.env.LAMUNDIAL_EMISSION_APIKEY ||
@@ -21,7 +27,7 @@ function getApiKey() {
   ).trim();
 }
 
-/** Headers HTTP hacia sysip-nest-api; apikey solo si está configurada (QA interno no lo exige). */
+/** Headers HTTP hacia nest-api; apikey solo si está configurada (QA interno no lo exige). */
 function buildHeaders(extra = {}) {
   const headers = { 'Content-Type': 'application/json', ...extra };
   const apikey = getApiKey();
@@ -33,7 +39,7 @@ function buildHeaders(extra = {}) {
  * Cotiza vía POST /api/v1/valrep/cotizacion (spCalculoAuto en Sis2000).
  * @param {object} payload - { cmarca, cmodelo, cversion, fano, cplan, ccategoria_uso, iplaca?, ntoneladas?, cramo? }
  */
-async function getCotizacionViaSysip(payload) {
+async function getCotizacionViaNestApi(payload) {
   const url = `${getBaseUrl()}/api/v1/valrep/cotizacion`;
   const response = await axios.post(url, payload, {
     timeout: getTimeout(),
@@ -46,17 +52,17 @@ async function getCotizacionViaSysip(payload) {
     const mprima = Number(data?.mprima ?? 0);
     const ptasa = Number(data?.ptasa ?? 0);
     if (!mprimaext) {
-      const err = new Error('Cotización sysip-nest-api retornó prima cero.');
-      err.code = 'SYSIP_QUOTE_ZERO';
+      const err = new Error('Cotización nest-api retornó prima cero.');
+      err.code = 'NEST_API_QUOTE_ZERO';
       throw err;
     }
     return { mprima, mprimaext, ptasa };
   }
 
   const err = new Error(
-    response.data?.message || `HTTP ${response.status} cotizando en sysip-nest-api`,
+    response.data?.message || `HTTP ${response.status} cotizando en nest-api`,
   );
-  err.code = 'SYSIP_QUOTE_ERROR';
+  err.code = 'NEST_API_QUOTE_ERROR';
   err.httpStatus = response.status;
   err.raw = response.data;
   throw err;
@@ -66,10 +72,10 @@ async function getCotizacionViaSysip(payload) {
  * Emite vía POST /api/v1/external/createEmissionAuto (SP sp_pre_emision_Automovil_RCV2).
  * @param {object} payload - payload de emisión (policyMapper)
  */
-async function createEmissionAutoViaSysip(payload) {
+async function createEmissionAutoViaNestApi(payload) {
   const url = `${getBaseUrl()}/api/v1/external/createEmissionAuto`;
   const ts = new Date().toISOString();
-  console.log(`[sysip][${ts}] -> createEmissionAuto placa=${payload.placa ?? payload.xplaca}`);
+  console.log(`[nest-api][${ts}] -> createEmissionAuto placa=${payload.placa ?? payload.xplaca}`);
 
   const response = await axios.post(url, payload, {
     headers: buildHeaders(),
@@ -77,7 +83,7 @@ async function createEmissionAutoViaSysip(payload) {
     validateStatus: () => true,
   });
 
-  console.log(`[sysip][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
+  console.log(`[nest-api][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
 
   const body = response.data ?? {};
   const ok = response.status >= 200 && response.status < 300;
@@ -97,9 +103,9 @@ async function createEmissionAutoViaSysip(payload) {
   }
 
   const err = new Error(
-    body.message || result.message || result.error || `HTTP ${response.status} emitiendo en sysip-nest-api`,
+    body.message || result.message || result.error || `HTTP ${response.status} emitiendo en nest-api`,
   );
-  err.code = 'SYSIP_EMISSION_ERROR';
+  err.code = 'NEST_API_EMISSION_ERROR';
   err.httpStatus = response.status;
   err.raw = body;
   throw err;
@@ -225,8 +231,8 @@ async function getValrepFrecuencias(cplan, cramo) {
 }
 
 module.exports = {
-  getCotizacionViaSysip,
-  createEmissionAutoViaSysip,
+  getCotizacionViaNestApi,
+  createEmissionAutoViaNestApi,
   getBaseUrl,
   getApiKey,
   buildHeaders,

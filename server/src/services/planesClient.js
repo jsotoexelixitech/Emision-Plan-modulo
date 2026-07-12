@@ -1,7 +1,7 @@
 /**
  * Cliente de planes RCV — POST /api/v1/valrep/planes/v2
  *
- * Destino: sysip-nest-api (SYSIP_API_URL, :3002 en srv001).
+ * Destino: nest-api (NEST_API_URL, :3002 en srv001).
  *
  * Mapeo metadata SSO → payload:
  *   cproductor → cproductor + citem (productor emisor)
@@ -44,7 +44,7 @@ function summarizePlanes(planes) {
 }
 
 /**
- * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'nest-api/valrep/planes/v2'} source
  * @param {string} target URL o nombre SP
  * @param {object} payload
  */
@@ -54,7 +54,7 @@ function logPlanesRequest(source, target, payload) {
 }
 
 /**
- * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'nest-api/valrep/planes/v2'} source
  * @param {number} httpOrRowsStatus HTTP status o 200 para SQL
  * @param {number} elapsedMs
  * @param {Array<{ cplan: string, xplan?: string }>} planes
@@ -72,7 +72,7 @@ function logPlanesResponse(source, httpOrRowsStatus, elapsedMs, planes, rawBody)
 }
 
 /**
- * @param {'valrep/planes/v2'|'sysip-nest-api/valrep/planes/v2'} source
+ * @param {'valrep/planes/v2'|'nest-api/valrep/planes/v2'} source
  * @param {number} httpStatus
  * @param {number} elapsedMs
  * @param {unknown} data
@@ -154,18 +154,22 @@ function normalizePlanRow(p, defaultRamo) {
 }
 
 /**
- * Base URL del servicio de planes (sysip-nest-api por defecto).
+ * Base URL del servicio de planes (nest-api por defecto).
  * @returns {string}
  */
 function getValrepBaseUrl() {
   if (process.env.PLANES_API_URL?.trim()) {
     return process.env.PLANES_API_URL.trim().replace(/\/$/, '');
   }
-  return (process.env.SYSIP_API_URL || 'http://127.0.0.1:3002').replace(/\/$/, '');
+  return (
+    process.env.NEST_API_URL ||
+    process.env.SYSIP_API_URL ||
+    'http://127.0.0.1:3002'
+  ).replace(/\/$/, '');
 }
 
 /**
- * Bearer JWT legacy (ya no se usa — planes vía sysip-nest-api interno).
+ * Bearer JWT legacy (ya no se usa — planes vía nest-api interno).
  * @deprecated
  */
 function getValrepBearerToken() {
@@ -215,7 +219,7 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
   const baseUrl = getValrepBaseUrl();
   const url = `${baseUrl}/api/v1/valrep/planes/v2`;
   const source = isInternalPlanesApi(baseUrl)
-    ? 'sysip-nest-api/valrep/planes/v2'
+    ? 'nest-api/valrep/planes/v2'
     : 'valrep/planes/v2';
   const headers = getValrepAuthHeaders(baseUrl);
 

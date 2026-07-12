@@ -1,16 +1,16 @@
 /**
- * Activa recibo pendiente tras pago bancario vía sysip-nest-api collection.
+ * Activa recibo pendiente tras pago bancario vía nest-api collection.
  * POST /api/v1/external/collection/activate (notific + collect).
  */
 const axios = require('axios');
-const { getBaseUrl, buildHeaders } = require('./sysipClient');
+const { getBaseUrl, buildHeaders } = require('./nestApiClient');
 
 /**
  * @param {{ cnrecibo: string, mpago: number, xreferencia: string, fpago?: string, cusuario?: number }} params
  */
 async function activateReceiptAfterPayment(params) {
   if (process.env.COLLECTION_ENABLED === 'false') {
-    console.log('[sysip-collection] COLLECTION_ENABLED=false — omitiendo activación de recibo.');
+    console.log('[nest-api-collection] COLLECTION_ENABLED=false — omitiendo activación de recibo.');
     return { skipped: true };
   }
 
@@ -18,7 +18,7 @@ async function activateReceiptAfterPayment(params) {
   const url = `${getBaseUrl()}/api/v1/external/collection/activate`;
 
   console.log(
-    `[sysip-collection] -> activate cnrecibo=${params.cnrecibo} mpago=${params.mpago} ref=${params.xreferencia}`,
+    `[nest-api-collection] -> activate cnrecibo=${params.cnrecibo} mpago=${params.mpago} ref=${params.xreferencia}`,
   );
 
   const response = await axios.post(
@@ -38,14 +38,14 @@ async function activateReceiptAfterPayment(params) {
   );
 
   if (response.status >= 200 && response.status < 300 && response.data?.status !== false) {
-    console.log(`[sysip-collection] <- activate OK HTTP ${response.status}`);
+    console.log(`[nest-api-collection] <- activate OK HTTP ${response.status}`);
     return response.data?.result ?? response.data;
   }
 
   const err = new Error(
     response.data?.message || `HTTP ${response.status} en collection/activate`,
   );
-  err.code = 'SYSIP_COLLECTION_ERROR';
+  err.code = 'NEST_API_COLLECTION_ERROR';
   err.httpStatus = response.status;
   err.raw = response.data;
   throw err;

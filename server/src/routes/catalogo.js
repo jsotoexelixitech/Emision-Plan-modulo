@@ -1,7 +1,7 @@
 /**
  * Rutas de catálogos INMA (vehículos) — Módulo Emisión.
  *
- * Fuente: sysip-nest-api (puerto 3002) — API central Exelixi.
+ * Fuente: nest-api (puerto 3002) — API central Exelixi.
  */
 const express = require('express');
 const {
@@ -10,7 +10,7 @@ const {
   getInmaModelos,
   getInmaVersiones,
   getCategoriasUso,
-} = require('../services/sysipClient');
+} = require('../services/nestApiClient');
 const { fetchPlanesV2 } = require('../services/planesClient');
 
 const router = express.Router();
@@ -166,7 +166,7 @@ router.get('/planes', async (req, res) => {
     const status = err.status === 401 || err.status === 403 ? err.status : 502;
     res.status(status).json({
       success: false,
-      message: `No se pudieron obtener los planes vía sysip-nest-api: ${err.message}`,
+      message: `No se pudieron obtener los planes vía nest-api: ${err.message}`,
       code: err.code || 'PLANES_API_ERROR',
     });
   }

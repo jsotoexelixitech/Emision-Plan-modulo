@@ -1,6 +1,6 @@
 /**
  * Cliente HTTP del producto Funerario (personas) — apunta a NUESTRO backend
- * NestJS (sysip-nest-api), módulo `personas`.
+ * NestJS (nest-api), módulo `personas`.
  *
  * Endpoints (QA por defecto, prefijo /api/v1/personas):
  *   - POST /api/v1/personas/planes      → planes vigentes de personas (ramo 9)
@@ -27,7 +27,12 @@ let _clientCfg = null;
 
 function getConfig() {
   return {
-    baseUrl: process.env.PERSONAS_API_URL || process.env.SYSIP_API_URL || process.env.NESTAPI_BASE_URL || DEFAULT_BASE,
+    baseUrl:
+      process.env.PERSONAS_API_URL ||
+      process.env.NEST_API_URL ||
+      process.env.NESTAPI_BASE_URL ||
+      process.env.SYSIP_API_URL ||
+      DEFAULT_BASE,
     // apikey solo se usa en la emisión (canal maclient_api).
     apiKey: process.env.PERSONAS_API_KEY || process.env.LAMUNDIAL_PERSON_APIKEY || '',
     timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || DEFAULT_TIMEOUT,
