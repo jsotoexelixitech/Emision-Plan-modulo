@@ -13,88 +13,51 @@
  *      (idempotencia manual: si la red falla justo despues de emitir,
  *      el log permite al operador escalar a La Mundial con la placa).
  */
-const { getCotizacionAuto, _internal: { buildLaMundialError } } = require('./lamundialClient');
+const { getCotizacionAuto } = require('./lamundialClient');
 const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
+const {
+  getCotizacionViaSysip,
+  createEmissionAutoViaSysip: emitViaSysipNest,
+} = require('./sysipClient');
+const { activateReceiptAfterPayment } = require('./sysipCollectionClient');
+const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
+const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
+const { validateEmissionPayload } = require('./policyValidator');
 
 /**
- * Emite la póliza vía sysip-nest-api (backend-api-sys), que inserta
- * directamente en eePoliza_Automovil_RCV2 en Sis2000.
- * Este es el mismo flujo que usa el monolito suscripcion-rcv.
+ * Emite la póliza vía sysip-nest-api (Sis2000 directo, sin HTTP La Mundial).
  *
  * @param {object} payload - payload ya construido por buildEmissionRequest
  * @param {object} cotizacion - { mprima, mprimaext, ptasa }
  */
 async function createEmissionAutoViaSysip(payload, cotizacion) {
-  const laMundialUrl = (
-    process.env.LAMUNDIAL_EMISSION_URL ||
-    'https://qaapisys2000.lamundialdeseguros.com'
-  ).replace(/\/$/, '');
-  const apikey = (
-    process.env.LAMUNDIAL_EMISSION_APIKEY ||
-    process.env.LAMUNDIAL_APIKEY ||
-    ''
-  ).trim();
-  const basicAuth = (process.env.LAMUNDIAL_BASIC_AUTH || '').trim();
-  const emitUrl = `${laMundialUrl}/api/v1/external/createEmissionAuto`;
-
-  if (!apikey) {
-    const err = new Error('LAMUNDIAL_EMISSION_APIKEY (o LAMUNDIAL_APIKEY) no configurada en .env');
-    err.code = 'LAMUNDIAL_APIKEY_MISSING';
-    throw err;
-  }
-  if (!basicAuth) {
-    const err = new Error('LAMUNDIAL_BASIC_AUTH no configurada en .env (requerida por La Mundial QA)');
-    err.code = 'LAMUNDIAL_BASIC_AUTH_MISSING';
-    throw err;
-  }
-
   const laMundialPayload = toLaMundialEmissionPayload(payload, cotizacion);
-
   const ts = new Date().toISOString();
-  console.log(`[lamundial][${ts}] -> createEmissionAuto URL=${emitUrl} apikey=${apikey ? 'ok' : 'MISSING'} basicAuth=${basicAuth ? 'ok' : 'MISSING'} placa=${laMundialPayload.xplaca} plan=${laMundialPayload.cplan}`);
-  console.log('[lamundial] payload:', JSON.stringify(laMundialPayload));
+  console.log(
+    `[sysip][${ts}] EMITIENDO placa=${laMundialPayload.xplaca ?? payload.placa} plan=${laMundialPayload.cplan ?? payload.plan}`,
+  );
 
-  let response;
-  try {
-    response = await axios.post(emitUrl, laMundialPayload, {
-      headers: {
-        'Content-Type': 'application/json',
-        apikey,
-        Authorization: basicAuth,
-      },
-      timeout: 60_000,
-      validateStatus: () => true,
-    });
-  } catch (netErr) {
-    const err = new Error(`Red no disponible llamando createEmissionAuto: ${netErr.message}`);
-    err.code = 'LAMUNDIAL_NETWORK';
-    throw err;
-  }
+  const emission = await emitViaSysipNest({
+    ...payload,
+    ...laMundialPayload,
+    mprima: cotizacion.mprima,
+    mprimaext: cotizacion.mprimaext,
+    tasa: cotizacion.ptasa,
+    ptasa: cotizacion.ptasa,
+  });
 
-  console.log(`[lamundial][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`, JSON.stringify(response.data));
-
-  if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
-    const r = response.data.result || {};
-    // Construir número de póliza en el mismo formato que usa La Mundial
-    const cnpoliza = r.cnpoliza
-      ? String(r.cnpoliza)
-      : `${payload.cramo}-1-${String(Date.now()).slice(-10)}`;
-    return {
-      cnpoliza,
-      cnrecibo: r.cnrecibo || cnpoliza,
-      urlpoliza: r.urlpoliza || '',
-      ncuota: r.ncuota || 1,
-      message: r.message,
-      _raw: response.data,
-    };
-  }
-
-  throw buildLaMundialError(response.status, response.data, { endpoint: 'createEmissionAuto' });
+  return {
+    cnpoliza: emission.cnpoliza,
+    cnrecibo: emission.cnrecibo,
+    urlpoliza: emission.urlpoliza || '',
+    ncuota: emission.ncuota || 1,
+    message: emission.message,
+    fanopol: emission.fanopol,
+    fmespol: emission.fmespol,
+    _raw: emission._raw,
+  };
 }
-const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
-const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
-const { validateEmissionPayload } = require('./policyValidator');
 
 function getMode() {
   return (process.env.POLICY_MODE || 'live').toLowerCase();
@@ -161,18 +124,33 @@ async function quote(state, overrides = {}) {
     );
   }
 
-  const quoteSource = (process.env.QUOTE_SOURCE || 'lamundial_api').toLowerCase();
+  const quoteSource = (process.env.QUOTE_SOURCE || 'sysip').toLowerCase();
   console.log(`[Policy][quote] source=${quoteSource} payload:`, JSON.stringify(payload));
 
   try {
     let result;
-    if (quoteSource === 'sis2000') {
-      result = await getCotizacionFromSis2000({
-        ...payload,
-        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
-        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
-      });
-      metadata.quoteSource = 'sis2000';
+    if (quoteSource === 'sysip' || quoteSource === 'nest_api' || quoteSource === 'sis2000') {
+      if (quoteSource === 'sis2000') {
+        result = await getCotizacionFromSis2000({
+          ...payload,
+          cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
+          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+        });
+        metadata.quoteSource = 'sis2000';
+      } else {
+        result = await getCotizacionViaSysip({
+          cmarca: payload.cmarca,
+          cmodelo: payload.cmodelo,
+          cversion: payload.cversion,
+          fano: payload.fano,
+          cplan: payload.cplan,
+          ccategoria_uso: payload.ccategoria_uso,
+          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+          ntoneladas: payload.ntoneladas,
+          cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+        });
+        metadata.quoteSource = 'sysip';
+      }
     } else {
       result = await getCotizacionAuto(payload);
       metadata.quoteSource = 'lamundial_api';
@@ -185,6 +163,9 @@ async function quote(state, overrides = {}) {
     };
   } catch (err) {
     if (err.code === 'SIS2000_QUOTE_ZERO' || err.code === 'SIS2000_QUOTE_ERROR') {
+      throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
+    }
+    if (err.code === 'SYSIP_QUOTE_ZERO' || err.code === 'SYSIP_QUOTE_ERROR') {
       throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
     }
     throw mapClientError(err, 'quote');
@@ -259,6 +240,38 @@ async function quoteAndEmit(state, overrides = {}) {
     });
   } catch (err) {
     throw mapClientError(err, 'emit', { internalPolicyId: payload.poliza });
+  }
+
+  // 5.1) Activar recibo pendiente en Sis2000 (notific + collect) tras pago verificado
+  if (emission.cnrecibo) {
+    const pay = state.paymentCapture || {};
+    const xreferencia =
+      pay.reference ||
+      pay.transactionId ||
+      pay.xreferencia ||
+      `EX-${payload.poliza}`;
+    const fpago = pay.paidOn || pay.fpago || new Date().toISOString().slice(0, 10);
+    const mpago = pay.amount != null ? Number(pay.amount) : quoteResult.mprima;
+
+    try {
+      const collectionResult = await activateReceiptAfterPayment({
+        cnrecibo: emission.cnrecibo,
+        mpago,
+        xreferencia: String(xreferencia),
+        fpago: String(fpago).slice(0, 10),
+        cusuario: pay.cusuario,
+      });
+      metadata.collection = collectionResult;
+      console.log(
+        `[Policy] Recibo ${emission.cnrecibo} activado en Sis2000 ref=${xreferencia}`,
+      );
+    } catch (collErr) {
+      console.error(
+        `[Policy] collection/activate falló cnrecibo=${emission.cnrecibo}:`,
+        collErr.message,
+      );
+      metadata.collectionError = collErr.message;
+    }
   }
 
   // 5.5) Generar anexo de Conductor Habitual si existe
@@ -350,6 +363,7 @@ function mapClientError(err, stage, extra = {}) {
       httpStatus = 504;
       break;
     case 'LAMUNDIAL_APIKEY_MISSING':
+    case 'SYSIP_APIKEY_MISSING':
       httpStatus = 500;
       break;
     case 'LAMUNDIAL_SERVER_ERROR':

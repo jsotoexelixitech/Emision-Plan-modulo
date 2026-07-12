@@ -1,20 +1,70 @@
 /**
- * /api/valrep — Catálogos de La Mundial de Seguros + Sis2000.
+ * /api/valrep — Catálogos de La Mundial de Seguros.
  *
  * Endpoints expuestos:
  *   GET /api/valrep/state          → estados   (Sis2000 maestados)
  *   GET /api/valrep/city?cestado=N → ciudades  (Sis2000 maciudades)
- *   GET /api/valrep/list/:domain   → lista genérica (Sis2000 macatvalores)
+ *   GET /api/valrep/list/:domain   → lista genérica (La Mundial GET /api/v1/valrep/list/:tipo)
  *
- * Fuente: Sis2000 SQL Server — La Mundial no expone estos endpoints externamente
- * con datos limpios. macatvalores cubre SEXO, EDOCIVIL, PARENTESCOS, FRECUENCIAS,
- * MATIPCANAL — todas con bactivo=1.
+ * Listas SEXO | EDOCIVIL | PARENTESCOS | FRECUENCIAS | MATIPCANAL:
+ *   Fuente primaria: La Mundial QA  GET /api/v1/valrep/list/{domain}
+ *   Fallback: Sis2000 macatvalores / maparent
  */
 const express = require('express');
 const axios = require('axios');
 const { getSis2000Pool, sql } = require('../services/sis2000Pool');
 
 const router = express.Router();
+
+const ALLOWED_LIST_DOMAINS = ['SEXO', 'EDOCIVIL', 'PARENTESCOS', 'FRECUENCIAS', 'MATIPCANAL'];
+
+function laMundialBaseUrl() {
+  return (process.env.LAMUNDIAL_BASE_URL || 'https://qaapisys2000.lamundialdeseguros.com').replace(/\/$/, '');
+}
+
+/** GET /api/v1/valrep/list/:domain — respuesta La Mundial */
+async function getListFromLaMundial(domain) {
+  const url = `${laMundialBaseUrl()}/api/v1/valrep/list/${domain}`;
+  const apikey = process.env.LAMUNDIAL_APIKEY || '';
+  const timeout = Number(process.env.LAMUNDIAL_TIMEOUT_MS || 30000);
+
+  const response = await axios.get(url, {
+    headers: {
+      Accept: 'application/json',
+      ...(apikey ? { apikey } : {}),
+    },
+    timeout,
+    validateStatus: () => true,
+  });
+
+  if (response.status >= 400) {
+    throw new Error(`La Mundial HTTP ${response.status}: ${JSON.stringify(response.data)}`);
+  }
+
+  const json = response.data;
+  if (!json?.status) {
+    throw new Error(json?.message || 'La Mundial devolvió status=false');
+  }
+
+  const raw = Array.isArray(json.data) ? json.data : [];
+  if (!raw.length) throw new Error('La Mundial devolvió lista vacía');
+
+  return raw.map((row) => {
+    // PARENTESCOS: { cparen, xparentesco, bunavez }
+    if (domain === 'PARENTESCOS') {
+      return {
+        code: String(row.cparen ?? ''),
+        label: String(row.xparentesco ?? ''),
+        bunavez: row.bunavez === true,
+      };
+    }
+    // SEXO, EDOCIVIL, etc.: { cvalor, xdescripcion }
+    return {
+      code: String(row.cvalor ?? row.cparen ?? ''),
+      label: String(row.xdescripcion ?? row.xparentesco ?? ''),
+    };
+  }).filter((it) => it.code !== '' && it.label !== '');
+}
 
 async function getListFromSis2000(domain) {
   const pool = await getSis2000Pool();
@@ -89,23 +139,37 @@ router.get('/city', async (req, res) => {
 // GET /api/valrep/list/:domain
 router.get('/list/:domain', async (req, res) => {
   const domain = (req.params.domain || '').toUpperCase();
-  const ALLOWED = ['SEXO', 'EDOCIVIL', 'PARENTESCOS', 'FRECUENCIAS', 'MATIPCANAL'];
-  if (!ALLOWED.includes(domain)) {
-    return res.status(400).json({ ok: false, error: `Dominio no permitido: ${domain}` });
+  if (!ALLOWED_LIST_DOMAINS.includes(domain)) {
+    return res.status(400).json({
+      ok: false,
+      error: `Dominio no permitido: ${domain}. Válidos: ${ALLOWED_LIST_DOMAINS.join(', ')}`,
+    });
   }
 
+  // 1. La Mundial GET /api/v1/valrep/list/:tipo
+  try {
+    const items = await getListFromLaMundial(domain);
+    console.log(`[valrep/list/${domain}] La Mundial OK — ${items.length} items`);
+    return res.json({ ok: true, domain, source: 'lamundial', items });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[valrep/list/${domain}] La Mundial falló (${msg}), probando Sis2000…`);
+  }
+
+  // 2. Fallback Sis2000 macatvalores
   try {
     const raw = await getListFromSis2000(domain);
     const items = (Array.isArray(raw) ? raw : [])
       .map((i) => ({ code: String(i.cvalor ?? ''), label: String(i.xdescripcion ?? '') }))
       .filter((it) => it.code !== '' && it.label !== '');
-    res.json({ ok: true, domain, source: 'sis2000', items });
+    console.log(`[valrep/list/${domain}] Sis2000 fallback — ${items.length} items`);
+    return res.json({ ok: true, domain, source: 'sis2000', items });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error(`[valrep/list/${domain}] sis2000 error:`, msg);
-    res.status(502).json({
+    return res.status(502).json({
       ok: false,
-      error: `No se pudo obtener la lista ${domain} de Sis2000`,
+      error: `No se pudo obtener la lista ${domain}`,
       detail: msg,
     });
   }
