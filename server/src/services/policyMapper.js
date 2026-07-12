@@ -218,7 +218,12 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ccanalalt = parseCanalAltOptional(metadata.ccanalalt_in);
   const cscanalalt = parseCanalAltOptional(metadata.cscanalalt_in);
   
-  const plan = overrides.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
+  const plan = (
+    overrides.plan ||
+    state.selectedPlan?.cplan ||
+    process.env.LAMUNDIAL_PLAN_DEFAULT ||
+    'RCVBAS'
+  ).trim();
   const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
   const fecha_emision = overrides.fechaEmision || todayYmd();
   const internalId = overrides.internalPolicyId || genInternalPolicyId();

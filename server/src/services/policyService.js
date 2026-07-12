@@ -136,18 +136,32 @@ async function quote(state, overrides = {}) {
       });
       metadata.quoteSource = 'sis2000';
     } else {
-      result = await getCotizacionViaSysip({
-        cmarca: payload.cmarca,
-        cmodelo: payload.cmodelo,
-        cversion: payload.cversion,
-        fano: payload.fano,
-        cplan: payload.cplan,
-        ccategoria_uso: payload.ccategoria_uso,
-        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
-        ntoneladas: payload.ntoneladas,
-        cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-      });
-      metadata.quoteSource = 'sysip';
+      try {
+        result = await getCotizacionViaSysip({
+          cmarca: payload.cmarca,
+          cmodelo: payload.cmodelo,
+          cversion: payload.cversion,
+          fano: payload.fano,
+          cplan: payload.cplan,
+          ccategoria_uso: payload.ccategoria_uso,
+          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+          ntoneladas: payload.ntoneladas,
+          cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+        });
+        metadata.quoteSource = 'sysip';
+      } catch (sysipErr) {
+        if (process.env.SIS2000_SERVER && (sysipErr.code === 'SYSIP_QUOTE_ERROR' || sysipErr.code === 'SYSIP_QUOTE_ZERO')) {
+          console.warn(`[Policy][quote] sysip falló (${sysipErr.message}), reintentando SQL local`);
+          result = await getCotizacionFromSis2000({
+            ...payload,
+            cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+            iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+          });
+          metadata.quoteSource = 'sis2000_fallback';
+        } else {
+          throw sysipErr;
+        }
+      }
     }
     return {
       mprima: result.mprima,
