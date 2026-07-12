@@ -15,6 +15,24 @@ const router = express.Router();
 
 const ALLOWED_LIST_DOMAINS = ['SEXO', 'EDOCIVIL', 'PARENTESCOS', 'FRECUENCIAS', 'MATIPCANAL'];
 
+const LIST_FALLBACKS = {
+  SEXO: [
+    { code: 'M', label: 'Masculino' },
+    { code: 'F', label: 'Femenino' },
+  ],
+  EDOCIVIL: [
+    { code: 'S', label: 'Soltero(a)' },
+    { code: 'C', label: 'Casado(a)' },
+    { code: 'D', label: 'Divorciado(a)' },
+    { code: 'V', label: 'Viudo(a)' },
+  ],
+  PARENTESCOS: [
+    { code: 'T', label: 'TITULAR' },
+    { code: 'C', label: 'CONYUGE' },
+    { code: 'H', label: 'HIJO(A)' },
+  ],
+};
+
 function logError(tag, err) {
   console.error(`[valrep/${tag}]`, err?.response?.status, err?.message);
 }
@@ -55,10 +73,16 @@ router.get('/list/:domain', async (req, res) => {
   }
 
   try {
-    const items = await getValrepList(domain);
+    let items = await getValrepList(domain);
+    if (!items.length && LIST_FALLBACKS[domain]) {
+      items = LIST_FALLBACKS[domain];
+    }
     res.json({ ok: true, domain, source: 'sysip-nest-api', items });
   } catch (err) {
     logError(`list/${domain}`, err);
+    if (LIST_FALLBACKS[domain]) {
+      return res.json({ ok: true, domain, source: 'fallback', items: LIST_FALLBACKS[domain] });
+    }
     res.status(502).json({ ok: false, error: `No se pudo obtener la lista ${domain}` });
   }
 });

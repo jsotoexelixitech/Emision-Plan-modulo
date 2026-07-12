@@ -15,34 +15,67 @@ const EMPTY: Catalogs = {
   loading: true, error: null,
 };
 
-/**
- * Carga los catálogos estáticos de La Mundial en paralelo (estados + listas de dominio).
- * Las ciudades se cargan dinámicamente con `useCiudades(cestado)` para evitar bajar
- * todas las ciudades del país en una sola request.
- */
+const LIST_FALLBACKS: Record<string, CatalogItem[]> = {
+  SEXO: [
+    { code: 'M', label: 'Masculino' },
+    { code: 'F', label: 'Femenino' },
+  ],
+  EDOCIVIL: [
+    { code: 'S', label: 'Soltero(a)' },
+    { code: 'C', label: 'Casado(a)' },
+    { code: 'D', label: 'Divorciado(a)' },
+    { code: 'V', label: 'Viudo(a)' },
+  ],
+  PARENTESCOS: [
+    { code: 'T', label: 'TITULAR' },
+    { code: 'C', label: 'CONYUGE' },
+    { code: 'H', label: 'HIJO(A)' },
+  ],
+};
+
+async function loadList(domain: keyof typeof LIST_FALLBACKS): Promise<CatalogItem[]> {
+  try {
+    return await getValrepList(domain);
+  } catch (err) {
+    console.warn(`[useCatalogs] ${domain} falló, usando fallback:`, (err as Error).message);
+    return LIST_FALLBACKS[domain] ?? [];
+  }
+}
+
 export function useCatalogs(): Catalogs {
   const [cats, setCats] = useState<Catalogs>(EMPTY);
 
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([
-      getEstados(),
-      getValrepList('SEXO'),
-      getValrepList('EDOCIVIL'),
-      getValrepList('PARENTESCOS'),
-    ])
-      .then(([estados, sexos, estadosCivil, parentescos]) => {
-        if (!cancelled) {
-          setCats({ estados, sexos, estadosCivil, parentescos, loading: false, error: null });
-        }
-      })
-      .catch((err) => {
-        console.warn('[useCatalogs] Error cargando catálogos, usando fallback estático:', err.message);
-        if (!cancelled) {
-          setCats((prev) => ({ ...prev, loading: false, error: err.message }));
-        }
+    (async () => {
+      const [estadosR, sexosR, edoR, parR] = await Promise.allSettled([
+        getEstados(),
+        loadList('SEXO'),
+        loadList('EDOCIVIL'),
+        loadList('PARENTESCOS'),
+      ]);
+
+      if (cancelled) return;
+
+      const estados = estadosR.status === 'fulfilled' ? estadosR.value : [];
+      const sexos = sexosR.status === 'fulfilled' ? sexosR.value : LIST_FALLBACKS.SEXO;
+      const estadosCivil = edoR.status === 'fulfilled' ? edoR.value : LIST_FALLBACKS.EDOCIVIL;
+      const parentescos = parR.status === 'fulfilled' ? parR.value : LIST_FALLBACKS.PARENTESCOS;
+
+      const errors = [estadosR, sexosR, edoR, parR]
+        .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+        .map((r) => r.reason?.message ?? String(r.reason));
+
+      setCats({
+        estados,
+        sexos,
+        estadosCivil,
+        parentescos,
+        loading: false,
+        error: errors.length ? errors.join('; ') : null,
       });
+    })();
 
     return () => { cancelled = true; };
   }, []);
@@ -56,11 +89,6 @@ export interface CiudadesState {
   error   : string | null;
 }
 
-/**
- * Carga las ciudades correspondientes al estado seleccionado.
- * Cada cestado genera una request independiente que se cachea en `api.ts`.
- * Si `cestado` es null/undefined, devuelve la lista vacía sin llamar al backend.
- */
 export function useCiudades(cestado?: number | null): CiudadesState {
   const [state, setState] = useState<CiudadesState>({ ciudades: [], loading: false, error: null });
 
