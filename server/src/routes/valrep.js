@@ -9,6 +9,7 @@ const {
   getValrepCities,
   getValrepList,
   getValrepFrecuencias,
+  validateEmissionAutoViaNestApi,
 } = require('../services/nestApiClient');
 
 const router = express.Router();
@@ -84,6 +85,32 @@ router.get('/list/:domain', async (req, res) => {
       return res.json({ ok: true, domain, source: 'fallback', items: LIST_FALLBACKS[domain] });
     }
     res.status(502).json({ ok: false, error: `No se pudo obtener la lista ${domain}` });
+  }
+});
+
+router.post('/validate-vehicle', async (req, res) => {
+  try {
+    const { placa, serial, serialMotor, plan } = req.body ?? {};
+    const result = await validateEmissionAutoViaNestApi({
+      plan: plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS',
+      placa,
+      serial_carroceria: serial,
+      serial_motor: serialMotor || serial,
+    });
+    res.json(result);
+  } catch (err) {
+    if (err.code === 'PLATE_ALREADY_INSURED') {
+      return res.status(400).json({
+        success: false,
+        code: err.code,
+        message: err.message || 'Este vehículo ya cuenta con una póliza vigente.',
+      });
+    }
+    logError('validate-vehicle', err);
+    res.status(502).json({
+      success: false,
+      error: err.message || 'Error validando vehículo en nest-api',
+    });
   }
 });
 

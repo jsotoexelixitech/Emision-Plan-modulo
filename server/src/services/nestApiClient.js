@@ -111,6 +111,60 @@ async function createEmissionAutoViaNestApi(payload) {
   throw err;
 }
 
+function mapValidatePlateError(message) {
+  const lower = String(message || '').toLowerCase();
+  if (
+    lower.includes('exist') ||
+    lower.includes('vigente') ||
+    lower.includes('póliza rel') ||
+    lower.includes('poliza rel') ||
+    lower.includes('serial carrocer')
+  ) {
+    return 'PLATE_ALREADY_INSURED';
+  }
+  return 'VALIDATE_EMISSION_ERROR';
+}
+
+/**
+ * Valida placa/serial vía POST /api/v1/external/validateEmissionAuto (speeValidateAutomovilGeneral).
+ * @param {object} params - { plan?, placa, serial_carroceria, serial_motor? }
+ */
+async function validateEmissionAutoViaNestApi(params) {
+  const url = `${getBaseUrl()}/api/v1/external/validateEmissionAuto`;
+  const plan = params.plan || process.env.LAMUNDIAL_PLAN_DEFAULT || 'RCVBAS';
+  const payload = {
+    plan,
+    placa: String(params.placa || '').trim(),
+    serial_carroceria: String(params.serial_carroceria || '').trim(),
+    serial_motor: String(params.serial_motor || params.serial_carroceria || '').trim(),
+  };
+
+  const response = await axios.post(url, payload, {
+    headers: buildHeaders(),
+    timeout: getTimeout(),
+    validateStatus: () => true,
+  });
+
+  const body = response.data ?? {};
+  const failed =
+    response.status >= 400 ||
+    body.status === false ||
+    (body.error && body.status !== true);
+
+  if (!failed) {
+    return {
+      success: true,
+      message: body.message || 'Vehículo válido para emisión.',
+    };
+  }
+
+  const rawMsg = body.error || body.message || `HTTP ${response.status}`;
+  const errorMessage = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+  const err = new Error(errorMessage);
+  err.code = mapValidatePlateError(errorMessage);
+  throw err;
+}
+
 // ── INMA (catálogo vehículo) ─────────────────────────────────────────────────
 
 /** @returns {Promise<{ min: number, max: number }>} */
@@ -233,6 +287,7 @@ async function getValrepFrecuencias(cplan, cramo) {
 module.exports = {
   getCotizacionViaNestApi,
   createEmissionAutoViaNestApi,
+  validateEmissionAutoViaNestApi,
   getBaseUrl,
   getApiKey,
   buildHeaders,
