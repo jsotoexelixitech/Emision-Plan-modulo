@@ -15,6 +15,10 @@ const { getBaseUrl, buildHeaders } = require('./nestApiClient');
  *   cbanco?: number,
  *   cbanco_ref?: string,
  *   cbanco_destino?: number,
+ *   xtelefono?: string,
+ *   telefono_dest?: string,
+ *   cci_rif?: string,
+ *   cbanco_dest_ref?: string,
  * }} params
  */
 async function activateReceiptAfterPayment(params) {
@@ -41,6 +45,10 @@ async function activateReceiptAfterPayment(params) {
       ...(params.cbanco != null ? { cbanco: params.cbanco } : {}),
       ...(params.cbanco_ref ? { cbanco_ref: params.cbanco_ref } : {}),
       ...(params.cbanco_destino != null ? { cbanco_destino: params.cbanco_destino } : {}),
+      ...(params.xtelefono ? { xtelefono: params.xtelefono } : {}),
+      ...(params.telefono_dest ? { telefono_dest: params.telefono_dest } : {}),
+      ...(params.cci_rif ? { cci_rif: params.cci_rif } : {}),
+      ...(params.cbanco_dest_ref ? { cbanco_dest_ref: params.cbanco_dest_ref } : {}),
     },
     {
       headers: buildHeaders(),

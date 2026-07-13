@@ -313,6 +313,10 @@ async function quoteAndEmit(state, overrides = {}) {
           cbanco_ref: pay.bankCode ? String(pay.bankCode).trim() : undefined,
           cbanco: pay.cbanco,
           cbanco_destino: pay.cbanco_destino,
+          xtelefono: pay.sourcePhone ? String(pay.sourcePhone).trim() : undefined,
+          telefono_dest: pay.telefonoDest ? String(pay.telefonoDest).trim() : undefined,
+          cci_rif: pay.cci_rif ? String(pay.cci_rif).trim() : undefined,
+          cbanco_dest_ref: pay.cbanco_dest_ref ? String(pay.cbanco_dest_ref).trim() : undefined,
         });
         metadata.collection = collectionResult;
         console.log(
