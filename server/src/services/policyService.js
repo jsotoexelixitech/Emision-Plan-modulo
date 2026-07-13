@@ -328,6 +328,9 @@ async function quoteAndEmit(state, overrides = {}) {
     }
   } else if (emission.cnrecibo) {
     metadata.collectionSkipped = 'pago_no_verificado';
+    console.warn(
+      `[Policy] Cobro omitido cnrecibo=${emission.cnrecibo}: state.paymentVerified=false (emit sin datos de pago)`,
+    );
   }
 
   // 5.5) Generar anexo de Conductor Habitual si existe
