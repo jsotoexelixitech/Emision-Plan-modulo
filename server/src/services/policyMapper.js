@@ -434,6 +434,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   body.ccanalalt = parseCanalAltOptional(p.ccanalalt);
   body.cscanalalt = parseCanalAltOptional(p.cscanalalt);
   if (p.conductor) body.conductor = p.conductor;
+  if (p.beneficiario) body.beneficiario = p.beneficiario;
 
   return body;
 }
