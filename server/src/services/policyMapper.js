@@ -377,8 +377,6 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   const ecTit = p.iestado_civil_titular || p.estado_civil_titular || ecTom;
 
   const body = {
-    cnpoliza_rel: '',
-    cnpoliza: '',
     cramo: parseInt(p.cramo, 10),
     cplan: p.plan,
     icedula_tomador: p.tipo_cedula_tomador,

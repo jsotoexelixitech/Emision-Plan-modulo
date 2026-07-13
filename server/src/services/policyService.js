@@ -40,8 +40,8 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
   );
 
   const emission = await emitViaNestApi({
-    ...payload,
     ...laMundialPayload,
+    poliza: payload.poliza,
     mprima: cotizacion.mprima,
     mprimaext: cotizacion.mprimaext,
     tasa: cotizacion.ptasa,
