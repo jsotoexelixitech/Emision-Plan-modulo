@@ -18,6 +18,7 @@ const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
   getCotizacionViaNestApi,
   createEmissionAutoViaNestApi: emitViaNestApi,
+  validateEmissionAutoViaNestApi,
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
 const { activateReceiptAfterPayment } = require('./nestApiCollectionClient');
@@ -235,7 +236,34 @@ async function quoteAndEmit(state, overrides = {}) {
     overrides
   );
 
-  // 3) Validar localmente antes de quemar cupo
+  // 3) Validar placa/serial en Sis2000 (mismo plan que la emisión)
+  const emitPlan =
+    overrides.plan ||
+    state.selectedPlan?.cplan ||
+    payload.plan ||
+    process.env.LAMUNDIAL_PLAN_DEFAULT ||
+    'RCVBAS';
+  try {
+    await validateEmissionAutoViaNestApi({
+      plan: emitPlan,
+      placa: payload.placa,
+      serial_carroceria: payload.serial_carroceria,
+      serial_motor: payload.serial_motor || payload.serial_carroceria,
+    });
+  } catch (err) {
+    if (err.code === 'PLATE_ALREADY_INSURED') {
+      throw new PolicyError('LAMUNDIAL_PLATE_ALREADY_INSURED', err.message, 409, {
+        stage: 'validate',
+        internalPolicyId: payload.poliza,
+      });
+    }
+    throw new PolicyError(err.code || 'VALIDATE_EMISSION_ERROR', err.message, 502, {
+      stage: 'validate',
+      internalPolicyId: payload.poliza,
+    });
+  }
+
+  // 4) Validar localmente antes de quemar cupo
   const errors = validateEmissionPayload(payload);
   if (errors.length > 0) {
     throw new PolicyError(
@@ -246,11 +274,11 @@ async function quoteAndEmit(state, overrides = {}) {
     );
   }
 
-  // 4) Log antes de emitir (idempotencia manual)
+  // 5) Log antes de emitir (idempotencia manual)
   const ts = new Date().toISOString();
   console.log(`[Policy][${ts}] EMITIENDO internalId=${payload.poliza} placa=${payload.placa}`);
 
-  // 5) Emitir via nest-api (inserta en eePoliza_Automovil_RCV2)
+  // 6) Emitir via nest-api (inserta en eePoliza_Automovil_RCV2)
   let emission;
   try {
     emission = await createEmissionAutoViaNestApi(payload, {
@@ -368,6 +396,9 @@ function mapClientError(err, stage, extra = {}) {
   switch (code) {
     case 'LAMUNDIAL_PLATE_ALREADY_INSURED':
       httpStatus = 409;
+      break;
+    case 'NEST_API_COUNTER_COLLISION':
+      httpStatus = 503;
       break;
     case 'LAMUNDIAL_MISSING_FIELDS':
     case 'INVALID_PAYLOAD':

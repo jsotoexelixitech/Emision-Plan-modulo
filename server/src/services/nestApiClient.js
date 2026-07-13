@@ -105,10 +105,25 @@ async function createEmissionAutoViaNestApi(payload) {
   const err = new Error(
     body.message || result.message || result.error || `HTTP ${response.status} emitiendo en nest-api`,
   );
-  err.code = 'NEST_API_EMISSION_ERROR';
+  err.code = mapEmissionNestApiError(err.message);
   err.httpStatus = response.status;
   err.raw = body;
   throw err;
+}
+
+function mapEmissionNestApiError(message) {
+  const lower = String(message || '').toLowerCase();
+  if (lower.includes('póliza rel ya existente') || lower.includes('poliza rel ya existente')) {
+    return 'NEST_API_COUNTER_COLLISION';
+  }
+  if (
+    lower.includes('poliza vigente') ||
+    lower.includes('póliza vigente') ||
+    lower.includes('serial carrocer')
+  ) {
+    return 'LAMUNDIAL_PLATE_ALREADY_INSURED';
+  }
+  return 'NEST_API_EMISSION_ERROR';
 }
 
 function mapValidatePlateError(message) {
