@@ -290,36 +290,44 @@ async function quoteAndEmit(state, overrides = {}) {
     throw mapClientError(err, 'emit', { internalPolicyId: payload.poliza });
   }
 
-  // 5.1) Activar recibo pendiente en Sis2000 (notific + collect) tras pago verificado
-  if (emission.cnrecibo) {
+  // 5.1) Activar recibo en Sis2000 solo tras pago verificado (ref. bancaria real, monto Bs)
+  if (emission.cnrecibo && state.paymentVerified) {
     const pay = state.paymentCapture || {};
-    const xreferencia =
-      pay.reference ||
-      pay.transactionId ||
-      pay.xreferencia ||
-      `EX-${payload.poliza}`;
-    const fpago = pay.paidOn || pay.fpago || new Date().toISOString().slice(0, 10);
-    const mpago = pay.amount != null ? Number(pay.amount) : quoteResult.mprima;
+    const xreferencia = pay.reference || pay.transactionId || pay.xreferencia;
+    if (!xreferencia || String(xreferencia).trim() === '' || /^EX-/i.test(String(xreferencia))) {
+      metadata.collectionSkipped = 'sin_referencia_bancaria';
+      console.warn(
+        `[Policy] Cobro omitido cnrecibo=${emission.cnrecibo}: pago verificado sin referencia bancaria`,
+      );
+    } else {
+      const fpago = pay.paidOn || pay.fpago || new Date().toISOString().slice(0, 10);
+      const mpago = pay.amount != null ? Number(pay.amount) : quoteResult.mprima;
 
-    try {
-      const collectionResult = await activateReceiptAfterPayment({
-        cnrecibo: emission.cnrecibo,
-        mpago,
-        xreferencia: String(xreferencia),
-        fpago: String(fpago).slice(0, 10),
-        cusuario: pay.cusuario,
-      });
-      metadata.collection = collectionResult;
-      console.log(
-        `[Policy] Recibo ${emission.cnrecibo} activado en Sis2000 ref=${xreferencia}`,
-      );
-    } catch (collErr) {
-      console.error(
-        `[Policy] collection/activate falló cnrecibo=${emission.cnrecibo}:`,
-        collErr.message,
-      );
-      metadata.collectionError = collErr.message;
+      try {
+        const collectionResult = await activateReceiptAfterPayment({
+          cnrecibo: emission.cnrecibo,
+          mpago,
+          xreferencia: String(xreferencia).trim(),
+          fpago: String(fpago).slice(0, 10),
+          cusuario: pay.cusuario,
+          cbanco_ref: pay.bankCode ? String(pay.bankCode).trim() : undefined,
+          cbanco: pay.cbanco,
+          cbanco_destino: pay.cbanco_destino,
+        });
+        metadata.collection = collectionResult;
+        console.log(
+          `[Policy] Recibo ${emission.cnrecibo} activado en Sis2000 ref=${xreferencia} mpago=${mpago} Bs`,
+        );
+      } catch (collErr) {
+        console.error(
+          `[Policy] collection/activate falló cnrecibo=${emission.cnrecibo}:`,
+          collErr.message,
+        );
+        metadata.collectionError = collErr.message;
+      }
     }
+  } else if (emission.cnrecibo) {
+    metadata.collectionSkipped = 'pago_no_verificado';
   }
 
   // 5.5) Generar anexo de Conductor Habitual si existe

@@ -6,7 +6,16 @@ const axios = require('axios');
 const { getBaseUrl, buildHeaders } = require('./nestApiClient');
 
 /**
- * @param {{ cnrecibo: string, mpago: number, xreferencia: string, fpago?: string, cusuario?: number }} params
+ * @param {{
+ *   cnrecibo: string,
+ *   mpago: number,
+ *   xreferencia: string,
+ *   fpago?: string,
+ *   cusuario?: number,
+ *   cbanco?: number,
+ *   cbanco_ref?: string,
+ *   cbanco_destino?: number,
+ * }} params
  */
 async function activateReceiptAfterPayment(params) {
   if (process.env.COLLECTION_ENABLED === 'false') {
@@ -29,6 +38,9 @@ async function activateReceiptAfterPayment(params) {
       xreferencia: params.xreferencia,
       fpago,
       ...(params.cusuario != null ? { cusuario: params.cusuario } : {}),
+      ...(params.cbanco != null ? { cbanco: params.cbanco } : {}),
+      ...(params.cbanco_ref ? { cbanco_ref: params.cbanco_ref } : {}),
+      ...(params.cbanco_destino != null ? { cbanco_destino: params.cbanco_destino } : {}),
     },
     {
       headers: buildHeaders(),
