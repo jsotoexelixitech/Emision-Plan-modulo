@@ -3,7 +3,8 @@
  *
  *   GET  /api/personas/planes?cramo=9   → planes vigentes de personas
  *   POST /api/personas/cotizacion       → cotización (getCotizacionPer)
- *   POST /api/personas/emision          → cotiza + emite (createEmissionPerson)
+ *   POST /api/personas/validacion       → validación pre-emisión (paso 5)
+ *   POST /api/personas/emision          → cotiza + valida + emite (pasos 4–6)
  *
  * Estas rutas hablan con nest-api (módulo personas, QA por defecto) vía
  * personasClient.js. Multi-tenant: protegidas por nexusAuth (montadas en index.js).
@@ -100,8 +101,45 @@ router.post('/cotizacion', async (req, res) => {
   }
 });
 
+// ── POST /validacion ──────────────────────────────────────────────────────────
+router.post('/validacion', async (req, res) => {
+  const { state, plan: bodyPlan } = req.body || {};
+  const cplan = bodyPlan || state?.selectedPlan?.cplan;
+
+  if (!state || !state.tomador) {
+    return res.status(400).json({ success: false, code: 'MISSING_STATE', message: 'state.tomador requerido.' });
+  }
+  if (!cplan) {
+    return res.status(400).json({ success: false, code: 'MISSING_PLAN', message: 'cplan es obligatorio.' });
+  }
+
+  const validatePayload = personasMapper.buildValidateEmissionPersonRequest(state, { plan: cplan });
+  if (!validatePayload.rif_titular || !validatePayload.fnac_titular) {
+    return res.status(400).json({
+      success: false,
+      code: 'INVALID_TITULAR',
+      message: 'Titular requiere identificación y fecha de nacimiento válidas.',
+    });
+  }
+
+  try {
+    const validation = await personasClient.validateEmissionPerson(validatePayload);
+    res.json({ success: true, validation: validation.result });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const httpStatus = err.httpStatus || 502;
+    console.error('[personas/validacion]', msg);
+    res.status(httpStatus).json({
+      success: false,
+      code: err.code || 'PERSONAS_VALIDATION_ERROR',
+      message: msg,
+      stage: 'validate',
+    });
+  }
+});
+
 // ── POST /emision ─────────────────────────────────────────────────────────────
-// Flujo completo: cotiza (spCalculoPer) para obtener la prima vigente y luego
+// Flujo completo: cotiza (spCalculoPer) → valida (speeValidatePersonGeneral) →
 // emite la póliza (vista eePoliza_Personas_General) vía nest-api.
 // Recibe el estado del wizard: { state: { tomador, funeral, selectedPlan }, frecuencia? }
 router.post('/emision', async (req, res) => {
@@ -136,7 +174,22 @@ router.post('/emision', async (req, res) => {
     // 1. Cotiza para obtener la prima autoritativa.
     const cotizacion = await personasClient.getCotizacionPer({ cramo, cplan, asegurados, ifrecuencia });
 
-    // 2. Construye el payload de emisión y emite.
+    // 2. Valida titular/plan (paso 5 — speeValidatePersonGeneral).
+    const validatePayload = personasMapper.buildValidateEmissionPersonRequest(state, {
+      plan: cplan,
+      frecuencia: ifrecuencia,
+    });
+    if (!validatePayload.rif_titular || !validatePayload.fnac_titular) {
+      return res.status(400).json({
+        success: false,
+        code: 'INVALID_TITULAR',
+        message: 'Titular requiere identificación y fecha de nacimiento válidas.',
+        stage: 'validate',
+      });
+    }
+    await personasClient.validateEmissionPerson(validatePayload);
+
+    // 3. Construye el payload de emisión y emite.
     const { payload, metadata } = personasMapper.buildEmissionPersonRequest(
       state,
       cotizacion,

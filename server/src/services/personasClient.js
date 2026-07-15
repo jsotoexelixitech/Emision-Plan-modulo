@@ -5,6 +5,7 @@
  * Endpoints (QA por defecto, prefijo /api/v1/personas):
  *   - POST /api/v1/personas/planes      → planes vigentes de personas (ramo 9)
  *   - POST /api/v1/personas/cotizacion  → cotización (spCalculoPer)
+ *   - POST /api/v1/personas/validacion    → validación (speeValidatePersonGeneral)
  *   - POST /api/v1/personas/emision     → emisión (vista eePoliza_Personas_General)
  *
  * Antes esto llamaba al API corporativo de La Mundial; ahora la lógica de los
@@ -148,6 +149,23 @@ async function getCotizacionPer({ cramo, cplan, asegurados, ifrecuencia }) {
 }
 
 /**
+ * Valida titular/plan antes de emitir (speeValidatePersonGeneral).
+ * @returns {{ ok: true, result: object, raw: object }}
+ */
+async function validateEmissionPerson(payload) {
+  const endpoint = '/validacion';
+  const response = await post(endpoint, payload);
+  if (response.status >= 200 && response.status < 300) {
+    const result = response.data?.result ?? {};
+    if (response.data?.status === true && result.status !== false) {
+      return { ok: true, result, raw: response.data };
+    }
+    throw buildError(400, response.data, endpoint);
+  }
+  throw buildError(response.status, response.data, endpoint);
+}
+
+/**
  * Emite una póliza de personas. Recibe el payload completo (ver
  * CreateEmissionPersonDto en nest-api). Requiere apikey del canal.
  * @returns {{ cnpoliza:string, cnrecibo:string, urlpoliza:string, raw:object }}
@@ -176,6 +194,7 @@ async function createEmissionPerson(payload) {
 module.exports = {
   getPlanesPer,
   getCotizacionPer,
+  validateEmissionPerson,
   createEmissionPerson,
   _internal: { getClient, getConfig, extractErrorMessage },
 };

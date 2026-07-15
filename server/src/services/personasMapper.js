@@ -230,9 +230,49 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
   };
 }
 
+/**
+ * Payload para paso 5 (speeValidatePersonGeneral) antes de emitir.
+ * @param {object} state - wizardState.
+ * @param {{ plan?:string, fechaEmision?:string }} [overrides]
+ */
+function buildValidateEmissionPersonRequest(state, overrides = {}) {
+  const tomador = state.tomador || {};
+  const funeral = state.funeral || {};
+  const asegurados = Array.isArray(funeral.asegurados) ? funeral.asegurados : [];
+  const titular = asegurados[0] || {};
+  const metadata = state.metadataCanal || {};
+
+  const cramo = metadata.cramo
+    ? parseInt(metadata.cramo, 10)
+    : (parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9);
+  const plan = overrides.plan || state.selectedPlan?.cplan || '';
+  const femision = overrides.fechaEmision || todayYmd();
+
+  const rif_titular = titular.identificacion
+    ? digitsToNumber(titular.identificacion)
+    : digitsToNumber(tomador.identificacion);
+  const fnac_titular = titular.fechaNac
+    ? normalizeDate(titular.fechaNac)
+    : normalizeDate(tomador.fechaNac);
+
+  return {
+    cramo,
+    plan,
+    femision,
+    rif_titular,
+    fnac_titular,
+    rif_tomador: digitsToNumber(tomador.identificacion),
+    fnac_tomador: normalizeDate(tomador.fechaNac),
+    tipo_cedula_titular: titular.tipoDoc
+      ? normalizeTipoCedula(titular.tipoDoc)
+      : normalizeTipoCedula(tomador.tipoDoc),
+  };
+}
+
 module.exports = {
   buildAseguradosForQuote,
   buildEmissionPersonRequest,
+  buildValidateEmissionPersonRequest,
   _internal: {
     onlyDigits,
     digitsToNumber,
