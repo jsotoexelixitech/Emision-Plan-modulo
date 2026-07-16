@@ -85,14 +85,44 @@ function logPlanesError(source, httpStatus, elapsedMs, data) {
 }
 
 /**
+ * Entero de productor Sis2000 (≥1). Si metadata trae vacío, 0 o no numérico → LAMUNDIAL_PRODUCTOR.
+ * @param {unknown} raw
+ * @returns {{ cproductor: number, source: 'metadata'|'default'|'default-fallback' }}
+ */
+function resolveCproductor(raw) {
+  const fallback = parseInt(String(DEFAULT_PRODUCTOR), 10) || 80080;
+  if (raw === undefined || raw === null) {
+    return { cproductor: fallback, source: 'default' };
+  }
+
+  const text = String(raw).trim();
+  if (!text) {
+    return { cproductor: fallback, source: 'default' };
+  }
+
+  const n = parseInt(text.replace(/\D/g, ''), 10);
+  if (!Number.isFinite(n) || n < 1) {
+    console.warn(
+      `[Planes] cproductor inválido en metadata (${JSON.stringify(raw)}); usando ${fallback}`,
+    );
+    return { cproductor: fallback, source: 'default-fallback' };
+  }
+
+  return { cproductor: n, source: 'metadata' };
+}
+
+/**
  * Resuelve parámetros de canal/productor desde metadata del token Nexus.
  * @param {Record<string, unknown>} [nexusMetadata]
- * @returns {{ cproductor: string, cusuario: string|number, cramo: number, ctipo?: number }}
+ * @returns {{ cproductor: number, cusuario: string|number, cramo: number, ctipo?: number, cproductorSource: string }}
  */
 function resolvePlanesParams(nexusMetadata = {}) {
-  const cproductor = String(
-    nexusMetadata.cproductor ?? DEFAULT_PRODUCTOR,
-  ).trim();
+  const rawProductor =
+    nexusMetadata.cproductor ??
+    nexusMetadata.productor ??
+    nexusMetadata.citem;
+
+  const { cproductor, source: cproductorSource } = resolveCproductor(rawProductor);
 
   const cusuarioRaw = nexusMetadata.cusuario ?? DEFAULT_CUSUARIO;
   const cusuario = /^\d+$/.test(String(cusuarioRaw))
@@ -109,7 +139,7 @@ function resolvePlanesParams(nexusMetadata = {}) {
     ctipo = parseInt(String(nexusMetadata.ctipo), 10);
   }
 
-  return { cproductor, cusuario, cramo, ctipo };
+  return { cproductor, cusuario, cramo, ctipo, cproductorSource };
 }
 
 /**
@@ -125,8 +155,8 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
 
   const body = {
     centidad: 'P',
-    citem: cproductor,
-    cproductor: parseInt(cproductor, 10),
+    citem: String(cproductor),
+    cproductor,
     cusuario: String(cusuario),
     cramo,
   };
@@ -268,6 +298,7 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
 }
 
 module.exports = {
+  resolveCproductor,
   resolvePlanesParams,
   buildPlanesV2Body,
   normalizePlanRow,

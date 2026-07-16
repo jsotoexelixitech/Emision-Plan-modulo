@@ -11,7 +11,7 @@ const {
   getInmaVersiones,
   getCategoriasUso,
 } = require('../services/nestApiClient');
-const { fetchPlanesV2 } = require('../services/planesClient');
+const { fetchPlanesV2, resolvePlanesParams } = require('../services/planesClient');
 
 const router = express.Router();
 
@@ -148,8 +148,9 @@ router.get('/planes', async (req, res) => {
   const meta = req.nexusMetadata || {};
   const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
 
+  const resolved = resolvePlanesParams(meta);
   console.log(
-    `[catalogo/planes] GET ctipo=${ctipo ?? 'null'} cproductor=${meta.cproductor ?? '(default)'} cramo=${meta.cramo ?? '(default)'}`,
+    `[catalogo/planes] GET ctipo=${ctipo ?? 'null'} metadata.cproductor=${JSON.stringify(meta.cproductor ?? null)} resolved.cproductor=${resolved.cproductor} (${resolved.cproductorSource}) cramo=${resolved.cramo}`,
   );
 
   try {
