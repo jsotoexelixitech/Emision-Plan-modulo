@@ -27,16 +27,21 @@ function buildHeaders(extra = {}) {
   return headers;
 }
 
+async function axiosOpts(extra = {}) {
+  return {
+    headers: await buildAuthHeaders(),
+    timeout: getTimeout(),
+    ...extra,
+  };
+}
+
 /**
  * Cotiza vía POST /api/v1/valrep/cotizacion (spCalculoAuto en Sis2000).
  * @param {object} payload - { cmarca, cmodelo, cversion, fano, cplan, ccategoria_uso, iplaca?, ntoneladas?, cramo? }
  */
 async function getCotizacionViaNestApi(payload) {
   const url = `${getBaseUrl()}/api/v1/valrep/cotizacion`;
-  const response = await axios.post(url, payload, {
-    timeout: getTimeout(),
-    validateStatus: () => true,
-  });
+  const response = await axios.post(url, payload, await axiosOpts());
 
   if (response.status >= 200 && response.status < 300) {
     const data = response.data?.data ?? response.data?.result ?? response.data;
@@ -195,7 +200,7 @@ async function validateEmissionAutoViaNestApi(params) {
 
 /** @returns {Promise<{ min: number, max: number }>} */
 async function getInmaAnios() {
-  const { data } = await axios.get(`${getBaseUrl()}/api/v1/inma/anios`, { timeout: getTimeout() });
+  const { data } = await axios.get(`${getBaseUrl()}/api/v1/inma/anios`, await axiosOpts());
   return data?.data ?? { min: 2000, max: new Date().getFullYear() + 1 };
 }
 
@@ -204,7 +209,7 @@ async function getInmaMarcas(fano) {
   const { data } = await axios.post(
     `${getBaseUrl()}/api/v1/inma/marcas`,
     { fano },
-    { timeout: getTimeout() },
+    await axiosOpts(),
   );
   return data?.data?.marcas ?? [];
 }
@@ -214,7 +219,7 @@ async function getInmaModelos(fano, cmarca) {
   const { data } = await axios.post(
     `${getBaseUrl()}/api/v1/inma/modelo`,
     { fano, cmarca: String(cmarca).trim() },
-    { timeout: getTimeout() },
+    await axiosOpts(),
   );
   return data?.data?.info ?? [];
 }
@@ -224,7 +229,7 @@ async function getInmaVersiones(fano, cmarca, cmodelo) {
   const { data } = await axios.post(
     `${getBaseUrl()}/api/v1/inma/version`,
     { fano, cmarca: String(cmarca).trim(), cmodelo: String(cmodelo).trim() },
-    { timeout: getTimeout() },
+    await axiosOpts(),
   );
   return data?.data?.info ?? [];
 }
@@ -239,7 +244,7 @@ async function getCategoriasUso(fano, cmarca, cmodelo, cversion) {
       cmodelo: String(cmodelo).trim(),
       cversion: String(cversion).trim(),
     },
-    { timeout: getTimeout() },
+    await axiosOpts(),
   );
   return data?.data?.categorias_uso ?? [];
 }
@@ -248,7 +253,7 @@ async function getCategoriasUso(fano, cmarca, cmodelo, cversion) {
 
 /** @returns {Promise<Array<{ code: number|string, label: string }>>} */
 async function getValrepStates() {
-  const { data } = await axios.get(`${getBaseUrl()}/api/v1/valrep/states`, { timeout: getTimeout() });
+  const { data } = await axios.get(`${getBaseUrl()}/api/v1/valrep/states`, await axiosOpts());
   const states = data?.data?.states ?? [];
   return states.map((s) => ({ code: s.cestado, label: String(s.xdescripcion_l ?? '').trim() }));
 }
@@ -258,7 +263,7 @@ async function getValrepCities(cestado) {
   const url = cestado != null
     ? `${getBaseUrl()}/api/v1/valrep/cities?cestado=${parseInt(String(cestado), 10)}`
     : `${getBaseUrl()}/api/v1/valrep/cities`;
-  const { data } = await axios.get(url, { timeout: getTimeout() });
+  const { data } = await axios.get(url, await axiosOpts());
   const cities = data?.data?.cities ?? [];
   return cities.map((c) => ({ code: c.cciudad, label: String(c.xdescripcion_l ?? '').trim() }));
 }
@@ -268,7 +273,7 @@ async function getValrepList(domain) {
   const response = await axios.post(
     `${getBaseUrl()}/api/v1/valrep/getLists`,
     { cdominio: domain, xtipo_orden: 'ASC' },
-    { timeout: getTimeout(), validateStatus: () => true },
+    await axiosOpts({ validateStatus: () => true }),
   );
   if (response.status >= 400 || response.data?.status === false) {
     throw new Error(response.data?.message || `HTTP ${response.status} getLists/${domain}`);
@@ -289,7 +294,7 @@ async function getValrepFrecuencias(cplan, cramo) {
   const response = await axios.post(
     `${getBaseUrl()}/api/v1/valrep/frecuencia`,
     body,
-    { timeout: getTimeout(), validateStatus: () => true },
+    await axiosOpts({ validateStatus: () => true }),
   );
   if (response.status >= 400 || !response.data?.status) {
     throw new Error(response.data?.message || `HTTP ${response.status} consultando frecuencias`);

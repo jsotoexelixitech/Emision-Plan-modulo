@@ -11,6 +11,7 @@
  *   centidad   → "P" (productor)
  */
 const axios = require('axios');
+const { buildAuthHeaders } = require('./nestTokenService');
 
 const DEFAULT_PRODUCTOR = process.env.LAMUNDIAL_PRODUCTOR || '80080';
 const DEFAULT_CUSUARIO = process.env.LAMUNDIAL_CUSUARIO || '4';
@@ -228,11 +229,16 @@ function isInternalPlanesApi(baseUrl) {
 }
 
 /**
- * Headers HTTP según destino (interno sin auth; externo La Mundial Bearer o apikey).
+ * Headers HTTP según destino (nest-api interno con Bearer; externo La Mundial legacy).
  * @param {string} baseUrl
- * @returns {Record<string, string>}
+ * @returns {Promise<Record<string, string>>}
  */
-function getValrepAuthHeaders(baseUrl) {
+async function getValrepAuthHeaders(baseUrl) {
+  if (isInternalPlanesApi(baseUrl)) {
+    return buildAuthHeaders({
+      Accept: 'application/json',
+    });
+  }
   return {
     'Content-Type': 'application/json',
     Accept: 'application/json',
@@ -251,7 +257,7 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
   const source = isInternalPlanesApi(baseUrl)
     ? 'nest-api/valrep/planes/v2'
     : 'valrep/planes/v2';
-  const headers = getValrepAuthHeaders(baseUrl);
+  const headers = await getValrepAuthHeaders(baseUrl);
 
   logPlanesRequest(source, url, body);
 
