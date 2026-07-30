@@ -3,7 +3,8 @@
  * POST /api/v1/external/collection/activate (notific + collect).
  */
 const axios = require('axios');
-const { getBaseUrl, buildHeaders } = require('./nestApiClient');
+const { getBaseUrl } = require('./nestApiClient');
+const { buildAuthHeaders, trackResponse } = require('./nestTokenService');
 
 /**
  * @param {{
@@ -34,7 +35,7 @@ async function activateReceiptAfterPayment(params) {
     `[nest-api-collection] -> activate cnrecibo=${params.cnrecibo} mpago=${params.mpago} ref=${params.xreferencia}`,
   );
 
-  const response = await axios.post(
+  const response = trackResponse(await axios.post(
     url,
     {
       cnrecibo: params.cnrecibo,
@@ -51,11 +52,11 @@ async function activateReceiptAfterPayment(params) {
       ...(params.cbanco_dest_ref ? { cbanco_dest_ref: params.cbanco_dest_ref } : {}),
     },
     {
-      headers: buildHeaders(),
+      headers: await buildAuthHeaders(),
       timeout: parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || 60_000,
       validateStatus: () => true,
     },
-  );
+  ));
 
   if (response.status >= 200 && response.status < 300 && response.data?.status !== false) {
     console.log(`[nest-api-collection] <- activate OK HTTP ${response.status}`);

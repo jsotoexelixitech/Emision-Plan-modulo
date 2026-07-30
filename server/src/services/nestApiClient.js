@@ -3,34 +3,26 @@
  * Cotización, emisión, INMA y valrep sin depender de APIs externas La Mundial.
  */
 const axios = require('axios');
-
-/** @returns {string} Base URL de nest-api (:3002 en srv001). */
-function getBaseUrl() {
-  return (
-    process.env.NEST_API_URL ||
-    process.env.SYSIP_API_URL ||
-    'http://127.0.0.1:3002'
-  ).replace(/\/$/, '');
-}
+const {
+  getBaseUrl,
+  getBootstrapApiKey,
+  buildAuthHeaders,
+  trackResponse,
+} = require('./nestTokenService');
 
 function getTimeout() {
   return parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || 60_000;
 }
 
+/** @deprecated usar buildAuthHeaders() async */
 function getApiKey() {
-  return (
-    process.env.NEST_API_KEY ||
-    process.env.SYSIP_API_KEY ||
-    process.env.LAMUNDIAL_APIKEY ||
-    process.env.LAMUNDIAL_EMISSION_APIKEY ||
-    ''
-  ).trim();
+  return getBootstrapApiKey();
 }
 
-/** Headers HTTP hacia nest-api; apikey solo si está configurada (QA interno no lo exige). */
+/** Headers sync legacy — preferir buildAuthHeaders(). */
 function buildHeaders(extra = {}) {
   const headers = { 'Content-Type': 'application/json', ...extra };
-  const apikey = getApiKey();
+  const apikey = getBootstrapApiKey();
   if (apikey) headers.apikey = apikey;
   return headers;
 }
@@ -77,11 +69,11 @@ async function createEmissionAutoViaNestApi(payload) {
   const ts = new Date().toISOString();
   console.log(`[nest-api][${ts}] -> createEmissionAuto placa=${payload.placa ?? payload.xplaca}`);
 
-  const response = await axios.post(url, payload, {
-    headers: buildHeaders(),
+  const response = trackResponse(await axios.post(url, payload, {
+    headers: await buildAuthHeaders(),
     timeout: getTimeout(),
     validateStatus: () => true,
-  });
+  }));
 
   console.log(`[nest-api][${new Date().toISOString()}] <- createEmissionAuto HTTP ${response.status}`);
 
@@ -133,16 +125,40 @@ function mapValidatePlateError(message) {
     lower.includes('vigente') ||
     lower.includes('póliza rel') ||
     lower.includes('poliza rel') ||
-    lower.includes('serial carrocer')
+    lower.includes('serial carrocer') ||
+    lower.includes('placa')
   ) {
     return 'PLATE_ALREADY_INSURED';
   }
   return 'VALIDATE_EMISSION_ERROR';
 }
 
+function extractValidateAutoResponse(body, httpStatus = 200) {
+  const result = body?.result ?? {};
+  const failed = httpStatus >= 400 || body?.status === false || result?.status === false;
+  return {
+    failed,
+    message: result?.message || body?.message,
+    error: result?.error || body?.error,
+    code: result?.code,
+  };
+}
+
+function toClientValidateCode(code, fallbackMessage) {
+  const resolved = code || mapValidatePlateError(fallbackMessage);
+  if (
+    resolved === 'PLATE_ALREADY_INSURED' ||
+    resolved === 'SERIAL_ALREADY_INSURED' ||
+    resolved === 'VEHICLE_ALREADY_INSURED'
+  ) {
+    return 'PLATE_ALREADY_INSURED';
+  }
+  return resolved;
+}
+
 /**
  * Valida placa/serial vía POST /api/v1/external/validateEmissionAuto (speeValidateAutomovilGeneral).
- * @param {object} params - { plan?, placa, serial_carroceria, serial_motor? }
+ * @param {object} params - { plan?, placa, serial_carroceria }
  */
 async function validateEmissionAutoViaNestApi(params) {
   const url = `${getBaseUrl()}/api/v1/external/validateEmissionAuto`;
@@ -151,32 +167,27 @@ async function validateEmissionAutoViaNestApi(params) {
     plan,
     placa: String(params.placa || '').trim(),
     serial_carroceria: String(params.serial_carroceria || '').trim(),
-    serial_motor: String(params.serial_motor || params.serial_carroceria || '').trim(),
   };
 
-  const response = await axios.post(url, payload, {
-    headers: buildHeaders(),
+  const response = trackResponse(await axios.post(url, payload, {
+    headers: await buildAuthHeaders(),
     timeout: getTimeout(),
     validateStatus: () => true,
-  });
+  }));
 
   const body = response.data ?? {};
-  const failed =
-    response.status >= 400 ||
-    body.status === false ||
-    (body.error && body.status !== true);
+  const parsed = extractValidateAutoResponse(body, response.status);
 
-  if (!failed) {
+  if (!parsed.failed) {
     return {
       success: true,
-      message: body.message || 'Vehículo válido para emisión.',
+      message: parsed.message || 'El vehículo puede asegurarse. No hay póliza vigente con esta placa ni serial.',
     };
   }
 
-  const rawMsg = body.error || body.message || `HTTP ${response.status}`;
-  const errorMessage = Array.isArray(rawMsg) ? rawMsg[0] : String(rawMsg);
+  const errorMessage = Array.isArray(parsed.error) ? parsed.error[0] : String(parsed.error || `HTTP ${response.status}`);
   const err = new Error(errorMessage);
-  err.code = mapValidatePlateError(errorMessage);
+  err.code = toClientValidateCode(parsed.code, errorMessage);
   throw err;
 }
 
@@ -306,6 +317,8 @@ module.exports = {
   getBaseUrl,
   getApiKey,
   buildHeaders,
+  buildAuthHeaders,
+  trackResponse,
   getTimeout,
   getInmaAnios,
   getInmaMarcas,

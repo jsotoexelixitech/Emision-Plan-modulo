@@ -18,6 +18,7 @@
  *   emision     → { status:true, result:{ cnpoliza, cnrecibo, urlpoliza, ... } }
  */
 const axios = require('axios');
+const { buildAuthHeaders, trackResponse } = require('./nestTokenService');
 
 const DEFAULT_BASE = 'http://127.0.0.1:3002';
 const PATH_PREFIX = '/api/v1/personas';
@@ -95,8 +96,9 @@ async function post(endpoint, body, extraHeaders) {
   console.log(`[Personas][${ts}] -> ${endpoint} ${JSON.stringify(body).slice(0, 1500)}`);
   const t0 = Date.now();
   let response;
+  const authHeaders = await buildAuthHeaders(extraHeaders);
   try {
-    response = await client.post(endpoint, body, extraHeaders ? { headers: extraHeaders } : undefined);
+    response = trackResponse(await client.post(endpoint, body, { headers: authHeaders }));
   } catch (netErr) {
     const err = new Error(`Red no disponible llamando ${endpoint}: ${netErr.message}`);
     err.code = 'PERSONAS_NETWORK';
@@ -172,8 +174,7 @@ async function validateEmissionPerson(payload) {
  */
 async function createEmissionPerson(payload) {
   const endpoint = '/emision';
-  const apiKey = getConfig().apiKey;
-  const response = await post(endpoint, payload, apiKey ? { apikey: apiKey } : undefined);
+  const response = await post(endpoint, payload);
   if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
     const r = response.data.result ?? {};
     if (!r.cnpoliza || !r.cnrecibo) {
