@@ -54,6 +54,15 @@ function applyRefreshedHeader(response) {
   }
 }
 
+function extractTokenPair(body) {
+  if (!body || typeof body !== 'object') return null;
+  const payload =
+    body.data && typeof body.data === 'object' && body.data.access_token
+      ? body.data
+      : body;
+  return payload.access_token ? payload : null;
+}
+
 async function requestTokens(refreshToken) {
   const base = getBaseUrl();
   const url = refreshToken
@@ -68,8 +77,9 @@ async function requestTokens(refreshToken) {
     validateStatus: () => true,
   });
 
-  if (response.status >= 200 && response.status < 300 && response.data?.access_token) {
-    return response.data;
+  const tokens = extractTokenPair(response.data);
+  if (response.status >= 200 && response.status < 300 && tokens) {
+    return tokens;
   }
 
   const err = new Error(
