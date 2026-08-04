@@ -3,16 +3,16 @@
 export const EXELIXI_WIZARD_HANDOFF_KEY = 'exelixi_wizard_handoff';
 
 export interface ExelixiWizardHandoff {
-  tomador?: Record<string, unknown>;
+  tomador?: unknown;
   sameInsured?: boolean;
-  asegurado?: Record<string, unknown>;
+  asegurado?: unknown;
   hasBeneficiary?: boolean;
-  beneficiario?: Record<string, unknown>;
-  vehicle?: Record<string, unknown>;
-  funeral?: Record<string, unknown>;
+  beneficiario?: unknown;
+  vehicle?: unknown;
+  funeral?: unknown;
   category?: string;
-  selectedPlan?: Record<string, unknown> | null;
-  quote?: Record<string, unknown> | null;
+  selectedPlan?: unknown;
+  quote?: unknown;
   quoteVehicleSignature?: string;
   quoteState?: string;
   ocrDone?: boolean;

@@ -4,7 +4,6 @@ import { useWizardStore } from '../store/wizardStore';
 import { toast } from '../store/toastStore';
 import { validatePlanReady } from '../lib/planContinue';
 import { getExelixiCatalogProductView, continueToPagosModule } from '../lib/exelixi-catalog';
-import type { ExelixiWizardHandoff } from '../lib/exelixi-wizard-handoff';
 import { EmissionPlanShell } from './EmissionPlanShell';
 
 /** Paso 4 — catálogo Exélixi (product-builder + product-emission). */
@@ -27,8 +26,8 @@ export default function ExelixiCatalogPlansApp() {
     const snap = useWizardStore.getState();
     continueToPagosModule({
       category: snap.category,
-      selectedPlan: snap.selectedPlan as ExelixiWizardHandoff['selectedPlan'],
-      quote: snap.quote as ExelixiWizardHandoff['quote'],
+      selectedPlan: snap.selectedPlan,
+      quote: snap.quote,
       quoteVehicleSignature: snap.quoteVehicleSignature,
       quoteState: snap.quoteState,
       ocrDone: snap.ocrDone,
