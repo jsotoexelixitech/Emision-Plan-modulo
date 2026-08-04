@@ -43,10 +43,15 @@ export function ExelixiCatalogPlansStep() {
 
   const product = readStoredBuilderProduct();
   const plans = product ? activeBuilderPlans(product) : [];
+  const productCommercialName = product?.commercialName ?? '';
 
   useEffect(() => {
-    if (product) setCategory(product.commercialName);
-  }, [product, setCategory]);
+    if (!productCommercialName) return;
+    const current = useWizardStore.getState().category;
+    if (current !== productCommercialName) {
+      setCategory(productCommercialName);
+    }
+  }, [productCommercialName, setCategory]);
 
   const planName = selectedPlan?.name ?? '';
   const quoteSig = product && planName ? `${product.id}|${planName}` : '';
