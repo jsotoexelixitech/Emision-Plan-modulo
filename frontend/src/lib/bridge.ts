@@ -21,7 +21,7 @@ import { useWizardStore } from '../store/wizardStore';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
 import { canNavigateToStep, getDefaultRequiredDocs } from './wizard-navigation';
 import { getProductConfig } from './product';
-import { BUILDER_PRODUCT_STORAGE_KEY, persistExelixiCatalogFlow } from './exelixi-catalog';
+import { BUILDER_PRODUCT_STORAGE_KEY, isExelixiCatalogFlow, ensureExelixiFlowQueryParam } from './exelixi-catalog';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
@@ -203,7 +203,7 @@ function makeBridge(): BridgeAPI {
       if (typeof v !== 'function') out[k] = v;
     }
     // Limpieza de datos fantasma — no aplicar en flujo catálogo Exélixi
-    const isCatalogFlow = sessionStorage.getItem('exelixi_catalog_flow') === '1';
+    const isCatalogFlow = isExelixiCatalogFlow();
     const prod = sessionStorage.getItem('exelixi_product') || 'rcv';
     if (!isCatalogFlow) {
       if (prod === 'funerario') {
@@ -266,7 +266,7 @@ function makeBridge(): BridgeAPI {
           try { sessionStorage.setItem('exelixi_product', sessionProduct); } catch { /* ignore */ }
         }
         if (r.data.data.exelixiCatalogFlow) {
-          persistExelixiCatalogFlow();
+          ensureExelixiFlowQueryParam(true);
         }
         const builderProduct = r.data.data.builderProduct;
         if (builderProduct && typeof builderProduct === 'object') {
@@ -306,7 +306,7 @@ function makeBridge(): BridgeAPI {
       const out = r?.data;
       if (out?.nextUrl) {
         let target = out.nextUrl as string;
-        if (sessionStorage.getItem('exelixi_catalog_flow') === '1') {
+        if (isExelixiCatalogFlow()) {
           try {
             const url = new URL(target, window.location.origin);
             url.searchParams.set('flow', 'exelixi-catalog');

@@ -16,19 +16,10 @@ export interface BuilderCatalogProduct {
 }
 
 export const BUILDER_PRODUCT_STORAGE_KEY = 'exelixi_builder_product';
-const CATALOG_FLOW_STORAGE_KEY = 'exelixi_catalog_flow';
 
 export function isExelixiCatalogEntryPath(pathname?: string): boolean {
   const path = (pathname ?? window.location.pathname).replace(/\/$/, '') || '/';
   return path.endsWith('/exelixi') || path.includes('/ocr/exelixi');
-}
-
-export function persistExelixiCatalogFlow(): void {
-  try {
-    sessionStorage.setItem(CATALOG_FLOW_STORAGE_KEY, '1');
-  } catch {
-    /* ignore */
-  }
 }
 
 export function isExelixiCatalogFlowHint(hints?: {
@@ -39,6 +30,9 @@ export function isExelixiCatalogFlowHint(hints?: {
   if (hints?.url) {
     try {
       const parsed = new URL(hints.url, window.location.origin);
+      if (parsed.searchParams.get('product') === 'rcv' || parsed.searchParams.get('product') === 'funerario') {
+        return false;
+      }
       if (parsed.searchParams.get('flow') === 'exelixi-catalog') return true;
       if (isExelixiCatalogEntryPath(parsed.pathname)) return true;
     } catch {
@@ -53,24 +47,36 @@ export function isExelixiCatalogFlowHint(hints?: {
       || label.includes('catálogo')
       || label.includes('generica')
       || label.includes('genérica')
-      || label.includes('emision')
-      || label.includes('emisión')
     )
   );
 }
 
+/** Flujo Exélixi — solo URL (?flow=exelixi-catalog o /ocr/exelixi/), como ?product=rcv. */
 export function isExelixiCatalogFlow(): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('flow') === 'exelixi-catalog') {
-      persistExelixiCatalogFlow();
-      return true;
-    }
-    if (sessionStorage.getItem(CATALOG_FLOW_STORAGE_KEY) === '1') return true;
+    const product = params.get('product');
+    if (product === 'rcv' || product === 'funerario') return false;
+    if (params.get('flow') === 'exelixi-catalog') return true;
+    if (isExelixiCatalogEntryPath()) return true;
   } catch {
     /* ignore */
   }
   return false;
+}
+
+export function ensureExelixiFlowQueryParam(active: boolean): void {
+  if (!active || isExelixiCatalogFlow()) return;
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('product') === 'rcv' || url.searchParams.get('product') === 'funerario') {
+      return;
+    }
+    url.searchParams.set('flow', 'exelixi-catalog');
+    window.history.replaceState({}, '', url.toString());
+  } catch {
+    /* ignore */
+  }
 }
 
 export function readStoredBuilderProduct(): BuilderCatalogProduct | null {

@@ -37,8 +37,6 @@ export interface ProductDetectHints {
 
 /**
  * Detecta rcv|funerario y lo persiste en sessionStorage (Nexus verify / bridge).
- * @param {ProductDetectHints} [hints]
- * @returns {ProductId | null}
  */
 export function persistProductFromHints(hints?: ProductDetectHints): ProductId | null {
   if (hints?.product === 'funerario') {
