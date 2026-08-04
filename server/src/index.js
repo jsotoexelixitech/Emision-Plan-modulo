@@ -16,6 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 
 const emisionRoutes  = require('./routes/emision');
+const exelixiRoutes  = require('./routes/exelixiEmission');
 const valrepRoutes   = require('./routes/valrep');
 const catalogoRoutes = require('./routes/catalogo');
 const personasRoutes = require('./routes/personas');
@@ -59,7 +60,9 @@ app.use('/api/catalogo', nexusAuth, catalogoRoutes);
 app.use('/api/personas', nexusAuth, personasRoutes);
 // Cuestionario de salud funerario (preguntas Exélixi + persistencia local)
 app.use('/api/funeral', nexusAuth, funeralHealthRoutes);
-// Cotizaciones y emisiones
+// Emisión genérica Exélixi (product-builder → nest-api product-emission)
+app.use('/api/exelixi', nexusAuth, exelixiRoutes);
+// Cotizaciones y emisiones La Mundial
 app.use('/api', nexusAuth, emisionRoutes);
 
 app.use((err, _req, res, _next) => {

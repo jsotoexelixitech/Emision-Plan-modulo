@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { verifyNexusAccess, resolveNexusApiUrl, type NexusVerifyResult } from './nexus-core';
 import { persistProductFromHints } from '../lib/product';
+import { isExelixiCatalogFlowHint, persistExelixiCatalogFlow } from '../lib/exelixi-catalog';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 interface NexusContextValue {
@@ -130,6 +131,15 @@ export function NexusGuard({ children, recheckInterval = 30 }: NexusGuardProps) 
     if (!isMounted.current) return;
     if (result.active) {
       if (result.submodulo) {
+        if (
+          isExelixiCatalogFlowHint({
+            url: result.submodulo.url,
+            nombre: result.submodulo.nombre,
+            moduloNombre: result.submodulo.moduloNombre,
+          })
+        ) {
+          persistExelixiCatalogFlow();
+        }
         persistProductFromHints({
           url: result.submodulo.url,
           nombre: result.submodulo.nombre,

@@ -21,6 +21,7 @@ import { useWizardStore } from '../store/wizardStore';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
 import { canNavigateToStep, getDefaultRequiredDocs } from './wizard-navigation';
 import { getProductConfig } from './product';
+import { BUILDER_PRODUCT_STORAGE_KEY, persistExelixiCatalogFlow } from './exelixi-catalog';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
@@ -201,14 +202,22 @@ function makeBridge(): BridgeAPI {
     for (const [k, v] of Object.entries(s)) {
       if (typeof v !== 'function') out[k] = v;
     }
-    // Limpieza de datos fantasma y bloqueo de producto en la sesión backend
+    // Limpieza de datos fantasma — no aplicar en flujo catálogo Exélixi
+    const isCatalogFlow = sessionStorage.getItem('exelixi_catalog_flow') === '1';
     const prod = sessionStorage.getItem('exelixi_product') || 'rcv';
-    if (prod === 'funerario') {
-      delete out.vehicle;
-    } else if (prod === 'rcv') {
-      delete out.funeral;
+    if (!isCatalogFlow) {
+      if (prod === 'funerario') {
+        delete out.vehicle;
+      } else if (prod === 'rcv') {
+        delete out.funeral;
+      }
     }
     out.product = prod;
+    out.exelixiCatalogFlow = isCatalogFlow;
+    try {
+      const builderRaw = sessionStorage.getItem(BUILDER_PRODUCT_STORAGE_KEY);
+      if (builderRaw) out.builderProduct = JSON.parse(builderRaw);
+    } catch { /* ignore */ }
 
     // Incluye nexus_token para que módulos posteriores puedan autenticarse
     const nexusToken =
@@ -253,8 +262,17 @@ function makeBridge(): BridgeAPI {
         // Propaga el producto (rcv | funerario) entre módulos: getProductConfig()
         // lo lee desde sessionStorage, así no depende de que la URL lo arrastre.
         const sessionProduct = r.data.data.product;
-        if ((sessionProduct === 'rcv' || sessionProduct === 'funerario')) {
+        if (sessionProduct === 'rcv' || sessionProduct === 'funerario') {
           try { sessionStorage.setItem('exelixi_product', sessionProduct); } catch { /* ignore */ }
+        }
+        if (r.data.data.exelixiCatalogFlow) {
+          persistExelixiCatalogFlow();
+        }
+        const builderProduct = r.data.data.builderProduct;
+        if (builderProduct && typeof builderProduct === 'object') {
+          try {
+            sessionStorage.setItem(BUILDER_PRODUCT_STORAGE_KEY, JSON.stringify(builderProduct));
+          } catch { /* ignore */ }
         }
       }
       // eslint-disable-next-line no-console
@@ -287,8 +305,16 @@ function makeBridge(): BridgeAPI {
       });
       const out = r?.data;
       if (out?.nextUrl) {
+        let target = out.nextUrl as string;
+        if (sessionStorage.getItem('exelixi_catalog_flow') === '1') {
+          try {
+            const url = new URL(target, window.location.origin);
+            url.searchParams.set('flow', 'exelixi-catalog');
+            target = url.toString();
+          } catch { /* ignore */ }
+        }
         // Pequeño delay para mostrar el toast de éxito antes de saltar
-        setTimeout(() => { window.location.href = out.nextUrl as string; }, 900);
+        setTimeout(() => { window.location.href = target; }, 900);
       }
       return out ?? { finished: true };
     } catch (e) {
