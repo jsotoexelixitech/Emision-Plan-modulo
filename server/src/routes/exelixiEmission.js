@@ -3,6 +3,7 @@
  * No usa Sis2000 ni APIs La Mundial.
  */
 const express = require('express');
+const exelixiQuoteService = require('../services/exelixiQuoteService');
 const productEmissionClient = require('../services/productEmissionClient');
 const { mapWizardToEmitDto } = require('../services/exelixiEmitMapper');
 
@@ -26,9 +27,10 @@ router.post('/quote', async (req, res, next) => {
       });
     }
 
-    const quote = await productEmissionClient.quoteProductEmission({ productId, planName });
+    const quote = await exelixiQuoteService.quoteProductEmission({ productId, planName });
     res.json({ success: true, ...quote });
   } catch (err) {
+    err.status = err.status || err.httpStatus || 500;
     next(err);
   }
 });

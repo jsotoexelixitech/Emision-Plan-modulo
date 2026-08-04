@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from 'react';
 import { publicAsset } from '../lib/app-base';
+import { isExelixiCatalogFlow } from '../lib/exelixi-catalog';
 
 const VISIBLE_MS = 2400;
 const FADE_MS = 700;
@@ -15,16 +16,17 @@ const BRAND = {
   redLight: '#FF6675', // Rojo Imperial (claro)
 };
 
-/** No mostrar splash cuando el módulo se carga desde un flujo encadenado (bridge). */
-function isChainedFlow(): boolean {
+/** No mostrar splash La Mundial en flujo encadenado o Exélixi catálogo genérico. */
+function shouldSkipSplash(): boolean {
   try {
+    if (isExelixiCatalogFlow()) return true;
     const p = new URLSearchParams(window.location.search);
     return Boolean(p.get('sid') && p.get('nexus_token'));
   } catch { return false; }
 }
 
 export function WelcomeSplash() {
-  const [show, setShow] = useState(() => !isChainedFlow());
+  const [show, setShow] = useState(() => !shouldSkipSplash());
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {

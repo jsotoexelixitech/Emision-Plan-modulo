@@ -41,7 +41,7 @@ export function EmissionPlanShell({ subtitle, helpSubject, onContinuar, children
                 <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">{subtitle}</p>
               </div>
               <a
-                href={`mailto:soporte@lamundialdeseguros.com?subject=${encodeURIComponent(helpSubject)}`}
+                href={`mailto:soporte@exelixitech.com?subject=${encodeURIComponent(helpSubject)}`}
                 className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-light text-slate-600 hover:text-indigo-600 text-xs font-bold transition-all hover:-translate-y-0.5"
               >
                 <HelpCircle size={13} />

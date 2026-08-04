@@ -3,22 +3,31 @@ import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
 import { publicAsset } from '../lib/app-base';
 
-const TOTAL_STEPS = 5;
-
 export function TopProgressBar() {
   const step = useWizardStore((s) => s.step);
-  const segments = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
-  const safeStep = Math.min(step, TOTAL_STEPS);
   const product = getProductConfig();
+  const exelixiFlow = Boolean(product.exelixiCatalog);
+  const TOTAL_STEPS = exelixiFlow ? 3 : 5;
+  const segments = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
+  const safeStep = exelixiFlow
+    ? Math.min(Math.max(step - 1, 1), TOTAL_STEPS)
+    : Math.min(step, TOTAL_STEPS);
   
-  const MOBILE_LABELS: Record<number, string> = {
-    1: 'Documentos',
-    2: product.hasVehicle ? 'Emisión' : 'Tomador',
-    3: product.hasVehicle ? 'Vehículo' : 'Asegurado',
-    4: 'Plan',
-    5: 'Pago',
-    6: 'Listo',
-  };
+  const MOBILE_LABELS: Record<number, string> = exelixiFlow
+    ? {
+        2: 'Cliente',
+        3: product.hasVehicle ? 'Vehículo' : 'Plan',
+        4: 'Plan',
+        5: 'Pago',
+      }
+    : {
+        1: 'Documentos',
+        2: product.hasVehicle ? 'Emisión' : 'Tomador',
+        3: product.hasVehicle ? 'Vehículo' : 'Asegurado',
+        4: 'Plan',
+        5: 'Pago',
+        6: 'Listo',
+      };
   
   const label = MOBILE_LABELS[step] ?? '';
 
@@ -38,11 +47,11 @@ export function TopProgressBar() {
               <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white" />
             </div>
             <div className="min-w-0">
-              <p className="font-wordmark text-indigo-700 text-[0.95rem] leading-none truncate">
-                La Mundial
+              <p className={`font-display text-[0.95rem] leading-none truncate font-bold ${exelixiFlow ? 'text-indigo-700' : 'font-wordmark text-indigo-700'}`}>
+                {exelixiFlow ? 'Exélixi' : 'La Mundial'}
               </p>
-              <p className="text-[0.55rem] text-fuchsia-500 font-bold leading-tight tracking-[0.18em] uppercase mt-0.5">
-                de Seguros
+              <p className={`text-[0.55rem] font-bold leading-tight tracking-[0.18em] uppercase mt-0.5 ${exelixiFlow ? 'text-indigo-500' : 'text-fuchsia-500'}`}>
+                {exelixiFlow ? 'Catálogo genérico' : 'de Seguros'}
               </p>
             </div>
           </div>
@@ -64,9 +73,10 @@ export function TopProgressBar() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-10 pb-2.5 pt-2.5 lg:py-3">
           <div className="flex gap-1.5 h-1">
             {segments.map((n) => {
-              const isComplete = n < Math.min(step, TOTAL_STEPS + 1);
-              const isActive = n === step && step <= TOTAL_STEPS;
-              const isUpcoming = n > step;
+              const mappedStep = exelixiFlow ? n + 1 : n;
+              const isComplete = mappedStep < step;
+              const isActive = mappedStep === step && step <= (exelixiFlow ? 4 : TOTAL_STEPS);
+              const isUpcoming = mappedStep > step;
 
               return (
                 <div

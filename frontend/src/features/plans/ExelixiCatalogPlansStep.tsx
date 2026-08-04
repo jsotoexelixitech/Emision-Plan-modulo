@@ -53,6 +53,13 @@ export function ExelixiCatalogPlansStep() {
     }
   }, [productCommercialName, setCategory]);
 
+  useEffect(() => {
+    if (!product || !plans.length || selectedPlan) return;
+    const pick = plans.find((p) => p.isRecommended) ?? plans[0];
+    setSelectedPlan(builderPlanToWizardPlan(pick, product));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.id, plans.length]);
+
   const planName = selectedPlan?.name ?? '';
   const quoteSig = product && planName ? `${product.id}|${planName}` : '';
   const activeQuoteSigRef = useRef('');
@@ -75,9 +82,10 @@ export function ExelixiCatalogPlansStep() {
           quoteSig,
         );
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
         if (activeQuoteSigRef.current !== quoteSig) return;
-        const message = (err as { message?: string })?.message ?? 'No pudimos cotizar el plan.';
+        const ax = err as { response?: { data?: { message?: string } }; message?: string };
+        const message = ax.response?.data?.message || ax.message || 'No pudimos cotizar el plan.';
         setQuoteState('error', message);
         toast.warning('Cotización no disponible', message, 5000);
       });

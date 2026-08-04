@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ExelixiCatalogPlansStep } from '../features/plans/ExelixiCatalogPlansStep';
 import { useWizardStore } from '../store/wizardStore';
 import { toast } from '../store/toastStore';
@@ -7,8 +8,12 @@ import { EmissionPlanShell } from './EmissionPlanShell';
 
 /** Paso 4 — catálogo Exélixi (product-builder + product-emission). */
 export default function ExelixiCatalogPlansApp() {
-  const { category, selectedPlan, quoteState, quote } = useWizardStore();
+  const { category, selectedPlan, quoteState, quote, goTo } = useWizardStore();
   const catalog = getExelixiCatalogProductView();
+
+  useEffect(() => {
+    goTo(4);
+  }, [goTo]);
 
   function handleContinuar() {
     if (!validatePlanReady(category, selectedPlan, quoteState, quote)) return;
