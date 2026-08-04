@@ -1,3 +1,5 @@
+import { mergeExelixiWizardHandoff, type ExelixiWizardHandoff } from './exelixi-wizard-handoff';
+
 export type BuilderProductBranch =
   | 'AUTOMOVIL'
   | 'SALUD'
@@ -57,6 +59,8 @@ export function isExelixiCatalogFlow(): boolean {
     const params = new URLSearchParams(window.location.search);
     const product = params.get('product');
     if (product === 'rcv' || product === 'funerario') return false;
+    const stored = sessionStorage.getItem('exelixi_product');
+    if (stored === 'rcv' || stored === 'funerario') return false;
     if (params.get('flow') === 'exelixi-catalog') return true;
     if (isExelixiCatalogEntryPath()) return true;
   } catch {
@@ -72,6 +76,8 @@ export function ensureExelixiFlowQueryParam(active: boolean): void {
     if (url.searchParams.get('product') === 'rcv' || url.searchParams.get('product') === 'funerario') {
       return;
     }
+    const stored = sessionStorage.getItem('exelixi_product');
+    if (stored === 'rcv' || stored === 'funerario') return;
     url.searchParams.set('flow', 'exelixi-catalog');
     window.history.replaceState({}, '', url.toString());
   } catch {
@@ -126,4 +132,43 @@ export function getExelixiCatalogProductView(): ExelixiCatalogProductView | null
 
 export function activeBuilderPlans(product: BuilderCatalogProduct) {
   return (product.productPlans ?? []).filter((p) => p.isActive !== false);
+}
+
+function getModuleTokenKey(): string {
+  return 'nexus_access_token_emision';
+}
+
+/** Siguiente paso: módulo pagos (flujo Exélixi sin bridge). */
+export function getPagosContinueUrl(): string {
+  const configured = import.meta.env.VITE_PAGOS_CONTINUE_BASE as string | undefined;
+  const base = (configured?.replace(/\/$/, '') || '/pagos').replace(/\/$/, '');
+  const params = new URLSearchParams({ flow: 'exelixi-catalog', wizardStep: '5' });
+
+  try {
+    const current = new URL(window.location.href);
+    const sid = current.searchParams.get('sid');
+    const nexusToken =
+      current.searchParams.get('nexus_token')
+      || sessionStorage.getItem(getModuleTokenKey());
+    if (sid) params.set('sid', sid);
+    if (nexusToken) params.set('nexus_token', nexusToken);
+  } catch {
+    /* ignore */
+  }
+
+  return `${base}/?${params.toString()}`;
+}
+
+/** Avanza al módulo pagos (bridge Nexus o redirect standalone). */
+export function continueToPagosModule(snapshot?: Partial<ExelixiWizardHandoff>): void {
+  if (snapshot) {
+    mergeExelixiWizardHandoff(snapshot);
+  }
+
+  if (typeof window.__bridgeAdvance === 'function') {
+    void window.__bridgeAdvance({ exelixiCatalogFlow: true });
+    return;
+  }
+
+  window.location.href = getPagosContinueUrl();
 }

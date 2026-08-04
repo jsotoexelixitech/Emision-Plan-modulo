@@ -213,7 +213,7 @@ function makeBridge(): BridgeAPI {
       }
     }
     out.product = prod;
-    out.exelixiCatalogFlow = isCatalogFlow;
+    out.exelixiCatalogFlow = isCatalogFlow && prod !== 'rcv' && prod !== 'funerario';
     try {
       const builderRaw = sessionStorage.getItem(BUILDER_PRODUCT_STORAGE_KEY);
       if (builderRaw) out.builderProduct = JSON.parse(builderRaw);
@@ -265,7 +265,11 @@ function makeBridge(): BridgeAPI {
         if (sessionProduct === 'rcv' || sessionProduct === 'funerario') {
           try { sessionStorage.setItem('exelixi_product', sessionProduct); } catch { /* ignore */ }
         }
-        if (r.data.data.exelixiCatalogFlow) {
+        if (
+          r.data.data.exelixiCatalogFlow
+          && sessionProduct !== 'rcv'
+          && sessionProduct !== 'funerario'
+        ) {
           ensureExelixiFlowQueryParam(true);
         }
         const builderProduct = r.data.data.builderProduct;

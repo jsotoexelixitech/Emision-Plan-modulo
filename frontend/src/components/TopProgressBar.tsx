@@ -7,7 +7,7 @@ export function TopProgressBar() {
   const step = useWizardStore((s) => s.step);
   const product = getProductConfig();
   const exelixiFlow = Boolean(product.exelixiCatalog);
-  const TOTAL_STEPS = exelixiFlow ? 3 : 5;
+  const TOTAL_STEPS = exelixiFlow ? 4 : 5;
   const segments = Array.from({ length: TOTAL_STEPS }, (_, i) => i + 1);
   const safeStep = exelixiFlow
     ? Math.min(Math.max(step - 1, 1), TOTAL_STEPS)
