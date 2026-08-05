@@ -32,12 +32,41 @@ function partyFromPerson(person) {
 const SEXO_LABELS = {
   M: 'MASCULINO',
   F: 'FEMENINO',
+  MASCULINO: 'MASCULINO',
+  FEMENINO: 'FEMENINO',
+  MALE: 'MASCULINO',
+  FEMALE: 'FEMENINO',
 };
 
 function sexoLabel(value) {
   const raw = String(value ?? '').trim();
   if (!raw) return '';
-  return SEXO_LABELS[raw.toUpperCase()] ?? raw;
+  return SEXO_LABELS[raw.toUpperCase()] ?? raw.toUpperCase();
+}
+
+/** Normaliza fecha a DD/MM/YYYY (cuadro-póliza VE). Acepta ISO, YYYY-MM-DD y MM/DD/YYYY. */
+function formatFechaNacimientoVe(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw)) {
+    const [a, b, y] = raw.split('/').map(Number);
+    // Si el primer grupo > 12 es ya DD/MM; si no, tratar como MM/DD (input type=date en en-US).
+    if (a > 12) return raw;
+    if (b > 12) return `${String(a).padStart(2, '0')}/${String(b).padStart(2, '0')}/${y}`;
+    // Ambiguo pero el form usa type=date → valor real suele llegar como YYYY-MM-DD;
+    // si llega MM/DD/YYYY (como en captura), priorizar US → VE.
+    return `${String(b).padStart(2, '0')}/${String(a).padStart(2, '0')}/${y}`;
+  }
+  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  const d = new Date(raw);
+  if (!Number.isNaN(d.getTime())) {
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const yyyy = d.getUTCFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  return raw;
 }
 
 /**
@@ -56,21 +85,25 @@ function inferPolicyTemplate(branch, productName) {
 
 function buildRiskData(state, branch) {
   const risk = {};
-  const vehicle = state?.vehicle ?? {};
   const hasVehicle = branch === 'AUTOMOVIL' || branch === 'RCV_OBLIGATORIO';
 
   // Datos personales del asegurado para el cuadro-póliza (F. Nacimiento / SEXO).
-  // La plantilla de nest-api los lee desde riskData.
+  // Solo del tomador/asegurado activo — no se inventan datos de otros formularios.
   const insuredPerson = state?.sameInsured !== false
     ? state?.tomador
     : (state?.asegurado ?? state?.tomador);
-  const fechaNac = insuredPerson?.fechaNac || insuredPerson?.fechaNacimiento;
+  const fechaNac = formatFechaNacimientoVe(
+    insuredPerson?.fechaNac || insuredPerson?.fechaNacimiento,
+  );
   if (fechaNac) risk.fechaNacimiento = fechaNac;
   const sexo = sexoLabel(insuredPerson?.sexo);
   if (sexo) risk.sexo = sexo;
   if (insuredPerson?.estadoCivil) risk['Estado civil'] = insuredPerson.estadoCivil;
 
+  // Vehículo SOLO en ramos auto — evita contaminar PDF de personas/patrimonial
+  // con restos de sessionStorage de un flujo RCV anterior.
   if (hasVehicle) {
+    const vehicle = state?.vehicle ?? {};
     if (vehicle.placa) risk.Placa = vehicle.placa;
     if (vehicle.marca) risk.Marca = vehicle.marca;
     if (vehicle.modelo) risk.Modelo = vehicle.modelo;
@@ -85,9 +118,14 @@ function buildRiskData(state, branch) {
     }
   }
 
-  const funeral = state?.funeral;
-  if (funeral?.asegurados?.length) {
-    risk['Cantidad de asegurados'] = String(funeral.asegurados.length);
+  const isFuneral = String(state?.builderProduct?.commercialName ?? '')
+    .toLowerCase()
+    .includes('funerar')
+    || String(state?.builderProduct?.commercialName ?? '')
+      .toLowerCase()
+      .includes('funeral');
+  if (isFuneral && state?.funeral?.asegurados?.length) {
+    risk['Cantidad de asegurados'] = String(state.funeral.asegurados.length);
   }
 
   return risk;
@@ -123,16 +161,24 @@ function mapWizardToEmitDto(state) {
     throw err;
   }
 
-  const aseguradoParty = state?.sameInsured !== false
+  // Como La Mundial: si el toggle "tomador ≠ asegurado" está apagado,
+  // el asegurado es el mismo tomador (no se exige ni envía otro formulario).
+  const sameInsured = state?.sameInsured !== false;
+  const aseguradoParty = sameInsured
     ? tomadorParty
     : (partyFromPerson(state?.asegurado) ?? tomadorParty);
 
+  // Beneficiario solo si el usuario activó el toggle y completó datos.
   const beneficiarios = [];
   if (state?.hasBeneficiary && state?.beneficiario) {
     const b = partyFromPerson(state.beneficiario);
     if (b) beneficiarios.push(b);
   }
-  if (state?.funeral?.beneficiarios?.length) {
+  const isFuneralLike = inferPolicyTemplate(
+    builder.branch ?? builder.productBranch,
+    builder.commercialName,
+  ) === 'funerario';
+  if (isFuneralLike && state?.funeral?.beneficiarios?.length) {
     for (const p of state.funeral.beneficiarios) {
       const b = partyFromPerson(p);
       if (b) beneficiarios.push(b);
