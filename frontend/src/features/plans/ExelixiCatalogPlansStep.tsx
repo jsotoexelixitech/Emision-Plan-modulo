@@ -32,6 +32,7 @@ function builderPlanToWizardPlan(
 /** Paso 4 — planes del catálogo product-builder (sin Sis2000). */
 export function ExelixiCatalogPlansStep() {
   const {
+    category,
     setCategory,
     selectedPlan,
     setSelectedPlan,
@@ -45,20 +46,21 @@ export function ExelixiCatalogPlansStep() {
   const plans = product ? activeBuilderPlans(product) : [];
   const productCommercialName = product?.commercialName ?? '';
 
+  // Depende de `category`: si la hidratación del bridge la pisa con vacío,
+  // este efecto la vuelve a fijar (evita el falso "Selecciona un plan").
   useEffect(() => {
     if (!productCommercialName) return;
-    const current = useWizardStore.getState().category;
-    if (current !== productCommercialName) {
+    if (category !== productCommercialName) {
       setCategory(productCommercialName);
     }
-  }, [productCommercialName, setCategory]);
+  }, [productCommercialName, category, setCategory]);
 
   useEffect(() => {
     if (!product || !plans.length || selectedPlan) return;
     const pick = plans.find((p) => p.isRecommended) ?? plans[0];
     setSelectedPlan(builderPlanToWizardPlan(pick, product));
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product?.id, plans.length]);
+  }, [product?.id, plans.length, selectedPlan]);
 
   const planName = selectedPlan?.name ?? '';
   const quoteSig = product && planName ? `${product.id}|${planName}` : '';

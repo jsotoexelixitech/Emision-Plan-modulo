@@ -16,7 +16,13 @@ export default function ExelixiCatalogPlansApp() {
   }, [goTo]);
 
   function handleContinuar() {
-    if (!validatePlanReady(category, selectedPlan, quoteState, quote)) return;
+    // La hidratación del bridge puede pisar category con vacío; en Exélixi la
+    // categoría es el nombre comercial del producto — recupérala del catálogo.
+    const effectiveCategory = category || catalog?.label || '';
+    if (effectiveCategory && category !== effectiveCategory) {
+      useWizardStore.getState().setCategory(effectiveCategory);
+    }
+    if (!validatePlanReady(effectiveCategory, selectedPlan, quoteState, quote)) return;
 
     toast.success(
       '¡Plan seleccionado!',
