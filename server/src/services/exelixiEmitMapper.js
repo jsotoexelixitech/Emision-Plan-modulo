@@ -23,9 +23,21 @@ function partyFromPerson(person) {
     telefono: person.telefono || undefined,
     ciudad: person.ciudad || undefined,
     estado: person.estado || undefined,
+    zonaPostal: person.zonaPostal || person.codigoPostal || undefined,
     direccion: person.direccion || undefined,
     parentesco: person.parentesco || undefined,
   };
+}
+
+const SEXO_LABELS = {
+  M: 'MASCULINO',
+  F: 'FEMENINO',
+};
+
+function sexoLabel(value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '';
+  return SEXO_LABELS[raw.toUpperCase()] ?? raw;
 }
 
 function inferPolicyTemplate(branch, productName) {
@@ -40,6 +52,17 @@ function buildRiskData(state, branch) {
   const risk = {};
   const vehicle = state?.vehicle ?? {};
   const hasVehicle = branch === 'AUTOMOVIL' || branch === 'RCV_OBLIGATORIO';
+
+  // Datos personales del asegurado para el cuadro-póliza (F. Nacimiento / SEXO).
+  // La plantilla de nest-api los lee desde riskData.
+  const insuredPerson = state?.sameInsured !== false
+    ? state?.tomador
+    : (state?.asegurado ?? state?.tomador);
+  const fechaNac = insuredPerson?.fechaNac || insuredPerson?.fechaNacimiento;
+  if (fechaNac) risk.fechaNacimiento = fechaNac;
+  const sexo = sexoLabel(insuredPerson?.sexo);
+  if (sexo) risk.sexo = sexo;
+  if (insuredPerson?.estadoCivil) risk['Estado civil'] = insuredPerson.estadoCivil;
 
   if (hasVehicle) {
     if (vehicle.placa) risk.Placa = vehicle.placa;
