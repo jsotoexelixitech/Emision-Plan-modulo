@@ -40,11 +40,17 @@ function sexoLabel(value) {
   return SEXO_LABELS[raw.toUpperCase()] ?? raw;
 }
 
+/**
+ * Elige plantilla HTML del cuadro-póliza (layout). El rótulo "RAMO PÓLIZA"
+ * lo resuelve nest-api desde el branch (PATRIMONIAL, VIDA, etc.) — no se
+ * fuerza "ACCIDENTES PERSONALES" solo por usar la plantilla genérica.
+ */
 function inferPolicyTemplate(branch, productName) {
   const name = String(productName ?? '').toLowerCase();
   if (name.includes('funerar') || name.includes('funeral')) return 'funerario';
   if (branch === 'AUTOMOVIL' || branch === 'RCV_OBLIGATORIO') return 'automovil';
   if (branch === 'SALUD') return 'salud';
+  // Layout genérico (sin sección vehículo) para VIDA, PATRIMONIAL, INCLUSIVO…
   return 'personas';
 }
 
