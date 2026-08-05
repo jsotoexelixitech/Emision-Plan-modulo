@@ -71,7 +71,12 @@ function buildRiskData(state, branch) {
     if (vehicle.año) risk.Año = vehicle.año;
     if (vehicle.color) risk.Color = vehicle.color;
     if (vehicle.serial) risk.Serial = vehicle.serial;
+    if (vehicle.serialMotor) risk.SerialMotor = vehicle.serialMotor;
     if (vehicle.uso) risk.Uso = vehicle.uso;
+    if (vehicle.xcategoria_uso) risk['Categoría de uso'] = vehicle.xcategoria_uso;
+    if (vehicle.ntoneladas != null && vehicle.ntoneladas !== '') {
+      risk.Peso = `${vehicle.ntoneladas} Ton`;
+    }
   }
 
   const funeral = state?.funeral;
