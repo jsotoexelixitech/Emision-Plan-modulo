@@ -43,23 +43,34 @@ export function TopProgressBar() {
         {/* Mobile-only mini brand row */}
         <div className="lg:hidden flex items-center justify-between gap-3 px-4 sm:px-6 pt-2.5 pb-1.5">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="relative w-7 h-7 rounded-lg bg-white grid place-items-center shadow-[0_4px_12px_rgba(15,26,90,0.32)] ring-1 ring-slate-200 flex-shrink-0 overflow-hidden">
+            {exelixiFlow ? (
               <img
-                src={publicAsset('logo-isotipo-transparente.png')}
-                alt="La Mundial"
-                className="w-5 h-5 object-contain"
+                src={publicAsset('exelixi-logo.png')}
+                alt="Exélixi Technology"
+                className="h-7 max-w-[140px] object-contain object-left"
                 draggable={false}
               />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white" />
-            </div>
-            <div className="min-w-0">
-              <p className={`font-display text-[0.95rem] leading-none truncate font-bold ${exelixiFlow ? 'text-indigo-700' : 'font-wordmark text-indigo-700'}`}>
-                {exelixiFlow ? 'Exélixi' : 'La Mundial'}
-              </p>
-              <p className={`text-[0.55rem] font-bold leading-tight tracking-[0.18em] uppercase mt-0.5 ${exelixiFlow ? 'text-indigo-500' : 'text-fuchsia-500'}`}>
-                {exelixiFlow ? 'Catálogo genérico' : 'de Seguros'}
-              </p>
-            </div>
+            ) : (
+              <>
+                <div className="relative w-7 h-7 rounded-lg bg-white grid place-items-center shadow-[0_4px_12px_rgba(15,26,90,0.32)] ring-1 ring-slate-200 flex-shrink-0 overflow-hidden">
+                  <img
+                    src={publicAsset('logo-isotipo-transparente.png')}
+                    alt="La Mundial"
+                    className="w-5 h-5 object-contain"
+                    draggable={false}
+                  />
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-wordmark text-indigo-700 text-[0.95rem] leading-none truncate">
+                    La Mundial
+                  </p>
+                  <p className="text-[0.55rem] text-fuchsia-500 font-bold leading-tight tracking-[0.18em] uppercase mt-0.5">
+                    de Seguros
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0">
