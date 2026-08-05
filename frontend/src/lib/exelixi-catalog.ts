@@ -35,7 +35,8 @@ export function isExelixiCatalogFlowHint(hints?: {
       if (parsed.searchParams.get('product') === 'rcv' || parsed.searchParams.get('product') === 'funerario') {
         return false;
       }
-      if (parsed.searchParams.get('flow') === 'exelixi-catalog') return true;
+      const flow = parsed.searchParams.get('flow');
+      if (flow === 'exelixi-catalog' || flow === 'exelixi') return true;
       if (isExelixiCatalogEntryPath(parsed.pathname)) return true;
     } catch {
       /* ignore */
@@ -58,7 +59,8 @@ export function isExelixiCatalogFlow(): boolean {
   try {
     const params = new URLSearchParams(window.location.search);
     // ?flow=exelixi-catalog manda — igual que ?product=rcv para La Mundial.
-    if (params.get('flow') === 'exelixi-catalog') return true;
+    const flow = params.get('flow');
+    if (flow === 'exelixi-catalog' || flow === 'exelixi') return true;
     const product = params.get('product');
     if (product === 'rcv' || product === 'funerario') return false;
     if (isExelixiCatalogEntryPath()) return true;
