@@ -19,12 +19,32 @@ const {
   getCotizacionViaNestApi,
   createEmissionAutoViaNestApi: emitViaNestApi,
   validateEmissionAutoViaNestApi,
+  generateConductorHabitualViaNestApi,
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
 const { activateReceiptAfterPayment } = require('./nestApiCollectionClient');
 const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
+
+/** URL del PDF conductor accesible desde el navegador del cliente (HTTPS público). */
+function mapConductorPdfPublicUrl(url) {
+  if (!url) return url;
+  const publicOrigin = String(
+    process.env.NEST_PUBLIC_API_ORIGIN || process.env.PUBLIC_API_ORIGIN || '',
+  ).trim().replace(/\/$/, '');
+  const publicPrefix = String(
+    process.env.NEST_PUBLIC_API_PREFIX || process.env.PUBLIC_API_PREFIX || '',
+  ).trim().replace(/\/$/, '');
+  if (publicOrigin) {
+    const parsed = new URL(url);
+    const pathAndQuery = `${parsed.pathname}${parsed.search}`;
+    return `${publicOrigin}${publicPrefix}${pathAndQuery}`;
+  }
+  return url
+    .replace('://localhost:', '://127.0.0.1:')
+    .replace('localhost', '127.0.0.1');
+}
 
 /**
  * Emite la póliza vía nest-api (Sis2000 directo, sin HTTP La Mundial).
@@ -341,7 +361,6 @@ async function quoteAndEmit(state, overrides = {}) {
   let url_conductor_habitual = undefined;
   if (payload.conductor && payload.conductor.xrif_conductor) {
     try {
-      const nestApiUrl = getNestApiUrl();
       const femision = payload.fecha_emision || payload.femision || new Date().toISOString().slice(0, 10);
       const fdesde = payload.fdesde || femision;
       const dHasta = new Date(femision + 'T00:00:00Z');
@@ -349,30 +368,28 @@ async function quoteAndEmit(state, overrides = {}) {
       dHasta.setUTCDate(dHasta.getUTCDate() - 1);
       const fhasta = payload.fhasta || dHasta.toISOString().slice(0, 10);
 
-      const docRes = await axios.post(`${nestApiUrl}/api/v1/documents/conductor-habitual`, {
+      const rawUrl = await generateConductorHabitualViaNestApi({
         poliza: emission.cnpoliza,
-        certificado: "0",
+        certificado: '0',
         fechaEmision: femision,
-        sucursal: "CARACAS",
+        sucursal: 'CARACAS',
         intermediario: String(payload.cproductor || '80080'),
         tomadorNombre: `${payload.nombre_tomador || payload.xnombre_tomador || ''} ${payload.apellido_tomador || payload.xapellido_tomador || ''}`.trim(),
         tomadorRif: String(payload.rif_tomador || payload.xrif_tomador || ''),
         vigenciaDesde: fdesde,
         vigenciaHasta: fhasta,
         conductorNombre: `${payload.conductor.xnombre_conductor} ${payload.conductor.xapellido_conductor}`.trim(),
-        conductorRif: String(payload.conductor.xrif_conductor)
+        conductorRif: String(payload.conductor.xrif_conductor),
       });
-      if (docRes.data && docRes.data.url) {
-        // En srv001, nest-api devuelve localhost:3002 en la URL a veces
-        // Vamos a parchear la IP para asegurar que el cliente pueda abrir el PDF
-        let url = docRes.data.url;
-        console.log(`[Policy] URL de anexo devuelta por nest-api: ${url}`);
-        url = url.replace('localhost', '192.168.8.120');
-        url_conductor_habitual = url;
-        console.log(`[Policy] URL final mapeada para el frontend: ${url_conductor_habitual}`);
-      }
+      url_conductor_habitual = mapConductorPdfPublicUrl(rawUrl);
+      console.log(`[Policy] URL anexo conductor: ${url_conductor_habitual}`);
     } catch (err) {
-      console.error(`[Policy] Error al generar anexo de conductor habitual:`, err.response?.data || err.message);
+      console.error(
+        `[Policy] Error al generar anexo de conductor habitual:`,
+        err.response?.data || err.message,
+        err.code ? `(code=${err.code})` : '',
+      );
+      metadata.conductorPdfError = err.message;
     }
   }
 

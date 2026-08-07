@@ -315,10 +315,36 @@ async function getValrepFrecuencias(cplan, cramo) {
   }));
 }
 
+/**
+ * Genera anexo conductor habitual vía POST /api/v1/documents/conductor-habitual.
+ * Requiere scope documents:write (Bearer o apikey).
+ */
+async function generateConductorHabitualViaNestApi(body) {
+  const url = `${getBaseUrl()}/api/v1/documents/conductor-habitual`;
+  const response = trackResponse(await axios.post(url, body, {
+    headers: await buildAuthHeaders(),
+    timeout: getTimeout(),
+    validateStatus: () => true,
+  }));
+
+  if (response.status >= 200 && response.status < 300 && response.data?.url) {
+    return String(response.data.url);
+  }
+
+  const err = new Error(
+    response.data?.message || response.data?.error || `HTTP ${response.status} generando anexo conductor`,
+  );
+  err.code = 'NEST_API_CONDUCTOR_PDF_ERROR';
+  err.httpStatus = response.status;
+  err.raw = response.data;
+  throw err;
+}
+
 module.exports = {
   getCotizacionViaNestApi,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,
+  generateConductorHabitualViaNestApi,
   getBaseUrl,
   getApiKey,
   buildHeaders,
