@@ -2,6 +2,8 @@
  * nexus-core.ts — NexusGuard core para modulo-emision (Paso 4: Plan / Cotización)
  */
 
+import { getNexusToken, persistNexusToken } from '../lib/nexus-token-client';
+
 const STORAGE_KEY = 'nexus_access_token_emision';
 
 const INTERNAL_HTTP_RE = /^http:\/\/(192\.168\.|10\.|127\.0\.0\.1|localhost)(:\d+)?/i;
@@ -40,14 +42,12 @@ export interface NexusVerifyResult {
 }
 
 export async function verifyNexusAccess(nexusApiUrl: string): Promise<NexusVerifyResult> {
-  const params = new URLSearchParams(window.location.search);
-  const tokenFromUrl = params.get('nexus_token');
-
-  if (tokenFromUrl) {
-    sessionStorage.setItem(STORAGE_KEY, tokenFromUrl);
+  const tokenFromUrl = new URLSearchParams(window.location.search).get('nexus_token');
+  if (tokenFromUrl && !getNexusToken(STORAGE_KEY)) {
+    persistNexusToken(STORAGE_KEY, tokenFromUrl);
   }
 
-  const token = tokenFromUrl || sessionStorage.getItem(STORAGE_KEY);
+  const token = getNexusToken(STORAGE_KEY);
 
   if (!token) {
     return {
@@ -72,7 +72,7 @@ export async function verifyNexusAccess(nexusApiUrl: string): Promise<NexusVerif
       // verify. Se guarda para que la sesión no caduque (el token del navegador
       // expira en 1 h; así se renueva en cada verify sin recargar la página).
       if (data.access_token) {
-        sessionStorage.setItem(STORAGE_KEY, data.access_token);
+        persistNexusToken(STORAGE_KEY, data.access_token);
       }
       return {
         active: true,

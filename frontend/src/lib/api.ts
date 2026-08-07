@@ -1,20 +1,12 @@
 import axios, { AxiosError } from 'axios';
 import type { DocType, OcrResult, DocumentFile } from '../types';
 import { moduleApiBase } from './app-base';
+import { attachNexusTokenAxios } from './nexus-token-client';
 
 const api = axios.create({ baseURL: moduleApiBase() });
 
-// Inyecta el nexus_token (multi-tenant) en cada request al backend del módulo.
-api.interceptors.request.use((config) => {
-  const token =
-    new URLSearchParams(window.location.search).get('nexus_token') ||
-    sessionStorage.getItem('nexus_access_token_emision') ||
-    sessionStorage.getItem('nexus_access_token');
-  if (token) {
-    config.headers.set('Authorization', `Bearer ${token}`);
-  }
-  return config;
-});
+const NEXUS_TOKEN_KEY = 'nexus_access_token_emision';
+attachNexusTokenAxios(api, NEXUS_TOKEN_KEY);
 
 export interface UploadResponse {
   success: boolean;

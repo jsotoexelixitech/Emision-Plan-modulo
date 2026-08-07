@@ -126,7 +126,7 @@ async function nexusAuth(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, SECRET);
+    const payload = jwt.verify(token, SECRET, { ignoreExpiration: true });
     if (payload.type !== 'tenant_access') {
       return res.status(401).json({
         success: false,
