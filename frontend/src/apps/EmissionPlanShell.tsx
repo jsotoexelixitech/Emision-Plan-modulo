@@ -4,7 +4,7 @@ import { AuroraBackground } from '../components/AuroraBackground';
 import { Toaster } from '../components/Toaster';
 import { WelcomeSplash } from '../components/WelcomeSplash';
 import { Button } from '../components/ui/Button';
-import { ChevronRight, Sparkles, ShieldCheck, HelpCircle } from 'lucide-react';
+import { ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
 
 interface Props {
   subtitle: string;
@@ -14,7 +14,8 @@ interface Props {
 }
 
 /** Shell visual compartido del paso 4 — sin lógica de producto. */
-export function EmissionPlanShell({ subtitle, helpSubject, onContinuar, children }: Props) {
+export function EmissionPlanShell({ subtitle, helpSubject: _helpSubject, onContinuar, children }: Props) {
+  void _helpSubject;
   return (
     <div className="min-h-screen relative">
       <WelcomeSplash />
@@ -40,6 +41,7 @@ export function EmissionPlanShell({ subtitle, helpSubject, onContinuar, children
                 </h1>
                 <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">{subtitle}</p>
               </div>
+              {/* TEMP: CTA ayuda oculta hasta nuevo aviso
               <a
                 href={`mailto:soporte@exelixitech.com?subject=${encodeURIComponent(helpSubject)}`}
                 className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-full glass-light text-slate-600 hover:text-indigo-600 text-xs font-bold transition-all hover:-translate-y-0.5"
@@ -47,6 +49,7 @@ export function EmissionPlanShell({ subtitle, helpSubject, onContinuar, children
                 <HelpCircle size={13} />
                 ¿Necesitas ayuda?
               </a>
+              */}
             </div>
           </header>
 
