@@ -182,6 +182,8 @@ export interface IssuedPolicy {
   urlpoliza?: string;
   /** URL al PDF del Anexo Conductor Habitual (opcional) */
   url_conductor_habitual?: string;
+  url_club_arys?: string;
+  url_ingreso_caja?: string;
   /** Identificador interno (no es el numero oficial). */
   internalPolicyId?: string;
   ncuota?: number;

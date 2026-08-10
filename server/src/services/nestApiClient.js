@@ -91,6 +91,7 @@ async function createEmissionAutoViaNestApi(payload) {
       cnpoliza: String(result.cnpoliza ?? ''),
       cnrecibo: String(result.cnrecibo ?? ''),
       urlpoliza: result.urlpoliza || '',
+      url_club_arys: result.url_club_arys || '',
       ncuota: result.ncuota || 1,
       message: result.message,
       fanopol: result.fanopol,

@@ -22,7 +22,7 @@ const {
   generateConductorHabitualViaNestApi,
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
-const { activateReceiptAfterPayment } = require('./nestApiCollectionClient');
+const { resolveIngresoCajaAfterPayment } = require('./collectionAfterPayment');
 const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
@@ -311,54 +311,37 @@ async function quoteAndEmit(state, overrides = {}) {
   }
 
   // 5.1) Activar recibo en Sis2000 solo tras pago verificado (ref. bancaria real, monto Bs)
-  if (emission.cnrecibo && state.paymentVerified) {
-    const pay = state.paymentCapture || {};
-    const xreferencia = pay.reference || pay.transactionId || pay.xreferencia;
-    if (!xreferencia || String(xreferencia).trim() === '' || /^EX-/i.test(String(xreferencia))) {
-      metadata.collectionSkipped = 'sin_referencia_bancaria';
+  let url_ingreso_caja;
+  if (emission.cnrecibo) {
+    url_ingreso_caja = await resolveIngresoCajaAfterPayment(state, {
+      cnrecibo: emission.cnrecibo,
+      mpagoFallback: quoteResult.mprima,
+      metadata,
+    });
+    if (url_ingreso_caja) {
+      console.log(`[Policy] URL ingreso caja: ${url_ingreso_caja}`);
+    } else if (metadata.collectionSkipped === 'pago_no_verificado') {
+      console.warn(
+        `[Policy] Cobro omitido cnrecibo=${emission.cnrecibo}: state.paymentVerified=false (emit sin datos de pago)`,
+      );
+    } else if (metadata.collectionSkipped === 'sin_referencia_bancaria') {
       console.warn(
         `[Policy] Cobro omitido cnrecibo=${emission.cnrecibo}: pago verificado sin referencia bancaria`,
       );
-    } else {
-      const fpago = pay.paidOn || pay.fpago || new Date().toISOString().slice(0, 10);
-      const mpago = pay.amount != null ? Number(pay.amount) : quoteResult.mprima;
-
-      try {
-        const collectionResult = await activateReceiptAfterPayment({
-          cnrecibo: emission.cnrecibo,
-          mpago,
-          xreferencia: String(xreferencia).trim(),
-          fpago: String(fpago).slice(0, 10),
-          cusuario: pay.cusuario,
-          cbanco_ref: pay.bankCode ? String(pay.bankCode).trim() : undefined,
-          cbanco: pay.cbanco,
-          cbanco_destino: pay.cbanco_destino,
-          xtelefono: pay.sourcePhone ? String(pay.sourcePhone).trim() : undefined,
-          telefono_dest: pay.telefonoDest ? String(pay.telefonoDest).trim() : undefined,
-          cci_rif: pay.cci_rif ? String(pay.cci_rif).trim() : undefined,
-          cbanco_dest_ref: pay.cbanco_dest_ref ? String(pay.cbanco_dest_ref).trim() : undefined,
-        });
-        metadata.collection = collectionResult;
-        console.log(
-          `[Policy] Recibo ${emission.cnrecibo} activado en Sis2000 ref=${xreferencia} mpago=${mpago} Bs`,
-        );
-      } catch (collErr) {
-        console.error(
-          `[Policy] collection/activate falló cnrecibo=${emission.cnrecibo}:`,
-          collErr.message,
-        );
-        metadata.collectionError = collErr.message;
-      }
+    } else if (metadata.collectionError) {
+      console.error(
+        `[Policy] collection/activate falló cnrecibo=${emission.cnrecibo}:`,
+        metadata.collectionError,
+      );
     }
-  } else if (emission.cnrecibo) {
-    metadata.collectionSkipped = 'pago_no_verificado';
-    console.warn(
-      `[Policy] Cobro omitido cnrecibo=${emission.cnrecibo}: state.paymentVerified=false (emit sin datos de pago)`,
-    );
   }
 
-  // 5.5) Generar anexo de Conductor Habitual si existe
+  // 5.5) Generar anexo de Conductor Habitual si existe (solo RCV)
   let url_conductor_habitual = undefined;
+  const url_club_arys = emission.url_club_arys || undefined;
+  if (url_club_arys) {
+    console.log(`[Policy] URL Club Arys: ${url_club_arys}`);
+  }
   if (payload.conductor && payload.conductor.xrif_conductor) {
     try {
       const femision = payload.fecha_emision || payload.femision || new Date().toISOString().slice(0, 10);
@@ -404,6 +387,8 @@ async function quoteAndEmit(state, overrides = {}) {
     cnrecibo: emission.cnrecibo,
     urlpoliza: emission.urlpoliza,
     url_conductor_habitual,
+    url_club_arys,
+    url_ingreso_caja,
     ncuota: emission.ncuota,
     quote: {
       mprima: quoteResult.mprima,

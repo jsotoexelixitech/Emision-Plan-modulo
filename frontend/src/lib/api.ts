@@ -132,6 +132,10 @@ export interface EmittedPolicy {
   urlpoliza: string;
   /** URL al PDF del Anexo Conductor Habitual (opcional) */
   url_conductor_habitual?: string;
+  /** URL PDF Club Arys (cobertura ccober=15). */
+  url_club_arys?: string;
+  /** URL comprobante ingreso de caja Sis2000. */
+  url_ingreso_caja?: string;
   /** Numero de cuota (1 = primera cuota / pago anual). */
   ncuota?: number;
   /** Identificador interno de control (no es el numero de poliza). */

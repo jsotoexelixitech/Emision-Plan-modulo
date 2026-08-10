@@ -12,6 +12,7 @@
 const express = require('express');
 const personasClient = require('../services/personasClient');
 const personasMapper = require('../services/personasMapper');
+const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
 
 const router = express.Router();
 
@@ -198,6 +199,16 @@ router.post('/emision', async (req, res) => {
 
     const emitted = await personasClient.createEmissionPerson(payload);
 
+    const emitMetadata = { ...metadata };
+    const url_ingreso_caja = await resolveIngresoCajaAfterPayment(state, {
+      cnrecibo: emitted.cnrecibo,
+      mpagoFallback: cotizacion.mprima,
+      metadata: emitMetadata,
+    });
+    if (url_ingreso_caja) {
+      console.log(`[personas/emision] URL ingreso caja: ${url_ingreso_caja}`);
+    }
+
     return res.status(201).json({
       success: true,
       message: 'Póliza funeraria emitida exitosamente.',
@@ -206,6 +217,7 @@ router.post('/emision', async (req, res) => {
         cnpoliza: emitted.cnpoliza,
         cnrecibo: emitted.cnrecibo,
         urlpoliza: emitted.urlpoliza,
+        url_ingreso_caja,
         ncuota: emitted.ncuota,
         internalPolicyId: metadata.internalPolicyId,
         emittedAt: new Date().toISOString(),
@@ -214,7 +226,7 @@ router.post('/emision', async (req, res) => {
           mprimaext: cotizacion.mprimaext,
           ptasa: cotizacion.ptasa,
         },
-        metadata,
+        metadata: emitMetadata,
       },
     });
   } catch (err) {

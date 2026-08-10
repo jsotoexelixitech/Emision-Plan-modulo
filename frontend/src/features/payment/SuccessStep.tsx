@@ -6,6 +6,7 @@ import {
   Calendar, Copy, ExternalLink,
 } from 'lucide-react';
 import { formatUsdShort } from '../../lib/money';
+import { openEmissionPdfs } from '../../lib/openEmissionPdfs';
 
 function getOcrRestartFromZeroUrl(): string {
   const configured = import.meta.env.VITE_OCR_CONTINUE_BASE as string | undefined;
@@ -56,6 +57,9 @@ export function SuccessStep() {
   const reciboNum = policy?.cnrecibo || '';
   const pdfUrl = policy?.urlpoliza || '';
   const conductorUrl = policy?.url_conductor_habitual || '';
+  const arysUrl = policy?.url_club_arys || '';
+  const ingresoCajaUrl = policy?.url_ingreso_caja || '';
+  const hasDocuments = Boolean(pdfUrl || conductorUrl || arysUrl || ingresoCajaUrl);
   const emittedDate = policy?.emittedAt
     ? new Date(policy.emittedAt).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })
     : new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -80,28 +84,22 @@ export function SuccessStep() {
   };
 
   const downloadPdf = () => {
-    if (pdfUrl) {
-      window.open(pdfUrl, '_blank', 'noopener,noreferrer');
-
-      if (conductorUrl) {
-        setTimeout(() => {
-          window.open(conductorUrl, '_blank', 'noopener,noreferrer');
-        }, 400);
-      }
-
-      toast.success(
-        'Abriendo documentos',
-        conductorUrl
-          ? 'La póliza y el anexo se abrirán en nuevas pestañas.'
-          : 'El PDF se abrió en una nueva pestaña.',
-      );
-    } else {
+    if (!hasDocuments) {
       toast.warning(
         'PDF no disponible',
         'La Mundial no devolvió URL de descarga para esta emisión. Contacta soporte.',
         5000,
       );
+      return;
     }
+
+    const opened = openEmissionPdfs({
+      urlpoliza: pdfUrl,
+      url_club_arys: arysUrl,
+      url_conductor_habitual: conductorUrl,
+      url_ingreso_caja: ingresoCajaUrl,
+    });
+    toast.success('Abriendo documentos', `${opened.length} archivo(s) en nuevas pestañas.`);
   };
 
   return (
