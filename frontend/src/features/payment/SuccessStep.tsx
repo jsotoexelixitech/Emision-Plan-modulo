@@ -3,12 +3,11 @@ import { Button } from '../../components/ui/Button';
 import { toast } from '../../store/toastStore';
 import {
   CheckCircle2, Download, RefreshCw, ShieldCheck,
-  Calendar, Share2, Copy, ExternalLink,
+  Calendar, Copy, ExternalLink,
 } from 'lucide-react';
 import { formatUsdShort } from '../../lib/money';
 
-/** URL de reinicio en Paso 01 Documentos (módulo OCR). */
-function getOcrRestartUrl(): string {
+function getOcrRestartFromZeroUrl(): string {
   const configured = import.meta.env.VITE_OCR_CONTINUE_BASE as string | undefined;
   const base = (configured?.replace(/\/$/, '') || '/ocr').replace(/\/$/, '');
   const params = new URLSearchParams({ wizardStep: '1' });
@@ -33,8 +32,24 @@ function getOcrRestartUrl(): string {
   return `${base}/?${params.toString()}`;
 }
 
+function clearClientFlowState() {
+  const keep = new Set([
+    'nexus_access_token_pagos',
+    'nexus_access_token_ocr',
+    'nexus_access_token_formulario',
+    'nexus_access_token_emision',
+    'exelixi_product',
+  ]);
+  const toRemove: string[] = [];
+  for (let i = 0; i < sessionStorage.length; i += 1) {
+    const key = sessionStorage.key(i);
+    if (key && !keep.has(key)) toRemove.push(key);
+  }
+  toRemove.forEach((k) => sessionStorage.removeItem(k));
+}
+
 export function SuccessStep() {
-  const { policy, tomador, selectedPlan, reset, goTo } = useWizardStore();
+  const { policy, tomador, selectedPlan, reset } = useWizardStore();
 
   const holder = [tomador.nombre, tomador.apellido].filter(Boolean).join(' ') || 'Cliente';
   const policyNum = policy?.cnpoliza || policy?.number || 'LM-2026-000000';
@@ -58,58 +73,10 @@ export function SuccessStep() {
     }
   };
 
-  const shareDocuments = () => {
-    const lines = [
-      `Póliza: ${policyNum}`,
-      reciboNum ? `Recibo: ${reciboNum}` : '',
-      `Titular: ${holder}`,
-      '',
-      'Documentos:',
-      pdfUrl ? `Cuadro póliza / recibo: ${pdfUrl}` : 'Cuadro póliza: no disponible',
-      conductorUrl ? `Anexo conductor habitual: ${conductorUrl}` : '',
-    ].filter(Boolean).join('\n');
-
-    const subject = encodeURIComponent(`Póliza RCV ${policyNum} — La Mundial de Seguros`);
-    const body = encodeURIComponent(lines);
-    const to = encodeURIComponent((tomador.email || '').trim());
-    const mailto = `mailto:${to}?subject=${subject}&body=${body}`;
-
-    const openMailto = () => {
-      window.location.href = mailto;
-      toast.success(
-        'Abriendo correo',
-        'Se preparó un mensaje con los enlaces de los documentos.',
-        3500,
-      );
-    };
-
-    if (typeof navigator.share === 'function') {
-      void navigator
-        .share({
-          title: `Póliza ${policyNum}`,
-          text: lines,
-          ...(pdfUrl ? { url: pdfUrl } : {}),
-        })
-        .catch(() => openMailto());
-      return;
-    }
-
-    openMailto();
-  };
-
-  const emitAnotherPolicy = async () => {
+  const emitAnotherPolicy = () => {
     reset();
-    goTo(6);
-    try {
-      const nav = window.__bridgeNavigateStep ?? window.__bridge?.navigateToStep;
-      if (typeof nav === 'function') {
-        const ok = await nav(1);
-        if (ok) return;
-      }
-    } catch {
-      /* fallback */
-    }
-    window.location.href = getOcrRestartUrl();
+    clearClientFlowState();
+    window.location.href = getOcrRestartFromZeroUrl();
   };
 
   const downloadPdf = () => {
@@ -298,20 +265,12 @@ export function SuccessStep() {
             Anexo Conductor
           </Button>
         )}
-        <Button
-          variant="secondary"
-          size="lg"
-          onClick={shareDocuments}
-        >
-          <Share2 size={15} />
-          Compartir
-        </Button>
       </div>
 
       <div className="text-center">
         <button
           type="button"
-          onClick={() => { void emitAnotherPolicy(); }}
+          onClick={emitAnotherPolicy}
           className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-indigo-600 transition-colors font-semibold"
         >
           <RefreshCw size={13} />
