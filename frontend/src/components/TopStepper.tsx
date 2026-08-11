@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   Check, ChevronLeft, ChevronRight, FileText, UserCog, ShieldCheck, CreditCard, Car, Users,
 } from 'lucide-react';
@@ -12,6 +12,8 @@ import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
 import { isCotizadorFlow } from '../lib/cotizador-flow';
 import { toast } from '../store/toastStore';
+
+type StepItem = { n: number; label: string; Icon: typeof Car; displayStep?: number };
 
 /**
  * Stepper horizontal en barra blanca (estilo píldora).
@@ -35,10 +37,10 @@ export function TopStepper() {
   };
 
   // Misma visual que RCV: stepper completo también en Exélixi (paridad de flujo).
-  const STEPS = cotizadorRcv
+  const STEPS: StepItem[] = cotizadorRcv
     ? [
-        { n: 3, label: 'Vehículo', Icon: Car },
-        { n: 4, label: 'Plan', Icon: ShieldCheck },
+        { n: 3, displayStep: 1, label: 'Vehículo', Icon: Car },
+        { n: 4, displayStep: 2, label: 'Plan', Icon: ShieldCheck },
       ]
     : product.exelixiCatalog
     ? [
@@ -120,7 +122,8 @@ export function TopStepper() {
 
   return (
     <div className="hidden lg:block w-full mb-8 animate-fade-in">
-      <div className="flex items-center gap-2.5">
+      <div className={cotizadorRcv ? 'flex justify-center' : 'flex items-center gap-2.5'}>
+        <div className={cotizadorRcv ? 'inline-flex items-center gap-2.5' : 'flex items-center gap-2.5 flex-1 min-w-0'}>
         <button
           type="button"
           onClick={() => prevStep != null && goToStep(prevStep)}
@@ -132,17 +135,32 @@ export function TopStepper() {
         </button>
 
         <nav
-          className="flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-white rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.09)] border border-slate-200/70 px-5 py-3.5"
+          className={
+            cotizadorRcv
+              ? 'bg-white rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.09)] border border-slate-200/70 px-6 py-3.5'
+              : 'flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden bg-white rounded-full shadow-[0_8px_32px_rgba(15,23,42,0.09)] border border-slate-200/70 px-5 py-3.5'
+          }
           aria-label="Progreso de suscripción"
         >
-          <ol className="flex items-center gap-5 xl:gap-8 min-w-max">
-            {STEPS.map(({ n, label, Icon }) => {
+          <ol className={`flex items-center ${cotizadorRcv ? 'gap-1' : 'gap-5 xl:gap-8 min-w-max'}`}>
+            {STEPS.map(({ n, label, Icon, displayStep }, idx) => {
               const isComplete = n < step;
               const isActive = n === step;
               const isClickable = n !== step && !navigating && canGoTo(n);
+              const stepLabel = displayStep ?? n;
 
               return (
-                <li key={n} className="flex items-center gap-2.5 flex-shrink-0">
+                <Fragment key={n}>
+                  {cotizadorRcv && idx > 0 && (
+                    <li aria-hidden className="flex items-center px-1">
+                      <span
+                        className={`block h-0.5 w-10 sm:w-12 rounded-full transition-colors ${
+                          step > STEPS[idx - 1].n ? 'bg-emerald-400' : 'bg-slate-200'
+                        }`}
+                      />
+                    </li>
+                  )}
+                <li className="flex items-center gap-2.5 flex-shrink-0">
                   <button
                     type="button"
                     disabled={!isClickable}
@@ -179,7 +197,7 @@ export function TopStepper() {
                           isComplete ? 'text-emerald-500' : isActive ? 'text-sky-600' : 'text-slate-400'
                         }`}
                       >
-                        PASO 0{n}
+                        PASO 0{stepLabel}
                       </p>
                       <p
                         className={`mt-1 text-[0.88rem] font-bold leading-tight truncate max-w-[9.5rem] ${
@@ -191,6 +209,7 @@ export function TopStepper() {
                     </div>
                   </button>
                 </li>
+                </Fragment>
               );
             })}
           </ol>
@@ -205,6 +224,7 @@ export function TopStepper() {
         >
           <ChevronRight size={18} strokeWidth={2.5} />
         </button>
+        </div>
       </div>
     </div>
   );
