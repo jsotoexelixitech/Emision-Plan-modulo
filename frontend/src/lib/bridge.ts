@@ -22,6 +22,7 @@ import { resolveNexusApiUrl } from '../nexus/nexus-core';
 import { canNavigateToStep, getDefaultRequiredDocs } from './wizard-navigation';
 import { getProductConfig } from './product';
 import { BUILDER_PRODUCT_STORAGE_KEY, isExelixiCatalogFlow, ensureExelixiFlowQueryParam } from './exelixi-catalog';
+import { ensureCotizadorFlowQueryParam, isCotizadorFlow } from './cotizador-flow';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
@@ -214,6 +215,7 @@ function makeBridge(): BridgeAPI {
     }
     out.product = prod;
     out.exelixiCatalogFlow = isCatalogFlow;
+    out.cotizadorFlow = isCotizadorFlow();
     try {
       const builderRaw = sessionStorage.getItem(BUILDER_PRODUCT_STORAGE_KEY);
       if (builderRaw) out.builderProduct = JSON.parse(builderRaw);
@@ -272,6 +274,9 @@ function makeBridge(): BridgeAPI {
         if (r.data.data.exelixiCatalogFlow) {
           ensureExelixiFlowQueryParam(true);
         }
+        if (r.data.data.cotizadorFlow) {
+          ensureCotizadorFlowQueryParam(true);
+        }
         const builderProduct = r.data.data.builderProduct;
         if (builderProduct && typeof builderProduct === 'object') {
           try {
@@ -314,6 +319,14 @@ function makeBridge(): BridgeAPI {
           try {
             const url = new URL(target, window.location.origin);
             url.searchParams.set('flow', 'exelixi-catalog');
+            target = url.toString();
+          } catch { /* ignore */ }
+        }
+        if (isCotizadorFlow()) {
+          try {
+            const url = new URL(target, window.location.origin);
+            url.searchParams.set('flow', 'cotizador');
+            url.searchParams.set('product', 'rcv');
             target = url.toString();
           } catch { /* ignore */ }
         }

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
 import { verifyNexusAccess, resolveNexusApiUrl, type NexusVerifyResult } from './nexus-core';
 import { persistProductFromHints } from '../lib/product';
+import { persistCotizadorFromHints } from '../lib/cotizador-flow';
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 interface NexusContextValue {
@@ -135,6 +136,11 @@ export function NexusGuard({ children, recheckInterval = 30 }: NexusGuardProps) 
           nombre: result.submodulo.nombre,
           moduloNombre: result.submodulo.moduloNombre,
           product: result.product,
+        });
+        persistCotizadorFromHints({
+          url: result.submodulo.url,
+          nombre: result.submodulo.nombre,
+          moduloNombre: result.submodulo.moduloNombre,
         });
       }
       setState({ status: 'active', empresa: result.empresa, submodulo: result.submodulo });

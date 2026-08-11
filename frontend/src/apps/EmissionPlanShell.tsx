@@ -11,10 +11,21 @@ interface Props {
   helpSubject: string;
   onContinuar: () => void;
   children: React.ReactNode;
+  eyebrow?: string;
+  title?: string;
+  continuarLabel?: string;
 }
 
 /** Shell visual compartido del paso 4 — sin lógica de producto. */
-export function EmissionPlanShell({ subtitle, helpSubject: _helpSubject, onContinuar, children }: Props) {
+export function EmissionPlanShell({
+  subtitle,
+  helpSubject: _helpSubject,
+  onContinuar,
+  children,
+  eyebrow,
+  title,
+  continuarLabel = 'Confirmar plan',
+}: Props) {
   void _helpSubject;
   return (
     <div className="min-h-screen relative">
@@ -34,10 +45,10 @@ export function EmissionPlanShell({ subtitle, helpSubject: _helpSubject, onConti
               <div className="min-w-0">
                 <p className="text-[0.68rem] font-black tracking-[0.22em] gradient-text-indigo uppercase mb-2 inline-flex items-center gap-1.5">
                   <Sparkles size={11} className="text-indigo-500" />
-                  Paso 04 · Cobertura
+                  {eyebrow ?? 'Paso 04 · Cobertura'}
                 </p>
                 <h1 className="font-display text-3xl sm:text-[2.5rem] font-black text-slate-900 tracking-tight leading-tight">
-                  Elige tu plan ideal
+                  {title ?? 'Elige tu plan ideal'}
                 </h1>
                 <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">{subtitle}</p>
               </div>
@@ -53,7 +64,7 @@ export function EmissionPlanShell({ subtitle, helpSubject: _helpSubject, onConti
                 <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
               </div>
               <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
-                Confirmar plan
+                {continuarLabel}
                 <ChevronRight size={15} />
               </Button>
             </div>
@@ -63,7 +74,7 @@ export function EmissionPlanShell({ subtitle, helpSubject: _helpSubject, onConti
 
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
         <Button variant="primary" className="w-full" onClick={onContinuar}>
-          Confirmar plan
+          {continuarLabel}
         </Button>
       </div>
     </div>

@@ -10,6 +10,7 @@ import {
 } from '../lib/wizard-navigation';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
+import { isCotizadorFlow } from '../lib/cotizador-flow';
 import { toast } from '../store/toastStore';
 
 /**
@@ -22,6 +23,7 @@ export function TopStepper() {
   const documents = useWizardStore((s) => s.documents);
   const selectedPlan = useWizardStore((s) => s.selectedPlan);
   const product = getProductConfig();
+  const cotizadorRcv = isCotizadorFlow() && product.id === 'rcv';
   const [navigating, setNavigating] = useState(false);
 
   const navSnapshot = {
@@ -33,7 +35,12 @@ export function TopStepper() {
   };
 
   // Misma visual que RCV: stepper completo también en Exélixi (paridad de flujo).
-  const STEPS = product.exelixiCatalog
+  const STEPS = cotizadorRcv
+    ? [
+        { n: 3, label: 'Vehículo', Icon: Car },
+        { n: 4, label: 'Plan', Icon: ShieldCheck },
+      ]
+    : product.exelixiCatalog
     ? [
         { n: 1, label: 'Documentos', Icon: FileText },
         { n: 2, label: 'Cliente', Icon: UserCog },
@@ -53,8 +60,9 @@ export function TopStepper() {
         { n: 5, label: 'Pago', Icon: CreditCard },
       ];
 
-  /** Pasos que emisión renderiza localmente en flujo Exélixi. */
-  const EXELIXI_LOCAL_STEPS = [2, 3, 4];
+  /** Pasos que emisión renderiza localmente. */
+  const LOCAL_STEPS = cotizadorRcv ? [4] : product.exelixiCatalog ? [2, 3, 4] : [4];
+  const EXELIXI_LOCAL_STEPS = LOCAL_STEPS;
 
   function bridgeNavAvailable(): boolean {
     return Boolean(window.__bridgeNavigateStep ?? window.__bridge?.navigateToStep);
@@ -68,13 +76,17 @@ export function TopStepper() {
   }
 
   function canGoTo(target: number): boolean {
+    if (cotizadorRcv) {
+      if (!allowedExelixiTarget(target)) return false;
+      return canNavigateToStep(step, target, navSnapshot);
+    }
     if (product.exelixiCatalog && !allowedExelixiTarget(target)) return false;
     return canNavigateToStep(step, target, navSnapshot);
   }
 
   async function goToStep(target: number) {
     if (navigating || target === step) return;
-    if (product.exelixiCatalog) {
+    if (cotizadorRcv || product.exelixiCatalog) {
       if (!allowedExelixiTarget(target)) return;
     } else if (target < 1 || target > 5) {
       return;
