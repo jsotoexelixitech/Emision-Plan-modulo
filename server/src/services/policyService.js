@@ -21,6 +21,7 @@ const {
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
   sendPolicyEmailViaNestApi,
+  getValrepFrecuencias,
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
 const { resolveIngresoCajaAfterPayment } = require('./collectionAfterPayment');
@@ -95,6 +96,39 @@ function resolveClubArysFallbackUrl(iplaca) {
 
 function getMode() {
   return (process.env.POLICY_MODE || 'live').toLowerCase();
+}
+
+/** Resuelve frecuencia/ndias para emisión (bridge pagos puede omitir state.rcv). */
+async function resolveEmitOverrides(state, overrides = {}) {
+  const plan =
+    overrides.plan ||
+    state.selectedPlan?.cplan ||
+    process.env.LAMUNDIAL_PLAN_DEFAULT ||
+    'RCVBAS';
+  const frecuencia =
+    overrides.frecuencia ||
+    state.rcv?.frecuencia ||
+    process.env.LAMUNDIAL_FRECUENCIA_DEFAULT ||
+    'A';
+  let ndias = overrides.ndias ?? state.rcv?.ndias;
+  if ((ndias == null || ndias === '') && frecuencia && plan) {
+    try {
+      const cramo = parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
+      const items = await getValrepFrecuencias(plan, cramo);
+      const code = String(frecuencia).trim().toUpperCase().charAt(0);
+      const match = items.find(
+        (i) => String(i.code).trim().toUpperCase().charAt(0) === code,
+      );
+      if (match?.ndias != null && !Number.isNaN(Number(match.ndias))) {
+        ndias = Number(match.ndias);
+      }
+    } catch (err) {
+      console.warn(
+        `[Policy] ndias no resuelto plan=${plan} frecuencia=${frecuencia}: ${err.message}`,
+      );
+    }
+  }
+  return { ...overrides, plan, frecuencia, ndias };
 }
 
 class PolicyError extends Error {
@@ -263,7 +297,8 @@ async function quoteAndEmit(state, overrides = {}) {
   }
 
   // 1) Cotizar
-  const quoteResult = await quote(state, overrides);
+  const emitOverrides = await resolveEmitOverrides(state, overrides);
+  const quoteResult = await quote(state, emitOverrides);
 
   // 2) Construir payload de emision
   const { payload, metadata } = buildEmissionRequest(
@@ -274,14 +309,14 @@ async function quoteAndEmit(state, overrides = {}) {
       ptasa: quoteResult.ptasa,
     },
     {
-      ...overrides,
+      ...emitOverrides,
       quoteMeta: quoteResult.metadata,
     },
   );
 
   // 3) Validar placa/serial en Sis2000 (mismo plan que la emisión)
   const emitPlan =
-    overrides.plan ||
+    emitOverrides.plan ||
     state.selectedPlan?.cplan ||
     payload.plan ||
     process.env.LAMUNDIAL_PLAN_DEFAULT ||

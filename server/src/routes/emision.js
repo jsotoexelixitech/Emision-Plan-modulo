@@ -123,7 +123,7 @@ router.post('/policies/quote', async (req, res) => {
 
 router.post('/policies/emit', async (req, res) => {
   try {
-    const { state, plan, frecuencia } = req.body || {};
+    const { state, plan, frecuencia, ndias } = req.body || {};
     if (!state || !state.vehicle || !state.tomador) {
       const { tomador, plan: legacyPlan, payment } = req.body || {};
       if (!tomador || !legacyPlan || !payment) {
@@ -154,7 +154,7 @@ router.post('/policies/emit', async (req, res) => {
     const result = await policyService.quoteAndEmit(state, {
       plan,
       frecuencia: frecuencia || state?.rcv?.frecuencia,
-      ndias: state?.rcv?.ndias,
+      ndias: ndias ?? state?.rcv?.ndias,
     });
     return res.status(201).json({
       success: true, message: 'Poliza emitida exitosamente.',
