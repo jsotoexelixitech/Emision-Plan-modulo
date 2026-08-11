@@ -115,6 +115,12 @@ export interface FuneralPerson {
   email?: string;
 }
 
+/** Datos RCV: frecuencia de pago del plan (ramo 18). */
+export interface RcvPlanData {
+  frecuencia: string;
+  ndias?: number | null;
+}
+
 /** Datos del producto Funerario (personas). Se usa cuando product = 'funerario'. */
 export interface FuneralData {
   asegurados: FuneralPerson[];
@@ -200,6 +206,8 @@ export interface WizardState {
   tomador: TomadorData;
   /** Datos del producto Funerario (personas). Solo se usa si product = 'funerario'. */
   funeral: FuneralData;
+  /** Frecuencia de pago RCV (plan automóvil). */
+  rcv: RcvPlanData;
   sameInsured: boolean;
   asegurado: PersonData;
   /** True cuando quien rellena el formulario NO es quien va a pagar la póliza. */

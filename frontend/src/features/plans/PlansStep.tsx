@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import {
   Check, Star, Shield, ChevronDown, ShieldCheck,
-  Loader2, AlertTriangle, BadgeCheck,
+  Loader2, AlertTriangle, BadgeCheck, CalendarClock,
 } from 'lucide-react';
 import type { Plan } from '../../types';
-import { type PlanRcv, catalogoApi, quotePolicy } from '../../lib/api';
+import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
+import { getProductConfig } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature, vesAnnual } from '../../lib/money';
 import { toast } from '../../store/toastStore';
@@ -35,13 +36,17 @@ function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
 export function PlansStep() {
   const {
     setCategory, selectedPlan, setSelectedPlan,
-    vehicle, quote, quoteState,
+    vehicle, quote, quoteState, rcv, setRcv,
   } = useWizardStore();
+
+  const product = getProductConfig();
 
   // ── Planes reales desde backend-api-sys vía modulo-emision server ─────────
   const [apiPlans, setApiPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [plansError, setPlansError] = useState(false);
+  const [apiFrecuencias, setApiFrecuencias] = useState<CatalogItem[]>([]);
+  const [frecLoading, setFrecLoading] = useState(false);
 
   const categoryLabel =
     (vehicle.xcategoria_uso?.trim() || vehicle.uso || 'RCV');
@@ -79,6 +84,40 @@ export function PlansStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vehicle.ctipo as any, vehicle.cversion, vehicle.cmarca]);
 
+  // ── Frecuencias por plan (spBuscaFrecuenciaPlan) ─────────────────────────
+  useEffect(() => {
+    const planCode = selectedPlan?.cplan;
+    if (!planCode) {
+      setApiFrecuencias([]);
+      return;
+    }
+
+    let cancelled = false;
+    setFrecLoading(true);
+    getFrecuenciasByPlan(planCode, product.cramo)
+      .then((items) => {
+        if (cancelled) return;
+        setApiFrecuencias(items);
+        const current = items.find((i) => String(i.code) === rcv.frecuencia);
+        if (!current && items.length > 0) {
+          setRcv({
+            frecuencia: String(items[0].code),
+            ndias: items[0].ndias ?? null,
+          });
+        } else if (current) {
+          setRcv({ ndias: current.ndias ?? null });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setApiFrecuencias([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFrecLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [selectedPlan?.cplan, product.cramo, setRcv, rcv.frecuencia]);
+
   // ── Cotización automática contra La Mundial ───────────────────────────────
   const hasVehicleData =
     Boolean(vehicle.marca?.trim()) &&
@@ -87,7 +126,9 @@ export function PlansStep() {
 
   const sig = hasVehicleData ? vehicleSignature(vehicle) : '';
   const planCode = selectedPlan?.cplan ?? '';
-  const quoteSig = sig && planCode ? `${sig}|${planCode}` : '';
+  const quoteSig = sig && planCode && rcv.frecuencia
+    ? `${sig}|${planCode}|${rcv.frecuencia}|${rcv.ndias ?? ''}`
+    : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.
   const activeQuoteSigRef = useRef('');
@@ -102,7 +143,7 @@ export function PlansStep() {
     snap.setQuoteState('loading');
 
     quotePolicy({
-      state: { vehicle },
+      state: { vehicle, rcv, selectedPlan },
       plan: planCode,
     })
       .then((r) => {
@@ -142,6 +183,9 @@ export function PlansStep() {
 
   const annualUsd    = hasRealQuote ? quote!.mprimaext : 0;
   const displayPrice = annualUsd;
+  const frecuenciaLabel =
+    apiFrecuencias.find((f) => String(f.code) === rcv.frecuencia)?.label
+    ?? 'Anual';
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -151,12 +195,12 @@ export function PlansStep() {
         </p>
         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700">
           <Shield size={11} />
-          Pago anual
+          {frecuenciaLabel}
         </span>
       </div>
 
       {/* Selectores */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
         {/* Categoría de uso — read-only, proviene del vehículo seleccionado */}
         <div>
@@ -214,6 +258,49 @@ export function PlansStep() {
                     </option>
                   ))}
                 </>
+              )}
+            </select>
+            <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+          </div>
+        </div>
+
+        {/* Frecuencia de pago */}
+        <div>
+          <label className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-2 inline-flex items-center gap-1.5">
+            <CalendarClock size={11} className="text-emerald-500" />
+            Frecuencia de pago
+          </label>
+          <div className="relative group">
+            <div className={`absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg grid place-items-center pointer-events-none transition-all ${
+              rcv.frecuencia
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-[0_4px_14px_rgba(16,185,129,0.3)]'
+                : 'bg-slate-100 text-slate-500'
+            }`}>
+              {frecLoading ? <Loader2 size={14} className="animate-spin" /> : <CalendarClock size={15} strokeWidth={2.5} />}
+            </div>
+            <select
+              value={rcv.frecuencia ?? ''}
+              onChange={(e) => {
+                const code = e.target.value;
+                const item = apiFrecuencias.find((f) => String(f.code) === code);
+                setRcv({
+                  frecuencia: code,
+                  ndias: item?.ndias ?? null,
+                });
+              }}
+              disabled={frecLoading || apiFrecuencias.length === 0 || !selectedPlan}
+              className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
+            >
+              {frecLoading ? (
+                <option value="">Cargando...</option>
+              ) : !selectedPlan ? (
+                <option value="">Selecciona un plan primero</option>
+              ) : apiFrecuencias.length === 0 ? (
+                <option value="A">Anual</option>
+              ) : (
+                apiFrecuencias.map((f) => (
+                  <option key={String(f.code)} value={String(f.code)}>{f.label}</option>
+                ))
               )}
             </select>
             <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />

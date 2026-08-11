@@ -121,6 +121,54 @@ function genInternalPolicyId(prefix = 'INT') {
   return `${prefix}-${ts}-${rand}`;
 }
 
+function resolveRcvFrecuencia(state, overrides = {}) {
+  return String(
+    overrides.frecuencia ||
+    state.rcv?.frecuencia ||
+    process.env.LAMUNDIAL_FRECUENCIA_DEFAULT ||
+    'A',
+  ).trim().toUpperCase().charAt(0);
+}
+
+function resolveRcvNdias(state, overrides = {}) {
+  if (overrides.ndias != null && !Number.isNaN(Number(overrides.ndias))) {
+    return Number(overrides.ndias);
+  }
+  if (state.rcv?.ndias != null && !Number.isNaN(Number(state.rcv.ndias))) {
+    return Number(state.rcv.ndias);
+  }
+  return null;
+}
+
+/** Vigencia fdesde/fhasta según ndias de maplanes_frec (SysIP receipt-vehicle-form). */
+function resolveVigencia(femisionYmd, ndias) {
+  const fdesde = femisionYmd || todayYmd();
+  const base = new Date(`${fdesde}T12:00:00`);
+  const fhastaDate = new Date(base);
+  const n = ndias != null ? Number(ndias) : null;
+  if (n != null && !Number.isNaN(n) && n > 0) {
+    fhastaDate.setDate(fhastaDate.getDate() + n);
+  } else if (n != null && !Number.isNaN(n) && n < 0) {
+    fhastaDate.setDate(fhastaDate.getDate() + Math.abs(n));
+  } else {
+    fhastaDate.setFullYear(fhastaDate.getFullYear() + 1);
+  }
+  const fhasta = fhastaDate.toISOString().slice(0, 10);
+  return { fdesde, fhasta };
+}
+
+function resolveMsumaaseg(state, quoteMeta = {}) {
+  const fromMeta = quoteMeta.referenceSuma ?? quoteMeta.sumaAsegurada;
+  if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+  const fromVehicle = state.vehicle?.msumaaseg ?? state.vehicle?.mvalor;
+  if (fromVehicle != null && Number(fromVehicle) > 0) return Number(fromVehicle);
+  return null;
+}
+
+function resolveIplaca(v) {
+  return v?.tipoPlaca === 'extranjera' ? 'E' : 'N';
+}
+
 // ---------- mappers principales ----------
 
 /**
@@ -169,6 +217,9 @@ function buildQuoteRequest(state, overrides = {}) {
     process.env.LAMUNDIAL_PLAN_DEFAULT ||
     ''
   ).trim();
+  const frecuencia = resolveRcvFrecuencia(state, overrides);
+  const ndias = resolveRcvNdias(state, overrides);
+  const sumaAsegurada = resolveMsumaaseg(state, state.quoteMeta || {});
 
   return {
     payload: {
@@ -178,6 +229,14 @@ function buildQuoteRequest(state, overrides = {}) {
       cversion: codes.cversion,
       cplan,
       ccategoria_uso,
+      iplaca: resolveIplaca(v),
+      ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
+        ? parseInt(v.ntoneladas, 10)
+        : undefined,
+      cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      ifrecuencia: frecuencia,
+      ndias: ndias ?? undefined,
+      sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
       vehicleLabel: codes.label,
@@ -193,8 +252,8 @@ function buildQuoteRequest(state, overrides = {}) {
  *
  * @param {object} state - wizardState con tomador, vehicle, selectedPlan, etc.
  * @param {{ mprima:number, mprimaext:number, ptasa:number }} cotizacion
- * @param {{ plan?:'RCVBAS'|'RUSPAT', frecuencia?:string,
- *   internalPolicyId?:string, fechaEmision?:string }} [overrides]
+ * @param {{ plan?:string, frecuencia?:string, ndias?:number,
+ *   internalPolicyId?:string, fechaEmision?:string, quoteMeta?:object }} [overrides]
  */
 function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const tomador = state.tomador || {};
@@ -224,8 +283,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     process.env.LAMUNDIAL_PLAN_DEFAULT ||
     'RCVBAS'
   ).trim();
-  const frecuencia = overrides.frecuencia || process.env.LAMUNDIAL_FRECUENCIA_DEFAULT || 'A';
+  const frecuencia = resolveRcvFrecuencia(state, overrides);
+  const ndias = resolveRcvNdias(state, overrides);
   const fecha_emision = overrides.fechaEmision || todayYmd();
+  const vigencia = resolveVigencia(fecha_emision, ndias);
+  const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
 
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
@@ -244,7 +306,12 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     cramo,
     plan,
     frecuencia,
+    ndias,
     fecha_emision,
+    fdesde: vigencia.fdesde,
+    fhasta: vigencia.fhasta,
+    msumaaseg,
+    iplaca: resolveIplaca(v),
 
     productor: productor != null ? String(productor) : undefined,
     cusuario,
@@ -367,9 +434,13 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 function toLaMundialEmissionPayload(p, _cotizacion) {
   const femision = p.femision || p.fecha_emision || todayYmd();
   const fdesde = p.fdesde || femision;
-  const dHasta = new Date(`${femision}T00:00:00Z`);
-  dHasta.setUTCFullYear(dHasta.getUTCFullYear() + 1);
-  const fhasta = p.fhasta || dHasta.toISOString().slice(0, 10);
+  const ndias = p.ndias != null ? Number(p.ndias) : null;
+  let fhasta = p.fhasta;
+  if (!fhasta) {
+    fhasta = resolveVigencia(fdesde, ndias).fhasta;
+  }
+  const msumaaseg =
+    p.msumaaseg != null && Number(p.msumaaseg) > 0 ? Number(p.msumaaseg) : null;
 
   const rifTom = parseInt(String(p.rif_tomador).replace(/\D/g, ''), 10);
   const rifTit = parseInt(String(p.rif_titular).replace(/\D/g, ''), 10);
@@ -424,7 +495,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
     cusuario: parseInt(p.cusuario || process.env.LAMUNDIAL_CUSUARIO || 4, 10),
-    msumaaseg: 0,
+    msumaaseg,
     ifrecuencia: p.frecuencia || 'A',
     femision,
     fdesde,

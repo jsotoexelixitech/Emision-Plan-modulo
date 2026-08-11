@@ -111,8 +111,8 @@ export async function uploadDocument(
  */
 export interface EmitPolicyPayload {
   state: unknown;
-  plan?: 'RCVBAS' | 'RUSPAT';
-  frecuencia?: 'A' | 'S' | 'M' | 'T' | 'C';
+  plan?: string;
+  frecuencia?: string;
 }
 
 export interface PolicyQuote {
@@ -542,6 +542,7 @@ export const personasApi = {
 export interface CatalogItem {
   code: number | string;
   label: string;
+  ndias?: number | null;
 }
 
 /** Caché en módulo — persiste durante la sesión, evita re-fetches */

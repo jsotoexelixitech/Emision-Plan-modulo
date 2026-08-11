@@ -48,12 +48,13 @@ async function getCotizacionViaNestApi(payload) {
     const mprimaext = Number(data?.mprimaext ?? 0);
     const mprima = Number(data?.mprima ?? 0);
     const ptasa = Number(data?.ptasa ?? 0);
+    const referenceSuma = Number(data?.referenceSuma ?? 0) || undefined;
     if (!mprimaext) {
       const err = new Error('Cotización nest-api retornó prima cero.');
       err.code = 'NEST_API_QUOTE_ZERO';
       throw err;
     }
-    return { mprima, mprimaext, ptasa };
+    return { mprima, mprimaext, ptasa, referenceSuma };
   }
 
   const err = new Error(
@@ -313,6 +314,7 @@ async function getValrepFrecuencias(cplan, cramo) {
   return rawItems.map((f) => ({
     code: f.cvalor || f.ifrecuencia || f.code,
     label: f.xdescripcion || f.xfrecuencia || f.label || String(f.cvalor || f.ifrecuencia),
+    ndias: f.ndias != null && !Number.isNaN(Number(f.ndias)) ? Number(f.ndias) : null,
   }));
 }
 

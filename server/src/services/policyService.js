@@ -180,9 +180,12 @@ async function quote(state, overrides = {}) {
           fano: payload.fano,
           cplan: payload.cplan,
           ccategoria_uso: payload.ccategoria_uso,
-          iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+          iplaca: payload.iplaca || (enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N'),
           ntoneladas: payload.ntoneladas,
-          cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+          cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+          ifrecuencia: payload.ifrecuencia,
+          ndias: payload.ndias,
+          sumaAsegurada: payload.sumaAsegurada,
         });
         metadata.quoteSource = 'nest-api';
       } catch (nestApiErr) {
@@ -208,7 +211,11 @@ async function quote(state, overrides = {}) {
       mprima: result.mprima,
       mprimaext: result.mprimaext,
       ptasa: result.ptasa,
-      metadata,
+      metadata: {
+        ...metadata,
+        referenceSuma: result.referenceSuma,
+        sumaAsegurada: result.referenceSuma,
+      },
     };
   } catch (err) {
     if (err.code === 'SIS2000_QUOTE_ZERO' || err.code === 'SIS2000_QUOTE_ERROR') {
@@ -266,7 +273,10 @@ async function quoteAndEmit(state, overrides = {}) {
       mprimaext: quoteResult.mprimaext,
       ptasa: quoteResult.ptasa,
     },
-    overrides
+    {
+      ...overrides,
+      quoteMeta: quoteResult.metadata,
+    },
   );
 
   // 3) Validar placa/serial en Sis2000 (mismo plan que la emisión)

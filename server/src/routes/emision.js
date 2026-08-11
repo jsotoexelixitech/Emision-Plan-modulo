@@ -151,7 +151,11 @@ router.post('/policies/emit', async (req, res) => {
 
     console.log('[routes/emision.js] state.metadataCanal (después):', JSON.stringify(state.metadataCanal));
 
-    const result = await policyService.quoteAndEmit(state, { plan, frecuencia });
+    const result = await policyService.quoteAndEmit(state, {
+      plan,
+      frecuencia: frecuencia || state?.rcv?.frecuencia,
+      ndias: state?.rcv?.ndias,
+    });
     return res.status(201).json({
       success: true, message: 'Poliza emitida exitosamente.',
       policy: {
