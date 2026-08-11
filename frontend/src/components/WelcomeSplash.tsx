@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from 'react';
 import { publicAsset } from '../lib/app-base';
 import { isExelixiCatalogFlow } from '../lib/exelixi-catalog';
+import { isCotizadorFlow } from '../lib/cotizador-flow';
 
 const VISIBLE_MS = 2400;
 const FADE_MS = 700;
@@ -16,11 +17,13 @@ const BRAND = {
   redLight: '#FF6675', // Rojo Imperial (claro)
 };
 
-/** No mostrar splash La Mundial en flujo encadenado o Exélixi catálogo genérico. */
+/** No mostrar splash en flujo encadenado, Exélixi catálogo o cotizador RCV. */
 function shouldSkipSplash(): boolean {
   try {
     if (isExelixiCatalogFlow()) return true;
+    if (isCotizadorFlow()) return true;
     const p = new URLSearchParams(window.location.search);
+    if (p.get('wizardStep') === '4') return true;
     return Boolean(p.get('sid') && p.get('nexus_token'));
   } catch { return false; }
 }
