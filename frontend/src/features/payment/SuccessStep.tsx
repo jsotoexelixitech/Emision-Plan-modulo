@@ -6,7 +6,7 @@ import {
   Calendar, Copy, ExternalLink,
 } from 'lucide-react';
 import { formatUsdShort } from '../../lib/money';
-import { openEmissionPdfs, reserveEmissionPopups } from '../../lib/openEmissionPdfs';
+import { openEmissionPdfs } from '../../lib/openEmissionPdfs';
 
 function getOcrRestartFromZeroUrl(): string {
   const configured = import.meta.env.VITE_OCR_CONTINUE_BASE as string | undefined;
@@ -93,7 +93,6 @@ export function SuccessStep() {
       return;
     }
 
-    reserveEmissionPopups();
     const opened = openEmissionPdfs({
       urlpoliza: pdfUrl,
       url_club_arys: arysUrl,
