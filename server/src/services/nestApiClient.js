@@ -341,11 +341,39 @@ async function generateConductorHabitualViaNestApi(body) {
   throw err;
 }
 
+/**
+ * Envía documentos emitidos por correo vía POST /api/v1/mail/policy-emission.
+ * Fire-and-forget desde policyService; no bloquea la respuesta al cliente.
+ */
+async function sendPolicyEmailViaNestApi(payload) {
+  const url = `${getBaseUrl()}/api/v1/mail/policy-emission`;
+  const response = trackResponse(await axios.post(url, payload, {
+    headers: await buildAuthHeaders(),
+    timeout: getTimeout(),
+    validateStatus: () => true,
+  }));
+
+  if (response.status >= 200 && response.status < 300) {
+    return response.data;
+  }
+
+  const err = new Error(
+    response.data?.error
+      || response.data?.message
+      || `HTTP ${response.status} enviando correo póliza`,
+  );
+  err.code = 'NEST_API_MAIL_ERROR';
+  err.httpStatus = response.status;
+  err.raw = response.data;
+  throw err;
+}
+
 module.exports = {
   getCotizacionViaNestApi,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
+  sendPolicyEmailViaNestApi,
   getBaseUrl,
   getApiKey,
   buildHeaders,

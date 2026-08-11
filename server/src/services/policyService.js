@@ -20,6 +20,7 @@ const {
   createEmissionAutoViaNestApi: emitViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
+  sendPolicyEmailViaNestApi,
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
 const { resolveIngresoCajaAfterPayment } = require('./collectionAfterPayment');
@@ -396,6 +397,45 @@ async function quoteAndEmit(state, overrides = {}) {
   console.log(
     `[Policy][${new Date().toISOString()}] EMITIDA internalId=${payload.poliza} cnpoliza=${emission.cnpoliza}`
   );
+
+  const emailTo = String(
+    payload.correo_tomador || payload.xcorreo_tomador || state?.tomador?.email || '',
+  ).trim();
+  if (emailTo) {
+    const tomadorNombre = [
+      payload.nombre_tomador || payload.xnombre_tomador,
+      payload.apellido_tomador || payload.xapellido_tomador,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    sendPolicyEmailViaNestApi({
+      to: emailTo,
+      name: tomadorNombre || undefined,
+      cnpoliza: emission.cnpoliza,
+      cnrecibo: emission.cnrecibo,
+      fanopol: emission.fanopol,
+      fmespol: emission.fmespol,
+      urlpoliza: emission.urlpoliza,
+      url_conductor_habitual,
+      url_club_arys,
+      url_ingreso_caja,
+    }).then((mailRes) => {
+      if (mailRes?.sent) {
+        console.log(`[Policy] Correo enviado a ${emailTo} póliza ${emission.cnpoliza}`);
+      } else {
+        console.warn(
+          `[Policy] Correo no enviado póliza ${emission.cnpoliza}:`,
+          mailRes?.error || mailRes?.mode || 'sin detalle',
+        );
+      }
+    }).catch((mailErr) => {
+      console.warn(
+        `[Policy] Error enviando correo póliza ${emission.cnpoliza}:`,
+        mailErr.message || mailErr,
+      );
+    });
+  }
 
   return {
     internalPolicyId: payload.poliza,
