@@ -73,12 +73,24 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     cnpoliza: emission.cnpoliza,
     cnrecibo: emission.cnrecibo,
     urlpoliza: emission.urlpoliza || '',
+    url_club_arys: emission.url_club_arys || '',
     ncuota: emission.ncuota || 1,
     message: emission.message,
     fanopol: emission.fanopol,
     fmespol: emission.fmespol,
     _raw: emission._raw,
   };
+}
+
+function resolveClubArysFallbackUrl(iplaca) {
+  const plate = String(iplaca || 'N').trim().toUpperCase();
+  const bi =
+    process.env.ARYS_AUTO_BI_PDF_URL
+    || 'https://qasys2000.lamundialdeseguros.com/assets/ArysAutoBi.pdf';
+  const trad =
+    process.env.ARYS_TRADICIONAL_PDF_URL
+    || 'https://qasys2000.lamundialdeseguros.com/assets/Arys_Tradicional.pdf';
+  return plate === 'B' ? bi : trad;
 }
 
 function getMode() {
@@ -339,20 +351,17 @@ async function quoteAndEmit(state, overrides = {}) {
 
   // 5.5) Generar anexo de Conductor Habitual si existe (solo RCV)
   let url_conductor_habitual = undefined;
-  let url_club_arys = emission.url_club_arys || undefined;
+  let url_club_arys =
+    emission.url_club_arys
+    || emission._raw?.result?.url_club_arys
+    || emission._raw?.url_club_arys
+    || undefined;
   if (!url_club_arys) {
     const planCode = String(payload.cplan || payload.plan || state.selectedPlan?.cplan || '')
       .trim()
       .toUpperCase();
     if (['RCVBAS', 'RUSPAT'].includes(planCode)) {
-      const iplaca = String(payload.iplaca || 'N').trim().toUpperCase();
-      const bi =
-        process.env.ARYS_AUTO_BI_PDF_URL
-        || 'https://qasys2000.lamundialdeseguros.com/assets/ArysAutoBi.pdf';
-      const trad =
-        process.env.ARYS_TRADICIONAL_PDF_URL
-        || 'https://qasys2000.lamundialdeseguros.com/assets/Arys_Tradicional.pdf';
-      url_club_arys = iplaca === 'B' ? bi : trad;
+      url_club_arys = resolveClubArysFallbackUrl(payload.iplaca);
       console.log(`[Policy] URL Club Arys (fallback plan ${planCode}): ${url_club_arys}`);
     }
   }
