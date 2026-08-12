@@ -9,7 +9,7 @@ import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type Cata
 import { getProductConfig } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
-import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
+import { resolveFrecuenciaAmounts, getFrecuenciaQuoteNote } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 
 /** Beneficios estándar RCV conforme a la Ley — aplica a todos los planes */
@@ -127,8 +127,8 @@ export function PlansStep() {
 
   const sig = hasVehicleData ? vehicleSignature(vehicle) : '';
   const planCode = selectedPlan?.cplan ?? '';
-  const quoteSig = sig && planCode && rcv.frecuencia
-    ? `${sig}|${planCode}|${rcv.frecuencia}|${rcv.ndias ?? ''}`
+  const quoteSig = sig && planCode
+    ? `${sig}|${planCode}`
     : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.
@@ -190,6 +190,7 @@ export function PlansStep() {
     quoteBasis: 'annual-total',
   });
   const displayPrice = freqAmounts.installmentUsd;
+  const quoteNote = getFrecuenciaQuoteNote(freqAmounts);
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -320,6 +321,7 @@ export function PlansStep() {
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
           freqAmounts={freqAmounts}
+          quoteNote={quoteNote}
           ptasa={quote?.ptasa}
           vehicleLabel={quote?.vehicleLabel}
           vehicleFallback={quote?.vehicleFallback}
@@ -346,7 +348,7 @@ export function PlansStep() {
 
 function PlanDetailCard({
   plan, displayPrice,
-  isLoadingQuote, hasRealQuote, freqAmounts, ptasa,
+  isLoadingQuote, hasRealQuote, freqAmounts, quoteNote, ptasa,
   vehicleLabel, vehicleFallback, quoteError,
   quote,
 }: {
@@ -355,6 +357,7 @@ function PlanDetailCard({
   isLoadingQuote: boolean;
   hasRealQuote: boolean;
   freqAmounts: ReturnType<typeof resolveFrecuenciaAmounts>;
+  quoteNote: string | null;
   ptasa?: number;
   vehicleLabel?: string;
   vehicleFallback?: boolean;
@@ -437,6 +440,11 @@ function PlanDetailCard({
                     maximumFractionDigits: 2,
                   })}
                   {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ''}
+                </p>
+              )}
+              {hasRealQuote && quoteNote && (
+                <p className="text-[0.58rem] text-slate-500 mt-1 leading-snug max-w-[240px] sm:ml-auto sm:text-right">
+                  {quoteNote}
                 </p>
               )}
               {hasRealQuote && freqAmounts.cuotas > 1 && (

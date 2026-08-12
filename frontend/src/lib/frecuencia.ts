@@ -58,6 +58,12 @@ export function getFrecuenciaPaySummary(
   return defaults[c] ?? `Pagas en ${cuotas} cuota${cuotas === 1 ? '' : 's'}`;
 }
 
+/** Texto aclaratorio: la API cotiza anual; la cuota es división en UI. */
+export function getFrecuenciaQuoteNote(amounts: FrecuenciaAmounts): string | null {
+  if (amounts.cuotas <= 1 || amounts.annualUsd <= 0) return null;
+  return `Prima anual cotizada $${amounts.annualUsd.toFixed(2)} ÷ ${amounts.cuotas} cuotas`;
+}
+
 export interface FrecuenciaAmounts {
   cuotas: number;
   /** Prima anual USD (valor de cotización). */
