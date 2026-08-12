@@ -61,14 +61,22 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     `[nest-api][${ts}] EMITIENDO placa=${laMundialPayload.xplaca ?? payload.placa} plan=${laMundialPayload.cplan ?? payload.plan}`,
   );
 
-  const emission = await emitViaNestApi({
+  const emissionBody = {
     ...laMundialPayload,
     poliza: payload.poliza,
-    mprima: cotizacion.mprima,
     mprimaext: cotizacion.mprimaext,
-    tasa: cotizacion.ptasa,
     ptasa: cotizacion.ptasa,
-  });
+    tasa: cotizacion.ptasa,
+  };
+  // Planes USD (AutoIV…): solo mprimaext anual. No enviar mprima Bs — evita ambigüedad en nest-api.
+  if (!cotizacion.mprimaext || Number(cotizacion.mprimaext) <= 0) {
+    emissionBody.mprima = cotizacion.mprima;
+  }
+  console.log(
+    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=${emissionBody.mprima ?? 'omitido'} ifrecuencia=${emissionBody.ifrecuencia}`,
+  );
+
+  const emission = await emitViaNestApi(emissionBody);
 
   return {
     cnpoliza: emission.cnpoliza,
