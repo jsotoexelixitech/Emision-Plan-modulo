@@ -121,16 +121,14 @@ export function PaymentStep() {
     confirmInFlight.current = false;
   }, [paymentMethod]);
 
-  // Sincroniza el monto en Bs con la cotización oficial (cuota según ifrecuencia).
+  // Monto del 1er recibo (visual + pago móvil/OTP). Emisión usa prima anual completa.
   useEffect(() => {
     if (quoteState !== 'ready' || !quote) return;
-    const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, {
-      quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
-    });
+    const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, { quoteBasis: 'annual-total' });
     const vesStr = amounts.installmentVes.toFixed(2);
     setMontoM(vesStr);
     setOtpAmount(vesStr);
-  }, [quoteState, quote, frecuenciaCode, product.hasVehicle]);
+  }, [quoteState, quote, frecuenciaCode]);
 
   // Countdown para reenvío de OTP
   useEffect(() => {
@@ -154,15 +152,14 @@ export function PaymentStep() {
   const isQuoteError   = quoteState === 'error';
 
   const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, frecuenciaCode, {
-    quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
+    quoteBasis: 'annual-total',
   });
-  const payUsd = hasRealQuote
-    ? freqAmounts.installmentUsd
-    : (selectedPlan?.priceNum ?? 0) * (freqAmounts.cuotas > 0 ? 12 / freqAmounts.cuotas : 12);
+  /** Solo visual / 1er recibo: prima anual ÷ cuotas (emisión sigue con prima anual). */
+  const payUsd = hasRealQuote ? freqAmounts.installmentUsd : (selectedPlan?.priceNum ?? 0) * 12;
   const payVes = hasRealQuote ? freqAmounts.installmentVes : 0;
   const payLabel = freqAmounts.cuotas === 1
     ? 'Total a pagar (prima anual)'
-    : `Total a pagar (1.ª cuota · ${freqAmounts.cuotas} al año)`;
+    : `Monto 1er recibo (${frecuenciaCode === 'S' ? 'semestral' : frecuenciaCode === 'T' ? 'trimestral' : frecuenciaCode === 'M' ? 'mensual' : 'cuota'})`;
 
   // ── Validaciones transferencia ──────────────────────────────────────
   // ── Validaciones pago móvil (Meritop) ─────────────────────────────

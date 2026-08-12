@@ -1,8 +1,9 @@
 /**
  * Frecuencia de pago La Mundial (ifrecuencia).
  *
- * spCalculoAuto / cotización RCV devuelve prima ANUAL en mprimaext.
- * La frecuencia define cuántas cuotas se generan en emisión (Sis2000).
+ * Cotización: prima ANUAL en mprimaext / mprima (no cambia con ifrecuencia).
+ * Emisión: se envía prima anual + ifrecuencia (Sis2000 genera los recibos).
+ * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
 import type { PolicyQuote } from '../types';
 

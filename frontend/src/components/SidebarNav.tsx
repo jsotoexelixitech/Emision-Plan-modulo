@@ -4,11 +4,10 @@ import {
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
-import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode } from '../lib/frecuencia';
 import { publicAsset } from '../lib/app-base';
 
 export function SidebarNav() {
-  const { step, tomador, vehicle, funeral, rcv, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
+  const { step, tomador, vehicle, funeral, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
 
   const product = getProductConfig();
 
@@ -30,25 +29,16 @@ export function SidebarNav() {
   const hasRealQuote = quoteState === 'ready' && !!quote;
   const isQuoteLoading = quoteState === 'loading';
 
-  const frecuenciaCode = resolveWizardFrecuenciaCode(product.hasVehicle, rcv.frecuencia, funeral.frecuencia);
-  const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, frecuenciaCode, {
-    quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
-  });
-
   const precioDisplay = (() => {
     if (isQuoteLoading) return null;
     if (hasRealQuote && quote) {
-      return `$${freqAmounts.installmentUsd.toFixed(2)} ${freqAmounts.periodSuffix}`;
+      return `$${quote.mprimaext.toFixed(2)} / año`;
     }
     return selectedPlan?.price ?? null;
   })();
 
-  const precioAnualDisplay = hasRealQuote && quote && freqAmounts.cuotas > 1
-    ? `$${freqAmounts.annualUsd.toFixed(2)} / año`
-    : null;
-
   const bsDisplay = hasRealQuote && quote
-    ? `Bs ${freqAmounts.installmentVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${freqAmounts.periodSuffix}`
+    ? `Bs ${quote.mprima.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / año`
     : null;
   const methodLabels: Record<string, string> = {
     card: 'Tarjeta',
@@ -180,11 +170,11 @@ export function SidebarNav() {
               )}
               <SummaryRow icon={<Shield size={11} />} label="Plan" value={selectedPlan?.name ?? '—'} />
 
-              {/* Prima mensual — real de La Mundial o spinner */}
+              {/* Prima anual — cotización La Mundial */}
               <div className="flex items-center justify-between gap-3 py-1">
                 <div className="flex items-center gap-2 text-slate-500">
                   <CreditCard size={11} />
-                  <span className="text-[0.72rem]">Prima / cuota</span>
+                  <span className="text-[0.72rem]">Prima anual</span>
                 </div>
                 {isQuoteLoading ? (
                   <span className="flex items-center gap-1 text-indigo-300">
@@ -197,14 +187,6 @@ export function SidebarNav() {
                   <span className="text-[0.78rem] font-bold text-slate-500">—</span>
                 )}
               </div>
-
-              {/* Prima anual — solo cuando hay quote real */}
-              {precioAnualDisplay && (
-                <div className="flex items-center justify-between gap-3 py-0.5 opacity-70">
-                  <span className="text-[0.68rem] text-slate-500 pl-5">Total anual</span>
-                  <span className="text-[0.72rem] font-semibold text-slate-500 tabular-nums">{precioAnualDisplay}</span>
-                </div>
-              )}
 
               {/* Equivalente en Bs — solo cuando hay quote real */}
               {bsDisplay && (

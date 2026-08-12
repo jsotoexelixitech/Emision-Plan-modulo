@@ -8,7 +8,6 @@ import type { Plan } from '../../types';
 import { personasApi, type PlanPer, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
-import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 
 /** Convierte un PlanPer de la API al tipo Plan del wizard. */
@@ -150,13 +149,7 @@ export function FuneralPlansStep() {
 
   const isLoadingQuote = quoteState === 'loading';
   const hasRealQuote = quoteState === 'ready' && Boolean(quote);
-  const frecuenciaLabel =
-    apiFrecuencias.find((f) => String(f.code) === funeral.frecuencia)?.label ?? 'Anual';
-  const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, funeral.frecuencia, {
-    frecuenciaLabel,
-    quoteBasis: 'per-installment',
-  });
-  const displayPrice = freqAmounts.installmentUsd;
+  const annualUsd = hasRealQuote ? quote!.mprimaext : 0;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -292,22 +285,14 @@ export function FuneralPlansStep() {
                     </span>
                   ) : (
                     <span className="text-4xl sm:text-5xl font-display font-black gradient-text-indigo leading-none tabular-nums">
-                      <AnimatedCounter value={displayPrice} duration={500} decimals={hasRealQuote ? 2 : 0} />
+                      <AnimatedCounter value={annualUsd} duration={500} decimals={hasRealQuote ? 2 : 0} />
                     </span>
                   )}
                 </div>
-                <p className="text-[0.7rem] text-slate-500 font-semibold mt-1 uppercase">
-                  {freqAmounts.periodSuffix}
-                </p>
+                <p className="text-[0.7rem] text-slate-500 font-semibold mt-1 uppercase">/ año</p>
                 {hasRealQuote && quote && quote.mprima > 0 && (
                   <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1.5 tabular-nums">
-                    ≈ Bs {freqAmounts.installmentVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ''}
-                  </p>
-                )}
-                {hasRealQuote && freqAmounts.cuotas > 1 && (
-                  <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
-                    Total anual: ${freqAmounts.annualUsd.toFixed(2)}
+                    ≈ Bs {quote.mprima.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </p>
                 )}
               </div>
@@ -334,9 +319,6 @@ export function FuneralPlansStep() {
               <div className="inline-flex items-center gap-1.5 text-[0.7rem] font-bold text-indigo-600">
                 <ShieldCheck size={11} />
                 Plan seleccionado
-              </div>
-              <div className="text-[0.62rem] text-slate-500 font-medium">
-                {freqAmounts.paySummary}
               </div>
             </div>
           </div>
