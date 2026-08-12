@@ -140,7 +140,7 @@ function resolveRcvNdias(state, overrides = {}) {
   return null;
 }
 
-/** Vigencia fdesde/fhasta según ndias de maplanes_frec (SysIP receipt-vehicle-form). */
+/** Vigencia fdesde/fhasta; ndias null = anual (+1 año). */
 function resolveVigencia(femisionYmd, ndias) {
   const fdesde = femisionYmd || todayYmd();
   const base = new Date(`${fdesde}T12:00:00`);
@@ -155,6 +155,11 @@ function resolveVigencia(femisionYmd, ndias) {
   }
   const fhasta = fhastaDate.toISOString().slice(0, 10);
   return { fdesde, fhasta };
+}
+
+/** Póliza RCV: vigencia siempre anual; ndias de maplanes_frec solo aplica a recibos (ifrecuencia). */
+function resolveVigenciaAnual(femisionYmd) {
+  return resolveVigencia(femisionYmd, null);
 }
 
 function resolveMsumaaseg(state, quoteMeta = {}) {
@@ -217,8 +222,6 @@ function buildQuoteRequest(state, overrides = {}) {
     process.env.LAMUNDIAL_PLAN_DEFAULT ||
     ''
   ).trim();
-  const frecuencia = resolveRcvFrecuencia(state, overrides);
-  const ndias = resolveRcvNdias(state, overrides);
   const sumaAsegurada = resolveMsumaaseg(state, state.quoteMeta || {});
 
   return {
@@ -234,8 +237,7 @@ function buildQuoteRequest(state, overrides = {}) {
         ? parseInt(v.ntoneladas, 10)
         : undefined,
       cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-      ifrecuencia: frecuencia,
-      ndias: ndias ?? undefined,
+      // spCalculoAuto cotiza prima ANUAL; ifrecuencia/ndias no alteran el monto.
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -286,7 +288,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const frecuencia = resolveRcvFrecuencia(state, overrides);
   const ndias = resolveRcvNdias(state, overrides);
   const fecha_emision = overrides.fechaEmision || todayYmd();
-  const vigencia = resolveVigencia(fecha_emision, ndias);
+  const vigencia = resolveVigenciaAnual(fecha_emision);
   const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
 
@@ -434,10 +436,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 function toLaMundialEmissionPayload(p, _cotizacion) {
   const femision = p.femision || p.fecha_emision || todayYmd();
   const fdesde = p.fdesde || femision;
-  const ndias = p.ndias != null ? Number(p.ndias) : null;
   let fhasta = p.fhasta;
   if (!fhasta) {
-    fhasta = resolveVigencia(fdesde, ndias).fhasta;
+    fhasta = resolveVigenciaAnual(fdesde).fhasta;
   }
   const msumaaseg =
     p.msumaaseg != null && Number(p.msumaaseg) > 0 ? Number(p.msumaaseg) : null;
