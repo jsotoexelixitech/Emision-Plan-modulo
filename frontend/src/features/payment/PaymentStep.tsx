@@ -121,15 +121,16 @@ export function PaymentStep() {
     confirmInFlight.current = false;
   }, [paymentMethod]);
 
-  // Sincroniza el monto en Bs con la cotización oficial cada vez que cambia.
-  // No es editable por el usuario: es el monto exacto a pagar (prima anual a tasa BCV).
-  // Esto evita que el cliente coloque un monto menor al cotizado.
+  // Sincroniza el monto en Bs con la cotización oficial (cuota según ifrecuencia).
   useEffect(() => {
     if (quoteState !== 'ready' || !quote) return;
-    const vesStr = vesAnnual(quote).toFixed(2);
+    const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, {
+      quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
+    });
+    const vesStr = amounts.installmentVes.toFixed(2);
     setMontoM(vesStr);
     setOtpAmount(vesStr);
-  }, [quoteState, quote]);
+  }, [quoteState, quote, frecuenciaCode, product.hasVehicle]);
 
   // Countdown para reenvío de OTP
   useEffect(() => {
