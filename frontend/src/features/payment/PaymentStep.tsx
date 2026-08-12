@@ -8,7 +8,9 @@ import {
   Check, Receipt, Sparkles, Loader2, BadgeCheck, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, Send, ClipboardCheck,
 } from 'lucide-react';
-import { formatUsdShort, vesAnnual } from '../../lib/money';
+import { formatUsdShort } from '../../lib/money';
+import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode } from '../../lib/frecuencia';
+import { getProductConfig } from '../../lib/product';
 import {
   verifyMobilePayment,
   MobilePaymentVerifyError,
@@ -67,7 +69,9 @@ type OtpStep = 'form' | 'requesting' | 'awaiting_otp' | 'confirming' | 'done' | 
 const TODAY_ISO = new Date().toISOString().split('T')[0];
 
 export function PaymentStep() {
-  const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState } = useWizardStore();
+  const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState, rcv, funeral } = useWizardStore();
+  const product = getProductConfig();
+  const frecuenciaCode = resolveWizardFrecuenciaCode(product.hasVehicle, rcv.frecuencia, funeral.frecuencia);
 
   // ── Campos compartidos ────────────────────────────────────────────────
   const [bankCode,    setBankCode]    = useState('');
@@ -148,8 +152,16 @@ export function PaymentStep() {
   const hasRealQuote   = quoteState === 'ready' && Boolean(quote);
   const isQuoteError   = quoteState === 'error';
 
-  const annualUsd = hasRealQuote ? quote!.mprimaext      : (selectedPlan?.priceNum ?? 0) * 12;
-  const annualVes = hasRealQuote ? vesAnnual(quote)       : 0;
+  const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, frecuenciaCode, {
+    quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
+  });
+  const payUsd = hasRealQuote
+    ? freqAmounts.installmentUsd
+    : (selectedPlan?.priceNum ?? 0) * (freqAmounts.cuotas > 0 ? 12 / freqAmounts.cuotas : 12);
+  const payVes = hasRealQuote ? freqAmounts.installmentVes : 0;
+  const payLabel = freqAmounts.cuotas === 1
+    ? 'Total a pagar (prima anual)'
+    : `Total a pagar (1.ª cuota · ${freqAmounts.cuotas} al año)`;
 
   // ── Validaciones transferencia ──────────────────────────────────────
   // ── Validaciones pago móvil (Meritop) ─────────────────────────────
@@ -291,7 +303,7 @@ export function PaymentStep() {
           </div>
           <div className="min-w-0">
             <p className="text-[0.62rem] font-black tracking-widest text-indigo-600 uppercase mb-0.5">
-              Total a pagar (prima anual)
+              {payLabel}
             </p>
             <p className="font-display font-bold text-slate-900 text-sm truncate">
               {selectedPlan?.name ?? 'Plan no seleccionado'}
@@ -324,14 +336,20 @@ export function PaymentStep() {
               </span>
             ) : (
               <span className="text-3xl sm:text-4xl font-display font-black gradient-text-indigo leading-none tabular-nums">
-                {formatUsdShort(annualUsd)}
+                {formatUsdShort(payUsd)}
               </span>
             )}
-            <span className="text-xs text-slate-500 font-semibold pb-1">/ año</span>
+            <span className="text-xs text-slate-500 font-semibold pb-1">{freqAmounts.periodSuffix}</span>
           </div>
-          {hasRealQuote && annualVes > 0 && (
+          {hasRealQuote && payVes > 0 && (
             <p className="text-sm font-display font-black text-indigo-700 mt-1 tabular-nums">
-              Bs {annualVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              Bs {payVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ''}
+            </p>
+          )}
+          {hasRealQuote && freqAmounts.cuotas > 1 && (
+            <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
+              Total anual: ${freqAmounts.annualUsd.toFixed(2)}
             </p>
           )}
           {hasRealQuote && quote?.ptasa && quote.ptasa > 0 && (

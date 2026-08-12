@@ -4,10 +4,11 @@ import {
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
+import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode } from '../lib/frecuencia';
 import { publicAsset } from '../lib/app-base';
 
 export function SidebarNav() {
-  const { step, tomador, vehicle, funeral, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
+  const { step, tomador, vehicle, funeral, rcv, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
 
   const product = getProductConfig();
 
@@ -29,21 +30,25 @@ export function SidebarNav() {
   const hasRealQuote = quoteState === 'ready' && !!quote;
   const isQuoteLoading = quoteState === 'loading';
 
+  const frecuenciaCode = resolveWizardFrecuenciaCode(product.hasVehicle, rcv.frecuencia, funeral.frecuencia);
+  const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, frecuenciaCode, {
+    quoteBasis: product.hasVehicle ? 'annual-total' : 'per-installment',
+  });
+
   const precioDisplay = (() => {
     if (isQuoteLoading) return null;
     if (hasRealQuote && quote) {
-      const monthly = quote.mprimaext / 12;
-      return `$${monthly.toFixed(2)} / mes`;
+      return `$${freqAmounts.installmentUsd.toFixed(2)} ${freqAmounts.periodSuffix}`;
     }
     return selectedPlan?.price ?? null;
   })();
 
-  const precioAnualDisplay = hasRealQuote && quote
-    ? `$${quote.mprimaext.toFixed(2)} / año`
+  const precioAnualDisplay = hasRealQuote && quote && freqAmounts.cuotas > 1
+    ? `$${freqAmounts.annualUsd.toFixed(2)} / año`
     : null;
 
   const bsDisplay = hasRealQuote && quote
-    ? `Bs ${(quote.mprima / 12).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / mes`
+    ? `Bs ${freqAmounts.installmentVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${freqAmounts.periodSuffix}`
     : null;
   const methodLabels: Record<string, string> = {
     card: 'Tarjeta',
@@ -179,7 +184,7 @@ export function SidebarNav() {
               <div className="flex items-center justify-between gap-3 py-1">
                 <div className="flex items-center gap-2 text-slate-500">
                   <CreditCard size={11} />
-                  <span className="text-[0.72rem]">Prima / mes</span>
+                  <span className="text-[0.72rem]">Prima / cuota</span>
                 </div>
                 {isQuoteLoading ? (
                   <span className="flex items-center gap-1 text-indigo-300">

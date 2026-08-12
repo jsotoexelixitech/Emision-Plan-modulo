@@ -6,9 +6,8 @@
  *   - mprimaext -> en USD
  *   - ptasa     -> tasa Bs/USD usada en la cotizacion
  *
- * Para el toggle "Mensual/Anual" del wizard convertimos USD anual en
- * USD/mes simplemente dividiendo entre 12 (no aplicamos descuentos
- * inventados sobre datos reales).
+ * La frecuencia de pago (ifrecuencia) no cambia la prima anual en
+ * spCalculoAuto; ver `frecuencia.ts` para cuota por periodo en UI.
  */
 import type { PolicyQuote } from '../types';
 
