@@ -127,6 +127,7 @@ export function EmisionConfigPanel() {
         : undefined;
     if (producto === 'funerario' && (!cleanedQuestions || cleanedQuestions.length === 0)) {
       setSaved(false);
+      alert('No hay preguntas de salud para guardar. Agrega al menos una o restaura defaults.');
       return;
     }
     const ok = await saveConfig({
