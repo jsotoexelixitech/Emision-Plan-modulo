@@ -152,19 +152,51 @@ const CATALOG = [
 ];
 
 /**
+ * @param {HealthQuestion[]} catalog
+ * @param {string} cplan
+ * @returns {HealthQuestion[]}
+ */
+function filterQuestionsForPlan(catalog, cplan) {
+  const code = String(cplan || '').trim();
+  const list = Array.isArray(catalog) ? catalog : [];
+  const matched = list.filter((q) => {
+    if (!q.plans || q.plans.length === 0) return false;
+    return q.plans.includes(PLAN.ALL) || q.plans.includes('*') || q.plans.includes(code);
+  });
+  if (matched.length === 0) {
+    return list.filter((q) => q.plans?.includes(PLAN.ALL) || q.plans?.includes('*'));
+  }
+  return matched;
+}
+
+/**
  * @param {string} cplan Código del plan La Mundial (ej. "4", "6", "7", "8", "9")
  * @returns {HealthQuestion[]}
  */
 function getQuestionsForPlan(cplan) {
-  const code = String(cplan || '').trim();
-  const matched = CATALOG.filter((q) => {
-    if (!q.plans || q.plans.length === 0) return false;
-    return q.plans.includes(PLAN.ALL) || q.plans.includes(code);
-  });
-  if (matched.length === 0) {
-    return CATALOG.filter((q) => q.plans.includes(PLAN.ALL));
+  return filterQuestionsForPlan(CATALOG, cplan);
+}
+
+/**
+ * Resuelve preguntas: parametrizador Nexus (si hay) → fallback catálogo local.
+ * @param {string} cplan
+ * @param {{ empresaId?: number }} [opts]
+ * @returns {Promise<HealthQuestion[]>}
+ */
+async function resolveQuestionsForPlan(cplan, opts = {}) {
+  const empresaId = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 1;
+  let catalog = CATALOG;
+  try {
+    const { fetchProductConfig } = require('../services/nexusProductConfig');
+    const cfg = await fetchProductConfig(empresaId, 'funerario', 'emision');
+    if (Array.isArray(cfg?.healthQuestions) && cfg.healthQuestions.length > 0) {
+      catalog = cfg.healthQuestions;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[funeralHealthQuestions] Nexus fallback: ${msg}`);
   }
-  return matched;
+  return filterQuestionsForPlan(catalog, cplan);
 }
 
 /** Etiqueta legible para mostrar en logs/admin */
@@ -179,4 +211,12 @@ const PLAN_LABELS = {
   '9': '7.500$ Individual',
 };
 
-module.exports = { CATALOG, PLAN, TIER, PLAN_LABELS, getQuestionsForPlan };
+module.exports = {
+  CATALOG,
+  PLAN,
+  TIER,
+  PLAN_LABELS,
+  getQuestionsForPlan,
+  filterQuestionsForPlan,
+  resolveQuestionsForPlan,
+};

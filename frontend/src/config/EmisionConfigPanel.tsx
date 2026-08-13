@@ -4,12 +4,18 @@ import { getProductId } from '../lib/product';
 import {
   Settings2, RotateCcw, Save, CheckCircle2, AlertTriangle,
   Loader2, Plus, Trash2, ArrowLeftRight, Layers, Sparkles, Globe, Lock, Eye, EyeOff,
+  ClipboardList,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
+import {
+  FuneralHealthQuestionsEditor,
+  DEFAULT_HEALTH_QUESTIONS_SEED,
+  type HealthQuestionDraft,
+} from './FuneralHealthQuestionsEditor';
 
 const EMPRESA_ID = Number(import.meta.env.VITE_EMPRESA_ID ?? 1);
 
-type Tab = 'general' | 'conexion' | 'mapeador';
+type Tab = 'general' | 'preguntas' | 'conexion' | 'mapeador';
 
 interface ApiMapEntry {
   internalKey: string;
@@ -51,6 +57,7 @@ export function EmisionConfigPanel() {
   const [inspeccionObligatoria, setInspeccionObligatoria] = useState(false);
   const [diasCarencia, setDiasCarencia] = useState(0);
   const [edadMaxima, setEdadMaxima] = useState(70);
+  const [healthQuestions, setHealthQuestions] = useState<HealthQuestionDraft[]>([]);
 
   // ── Conexión API ──────────────────────────────────────────
   const [apiUrl, setApiUrl] = useState('');
@@ -68,6 +75,14 @@ export function EmisionConfigPanel() {
     setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
     setDiasCarencia(config.diasCarencia ?? 0);
     setEdadMaxima(config.edadMaxima ?? 70);
+    const hq = config.healthQuestions as HealthQuestionDraft[] | undefined;
+    setHealthQuestions(
+      Array.isArray(hq) && hq.length > 0
+        ? hq
+        : producto === 'funerario'
+          ? DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }))
+          : [],
+    );
     // Conexión
     setApiUrl(config.apiUrl ?? '');
     setApiFormat(config.apiFormat ?? 'json');
@@ -76,7 +91,7 @@ export function EmisionConfigPanel() {
     setApiToken(config.apiToken ?? '');
     setApiKeyHeader(config.apiKeyHeader ?? 'X-API-Key');
     setApiKeyValue(config.apiKeyValue ?? '');
-  }, [config]);
+  }, [config, producto]);
 
   const addMapEntry = () => { setApiMap(p => [...p, { internalKey: '', externalKey: '', transform: 'none' }]); setSaved(false); };
   const updateMapEntry = (idx: number, field: keyof ApiMapEntry, val: string) => {
@@ -88,6 +103,7 @@ export function EmisionConfigPanel() {
   async function handleSave() {
     await saveConfig({
       apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
+      healthQuestions: producto === 'funerario' ? healthQuestions : undefined,
       apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
     });
     setSaved(true);
@@ -128,6 +144,9 @@ export function EmisionConfigPanel() {
             <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50">
               {([
                 ['general', 'Ajustes Generales', Layers],
+                ...(producto === 'funerario'
+                  ? [['preguntas', 'Preguntas salud', ClipboardList] as const]
+                  : []),
                 ['conexion', 'Conexión API', Globe],
                 ['mapeador', 'Mapeador de Campos', ArrowLeftRight],
               ] as const).map(([t, label, Icon]) => (
@@ -200,6 +219,17 @@ export function EmisionConfigPanel() {
                       )}
                     </div>
                   </div>
+                )}
+
+                {/* ── TAB PREGUNTAS (funerario) ── */}
+                {tab === 'preguntas' && producto === 'funerario' && (
+                  <FuneralHealthQuestionsEditor
+                    questions={healthQuestions}
+                    onChange={(next) => {
+                      setHealthQuestions(next);
+                      setSaved(false);
+                    }}
+                  />
                 )}
 
                 {/* ── TAB CONEXIÓN API ── */}

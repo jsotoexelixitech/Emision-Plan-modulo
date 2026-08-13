@@ -6,7 +6,7 @@
  *   GET  /api/funeral/health-answers?sessionId=&cplan=  → recuperar (opcional)
  */
 const express = require('express');
-const { getQuestionsForPlan } = require('../config/funeralHealthQuestions');
+const { resolveQuestionsForPlan } = require('../config/funeralHealthQuestions');
 const { upsertHealthAnswers, getHealthAnswers } = require('../services/healthDb');
 const { isFunerarioCplan } = require('../lib/funerarioPlan');
 
@@ -20,7 +20,7 @@ function rejectNonFunerarioPlan(res, cplan) {
   });
 }
 
-router.get('/health-questions', (req, res) => {
+router.get('/health-questions', async (req, res) => {
   const cplan = String(req.query.cplan || '').trim();
   if (!cplan) {
     return res.status(400).json({
@@ -32,8 +32,19 @@ router.get('/health-questions', (req, res) => {
   if (!isFunerarioCplan(cplan)) {
     return rejectNonFunerarioPlan(res, cplan);
   }
-  const questions = getQuestionsForPlan(cplan);
-  res.json({ success: true, cplan, questions });
+  try {
+    const empresaId = req.empresa?.id ?? Number(process.env.VITE_EMPRESA_ID || 1);
+    const questions = await resolveQuestionsForPlan(cplan, { empresaId });
+    res.json({ success: true, cplan, questions });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[funeral/health-questions]', msg);
+    res.status(500).json({
+      success: false,
+      code: 'QUESTIONS_ERROR',
+      message: `No se pudieron obtener las preguntas: ${msg}`,
+    });
+  }
 });
 
 router.post('/health-answers', (req, res) => {
