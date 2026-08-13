@@ -24,7 +24,8 @@ function CotizadorHandoffBootstrap({ children }: { children: ReactNode }) {
   return children;
 }
 
-const isConfigRoute = window.location.pathname === '/config';
+// /config (dev) o /emision/config (prod con prefijo Apache)
+const isConfigRoute = /\/config\/?$/.test(window.location.pathname);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
