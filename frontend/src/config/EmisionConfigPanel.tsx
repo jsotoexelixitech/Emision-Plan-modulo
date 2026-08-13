@@ -15,7 +15,7 @@ import {
   type HealthQuestionDraft,
   type PlanOption,
 } from './FuneralHealthQuestionsEditor';
-import { readConfigPanelContext } from './configPanelContext';
+import { canalDisplayLabel, readConfigPanelContext } from './configPanelContext';
 
 const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 const PANEL_CTX = readConfigPanelContext();
@@ -354,10 +354,11 @@ export function EmisionConfigPanel() {
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
                 <span className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 border border-violet-100">
-                  empresa: {EMPRESA_ID}
+                  {PANEL_CTX.empresaNombre}
+                  <span className="ml-1 font-normal text-violet-400">#{EMPRESA_ID}</span>
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
-                  canal: {PANEL_CTX.canal}
+                  canal: {canalDisplayLabel(PANEL_CTX.canal)}
                 </span>
                 {PANEL_CTX.cproductor && (
                   <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
@@ -487,13 +488,13 @@ export function EmisionConfigPanel() {
                         <p className="text-[11px] text-slate-400">
                           {canalLocked
                             ? 'Fijo por el enlace del integrador'
-                            : 'default = si el SSO no envía canal'}
+                            : 'General = si el SSO no envía canal'}
                         </p>
                       </div>
                       {canalLocked ? (
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold">
-                            {activeCanal}
+                            {canalDisplayLabel(activeCanal)}
                             <span className="text-slate-300 font-normal">
                               {(healthByCanal[activeCanal] || healthQuestions).length} preg.
                             </span>
@@ -522,7 +523,7 @@ export function EmisionConfigPanel() {
                                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                   }`}
                                 >
-                                  {k === 'default' ? 'default' : k}
+                                  {canalDisplayLabel(k)}
                                   <span className={active ? 'text-slate-300 font-normal' : 'text-slate-400 font-normal'}>
                                     {count}
                                   </span>

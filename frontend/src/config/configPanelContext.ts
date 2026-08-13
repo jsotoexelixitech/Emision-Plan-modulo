@@ -5,6 +5,8 @@
 
 export type ConfigPanelContext = {
   empresaId: number;
+  /** Nombre legible de la empresa (URL o JWT). */
+  empresaNombre: string;
   canal: string;
   cproductor?: string;
   cusuario?: string;
@@ -27,6 +29,13 @@ function str(v: unknown): string | undefined {
   if (v === undefined || v === null) return undefined;
   const t = String(v).trim();
   return t || undefined;
+}
+
+/** Etiqueta UI del canal (la clave interna sigue siendo `default`). */
+export function canalDisplayLabel(canal: string): string {
+  const key = (canal || 'default').trim() || 'default';
+  if (key === 'default') return 'General';
+  return key;
 }
 
 /** Lee canal/metadata desde la URL del configurador (+ claims del JWT). */
@@ -67,10 +76,15 @@ export function readConfigPanelContext(): ConfigPanelContext {
         ? Number(payload?.empresaId)
         : Number(import.meta.env.VITE_EMPRESA_ID ?? 1) || 1;
 
+  const empresaNombre =
+    str(q.get('empresaNombre')) ||
+    str(payload?.empresaNombre) ||
+    `Empresa ${empresaId}`;
+
   const metadata: Record<string, string> = { canal };
   if (cproductor) metadata.cproductor = cproductor;
   if (cusuario) metadata.cusuario = cusuario;
   if (ctipocanal) metadata.ctipocanal = ctipocanal;
 
-  return { empresaId, canal, cproductor, cusuario, ctipocanal, metadata };
+  return { empresaId, empresaNombre, canal, cproductor, cusuario, ctipocanal, metadata };
 }
