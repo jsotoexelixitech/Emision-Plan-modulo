@@ -33,9 +33,16 @@ router.get('/health-questions', async (req, res) => {
     return rejectNonFunerarioPlan(res, cplan);
   }
   try {
-    const empresaId = req.empresa?.id ?? Number(process.env.VITE_EMPRESA_ID || 1);
-    const questions = await resolveQuestionsForPlan(cplan, { empresaId });
-    res.json({ success: true, cplan, questions });
+    const empresaId =
+      Number(
+        req.empresa?.id ??
+          req.query.empresaId ??
+          process.env.EMPRESA_ID ??
+          process.env.VITE_EMPRESA_ID ??
+          1,
+      ) || 1;
+    const { questions, source } = await resolveQuestionsForPlan(cplan, { empresaId });
+    res.json({ success: true, cplan, questions, source, count: questions.length });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[funeral/health-questions]', msg);

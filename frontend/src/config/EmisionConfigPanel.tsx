@@ -101,9 +101,17 @@ export function EmisionConfigPanel() {
   const removeMapEntry = (idx: number) => { setApiMap(p => p.filter((_, i) => i !== idx)); setSaved(false); };
 
   async function handleSave() {
+    const cleanedQuestions =
+      producto === 'funerario'
+        ? healthQuestions.map((q) => {
+            const next = { ...q, plans: (q.plans || []).map(String) };
+            if (!next.showIf?.field) delete next.showIf;
+            return next;
+          })
+        : undefined;
     await saveConfig({
       apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
-      healthQuestions: producto === 'funerario' ? healthQuestions : undefined,
+      ...(cleanedQuestions ? { healthQuestions: cleanedQuestions } : {}),
       apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
     });
     setSaved(true);

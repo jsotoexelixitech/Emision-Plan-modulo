@@ -160,11 +160,15 @@ function filterQuestionsForPlan(catalog, cplan) {
   const code = String(cplan || '').trim();
   const list = Array.isArray(catalog) ? catalog : [];
   const matched = list.filter((q) => {
-    if (!q.plans || q.plans.length === 0) return false;
-    return q.plans.includes(PLAN.ALL) || q.plans.includes('*') || q.plans.includes(code);
+    const plans = (q.plans || []).map((p) => String(p).trim());
+    if (plans.length === 0) return false;
+    return plans.includes(PLAN.ALL) || plans.includes('*') || plans.includes(code);
   });
   if (matched.length === 0) {
-    return list.filter((q) => q.plans?.includes(PLAN.ALL) || q.plans?.includes('*'));
+    return list.filter((q) => {
+      const plans = (q.plans || []).map((p) => String(p).trim());
+      return plans.includes(PLAN.ALL) || plans.includes('*');
+    });
   }
   return matched;
 }
@@ -186,17 +190,25 @@ function getQuestionsForPlan(cplan) {
 async function resolveQuestionsForPlan(cplan, opts = {}) {
   const empresaId = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 1;
   let catalog = CATALOG;
+  let source = 'catalog';
   try {
     const { fetchProductConfig } = require('../services/nexusProductConfig');
-    const cfg = await fetchProductConfig(empresaId, 'funerario', 'emision');
+    const cfg = await fetchProductConfig(empresaId, 'funerario', 'emision', {
+      bypassCache: true,
+    });
     if (Array.isArray(cfg?.healthQuestions) && cfg.healthQuestions.length > 0) {
       catalog = cfg.healthQuestions;
+      source = 'nexus';
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[funeralHealthQuestions] Nexus fallback: ${msg}`);
   }
-  return filterQuestionsForPlan(catalog, cplan);
+  const questions = filterQuestionsForPlan(catalog, cplan);
+  console.log(
+    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}`,
+  );
+  return { questions, source };
 }
 
 /** Etiqueta legible para mostrar en logs/admin */
