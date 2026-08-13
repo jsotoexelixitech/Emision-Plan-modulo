@@ -67,9 +67,8 @@ export function EmisionConfigPanel() {
   });
   const [activeCanal, setActiveCanal] = useState(PANEL_CTX.canal || 'default');
   const [newCanalName, setNewCanalName] = useState('');
-  /** Si la URL trae canal (enlace al integrador), no puede cambiar a otro. */
-  const canalLocked = Boolean(PANEL_CTX.canal && PANEL_CTX.canal !== 'default')
-    || Boolean(PANEL_CTX.cproductor);
+  /** Solo bloquea canal si el enlace trae un canal distinto de default (integrador). */
+  const canalLocked = Boolean(PANEL_CTX.canal && PANEL_CTX.canal !== 'default');
   /** Evita que un refetch de config borre ediciones locales no guardadas */
   const healthQuestionsDirty = useRef(false);
 
@@ -266,6 +265,9 @@ export function EmisionConfigPanel() {
                 Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                <span className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 border border-violet-100">
+                  empresa: {EMPRESA_ID}
+                </span>
                 <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
                   canal: {PANEL_CTX.canal}
                 </span>

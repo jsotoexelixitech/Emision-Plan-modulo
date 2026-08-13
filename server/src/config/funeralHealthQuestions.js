@@ -194,9 +194,11 @@ function getQuestionsForPlan(cplan) {
  */
 async function resolveQuestionsForPlan(cplan, opts = {}) {
   const { resolveCanalKey, pickHealthQuestionsForCanal } = require('../lib/canalKey');
+  // Como RCV: la config es por empresa del JWT; canal opcional; fallback default.
   const fromReq = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 0;
   const fromEnv = Number(process.env.PRODUCT_CONFIG_EMPRESA_ID || process.env.EMPRESA_ID || 0);
-  const candidates = [...new Set([fromReq, fromEnv, 1].filter((n) => n > 0))];
+  const primaryEmpresa = fromReq || fromEnv || 1;
+  const candidates = [...new Set([primaryEmpresa, 1].filter((n) => n > 0))];
   const meta = {
     ...(opts.metadata && typeof opts.metadata === 'object' ? opts.metadata : {}),
     ...(opts.canal ? { canal: opts.canal } : {}),
@@ -205,7 +207,7 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
 
   let catalog = CATALOG;
   let source = 'catalog';
-  let empresaId = candidates[0] || 1;
+  let empresaId = primaryEmpresa;
   let resolvedCanal = canalKey;
   try {
     const {
@@ -214,29 +216,35 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     } = require('../services/nexusProductConfig');
     clearProductConfigCache();
 
-    let best = null;
-    let bestEmpresa = empresaId;
+    /** @type {{ questions: any[], resolvedCanal: string, source: string } | null} */
+    let picked = null;
     for (const eid of candidates) {
       const cfg = await fetchProductConfig(eid, 'funerario', 'emision', {
         bypassCache: true,
       });
-      const picked = pickHealthQuestionsForCanal(cfg, canalKey);
-      if (!picked) continue;
-      const score =
-        (picked.source === 'nexus-canal' ? 1000 : 0) + picked.questions.length;
-      const bestScore = best
-        ? (best.source === 'nexus-canal' ? 1000 : 0) + best.questions.length
-        : -1;
-      if (score > bestScore) {
-        best = picked;
-        bestEmpresa = eid;
+      const hit = pickHealthQuestionsForCanal(cfg, canalKey);
+      if (!hit) continue;
+      // Prioridad: match exacto de canal en la empresa del JWT
+      if (hit.source === 'nexus-canal' && eid === primaryEmpresa) {
+        picked = hit;
+        empresaId = eid;
+        break;
+      }
+      if (!picked) {
+        picked = hit;
+        empresaId = eid;
+      } else if (
+        hit.questions.length > picked.questions.length &&
+        eid === primaryEmpresa
+      ) {
+        picked = hit;
+        empresaId = eid;
       }
     }
-    if (best) {
-      catalog = best.questions;
-      source = best.source;
-      resolvedCanal = best.resolvedCanal;
-      empresaId = bestEmpresa;
+    if (picked) {
+      catalog = picked.questions;
+      source = picked.source;
+      resolvedCanal = picked.resolvedCanal;
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

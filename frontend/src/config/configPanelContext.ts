@@ -45,13 +45,12 @@ export function readConfigPanelContext(): ConfigPanelContext {
       ? (payload.metadata as Record<string, unknown>)
       : {};
 
+  // Solo metadata.canal define el bucket de preguntas (no cproductor).
   const canal =
     str(q.get('canal')) ||
     str(payload?.canal) ||
     str(metaFromToken.canal) ||
-    (str(q.get('cproductor')) || str(payload?.cproductor) || str(metaFromToken.cproductor)
-      ? `p${str(q.get('cproductor')) || str(payload?.cproductor) || str(metaFromToken.cproductor)}`
-      : 'default');
+    'default';
 
   const cproductor =
     str(q.get('cproductor')) || str(payload?.cproductor) || str(metaFromToken.cproductor);
@@ -60,10 +59,13 @@ export function readConfigPanelContext(): ConfigPanelContext {
   const ctipocanal =
     str(q.get('ctipocanal')) || str(payload?.ctipocanal) || str(metaFromToken.ctipocanal);
 
+  // Empresa del token (como RCV / SSO); query ?empresaId= opcional
   const empresaId =
-    Number(payload?.empresaId) > 0
-      ? Number(payload?.empresaId)
-      : Number(import.meta.env.VITE_EMPRESA_ID ?? 1) || 1;
+    Number(q.get('empresaId')) > 0
+      ? Number(q.get('empresaId'))
+      : Number(payload?.empresaId) > 0
+        ? Number(payload?.empresaId)
+        : Number(import.meta.env.VITE_EMPRESA_ID ?? 1) || 1;
 
   const metadata: Record<string, string> = { canal };
   if (cproductor) metadata.cproductor = cproductor;
