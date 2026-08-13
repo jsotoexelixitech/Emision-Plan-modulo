@@ -1,4 +1,4 @@
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, CornerDownRight } from 'lucide-react';
 
 export type HealthQuestionType = 'boolean' | 'text' | 'select';
 
@@ -10,6 +10,7 @@ export interface HealthQuestionDraft {
   required?: boolean;
   plans: string[];
   showIf?: { field: string; equals: boolean | string };
+  options?: { value: string; label: string }[];
 }
 
 const PLAN_OPTIONS: { code: string; label: string }[] = [
@@ -154,8 +155,51 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
     ]);
   };
 
+  /** Crea una pregunta hija (texto) que se despliega al responder Sí en la actual. */
+  const addFollowUp = (parentIdx: number) => {
+    const parent = questions[parentIdx];
+    const id = `detalle_${parent.id}_${Date.now().toString(36).slice(-4)}`;
+    const child: HealthQuestionDraft = {
+      id,
+      type: 'text',
+      label: `Detalle de: ${parent.label}`,
+      required: true,
+      plans: [...parent.plans],
+      showIf: { field: parent.id, equals: true },
+    };
+    const next = [...questions];
+    next.splice(parentIdx + 1, 0, child);
+    onChange(next);
+  };
+
   const remove = (idx: number) => {
     onChange(questions.filter((_, i) => i !== idx));
+  };
+
+  const parentOptionsFor = (idx: number) =>
+    questions.filter((_, i) => i !== idx);
+
+  const equalsChoices = (parentId: string | undefined) => {
+    const parent = questions.find((q) => q.id === parentId);
+    if (!parent) {
+      return [
+        { value: 'true', label: 'Sí (true)' },
+        { value: 'false', label: 'No (false)' },
+      ];
+    }
+    if (parent.type === 'boolean') {
+      return [
+        { value: 'true', label: 'Sí' },
+        { value: 'false', label: 'No' },
+      ];
+    }
+    if (parent.type === 'select' && parent.options?.length) {
+      return parent.options.map((o) => ({ value: o.value, label: o.label }));
+    }
+    return [
+      { value: 'true', label: 'Sí (true)' },
+      { value: 'false', label: 'No (false)' },
+    ];
   };
 
   return (
@@ -166,7 +210,9 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
             Cuestionario de salud
           </p>
           <p className="text-xs text-slate-500 mt-1">
-            Estas preguntas se muestran al elegir un plan funerario. Los códigos son cplan Sis2000 (2–9).
+            Para desplegar un detalle al marcar Sí (como “motivo de hospitalización”), usa{' '}
+            <span className="font-bold text-slate-700">“Se despliega si…”</span> en la pregunta hija,
+            o el botón <span className="font-bold text-slate-700">Agregar detalle al Sí</span>.
           </p>
         </div>
         <button
@@ -185,134 +231,207 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
       )}
 
       <div className="space-y-4">
-        {questions.map((q, idx) => (
-          <div
-            key={`${q.id}-${idx}`}
-            className="rounded-2xl border border-indigo-100 bg-white/60 p-5 space-y-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
-                <div>
-                  <label className={lbl}>ID (clave interna)</label>
-                  <input
-                    className={`${inp} font-mono`}
-                    value={q.id}
-                    onChange={(e) => update(idx, { id: e.target.value.trim() || slugId(q.label) })}
-                  />
-                </div>
-                <div>
-                  <label className={lbl}>Tipo</label>
-                  <select
-                    className={inp}
-                    value={q.type}
-                    onChange={(e) => update(idx, { type: e.target.value as HealthQuestionType })}
-                  >
-                    <option value="boolean">Sí / No</option>
-                    <option value="text">Texto libre</option>
-                    <option value="select">Selección</option>
-                  </select>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => remove(idx)}
-                className="p-2.5 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
-                title="Eliminar"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
-
-            <div>
-              <label className={lbl}>Pregunta (texto visible)</label>
-              <input
-                className={inp}
-                value={q.label}
-                onChange={(e) => update(idx, { label: e.target.value })}
-              />
-            </div>
-
-            <div>
-              <label className={lbl}>Descripción / ayuda (opcional)</label>
-              <input
-                className={inp}
-                value={q.description ?? ''}
-                onChange={(e) => update(idx, { description: e.target.value })}
-              />
-            </div>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={!!q.required}
-                onChange={(e) => update(idx, { required: e.target.checked })}
-                className="rounded text-indigo-600"
-              />
-              <span className="text-sm font-bold text-slate-700">Obligatoria</span>
-            </label>
-
-            <div>
-              <label className={lbl}>Planes donde aplica (cplan)</label>
-              <div className="flex flex-wrap gap-2">
-                {PLAN_OPTIONS.map((p) => (
-                  <label
-                    key={p.code}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer ${
-                      q.plans.includes(p.code)
-                        ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 text-slate-500'
-                    }`}
-                  >
+        {questions.map((q, idx) => {
+          const isChild = Boolean(q.showIf?.field);
+          return (
+            <div
+              key={`${q.id}-${idx}`}
+              className={`rounded-2xl border p-5 space-y-4 shadow-sm ${
+                isChild
+                  ? 'border-violet-200 bg-violet-50/40 ml-0 sm:ml-4'
+                  : 'border-indigo-100 bg-white/60'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+                  <div>
+                    <label className={lbl}>ID (clave interna)</label>
                     <input
-                      type="checkbox"
-                      className="sr-only"
-                      checked={q.plans.includes(p.code)}
-                      onChange={() => togglePlan(idx, p.code)}
+                      className={`${inp} font-mono`}
+                      value={q.id}
+                      onChange={(e) => update(idx, { id: e.target.value.trim() || slugId(q.label) })}
                     />
-                    {p.code} · {p.label}
-                  </label>
-                ))}
+                  </div>
+                  <div>
+                    <label className={lbl}>Tipo</label>
+                    <select
+                      className={inp}
+                      value={q.type}
+                      onChange={(e) => {
+                        const type = e.target.value as HealthQuestionType;
+                        const patch: Partial<HealthQuestionDraft> = { type };
+                        if (type === 'select' && !q.options?.length) {
+                          patch.options = [
+                            { value: 'si', label: 'Sí' },
+                            { value: 'no', label: 'No' },
+                          ];
+                        }
+                        if (type !== 'select') patch.options = undefined;
+                        update(idx, patch);
+                      }}
+                    >
+                      <option value="boolean">Sí / No (interruptor)</option>
+                      <option value="text">Texto libre</option>
+                      <option value="select">Selección (lista)</option>
+                    </select>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => remove(idx)}
+                  className="p-2.5 rounded-xl text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                  title="Eliminar"
+                >
+                  <Trash2 size={16} />
+                </button>
               </div>
-            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className={lbl}>Mostrar si (campo, opcional)</label>
+                <label className={lbl}>Pregunta (texto visible)</label>
                 <input
-                  className={`${inp} font-mono`}
-                  placeholder="ej: diagnosticoEnfermedad"
-                  value={q.showIf?.field ?? ''}
-                  onChange={(e) => {
-                    const field = e.target.value.trim();
-                    if (!field) {
-                      update(idx, { showIf: undefined });
-                      return;
-                    }
-                    update(idx, {
-                      showIf: { field, equals: q.showIf?.equals ?? true },
-                    });
-                  }}
+                  className={inp}
+                  value={q.label}
+                  onChange={(e) => update(idx, { label: e.target.value })}
                 />
               </div>
+
               <div>
-                <label className={lbl}>Valor equals</label>
-                <select
+                <label className={lbl}>Descripción / ayuda (opcional)</label>
+                <input
                   className={inp}
-                  disabled={!q.showIf?.field}
-                  value={String(q.showIf?.equals ?? 'true')}
-                  onChange={(e) => {
-                    if (!q.showIf?.field) return;
-                    const equals = e.target.value === 'true';
-                    update(idx, { showIf: { field: q.showIf.field, equals } });
-                  }}
-                >
-                  <option value="true">true (Sí)</option>
-                  <option value="false">false (No)</option>
-                </select>
+                  value={q.description ?? ''}
+                  onChange={(e) => update(idx, { description: e.target.value })}
+                />
+              </div>
+
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={!!q.required}
+                  onChange={(e) => update(idx, { required: e.target.checked })}
+                  className="rounded text-indigo-600"
+                />
+                <span className="text-sm font-bold text-slate-700">Obligatoria</span>
+              </label>
+
+              {q.type === 'select' && (
+                <div>
+                  <label className={lbl}>Opciones (value|etiqueta, una por línea)</label>
+                  <textarea
+                    className={`${inp} font-mono min-h-[80px]`}
+                    value={(q.options ?? []).map((o) => `${o.value}|${o.label}`).join('\n')}
+                    onChange={(e) => {
+                      const options = e.target.value
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter(Boolean)
+                        .map((line) => {
+                          const [value, ...rest] = line.split('|');
+                          const label = rest.join('|').trim() || value.trim();
+                          return { value: value.trim(), label };
+                        })
+                        .filter((o) => o.value);
+                      update(idx, { options });
+                    }}
+                    placeholder={'si|Sí\nno|No'}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className={lbl}>Planes donde aplica (cplan)</label>
+                <div className="flex flex-wrap gap-2">
+                  {PLAN_OPTIONS.map((p) => (
+                    <label
+                      key={p.code}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer ${
+                        q.plans.includes(p.code)
+                          ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
+                          : 'border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="sr-only"
+                        checked={q.plans.includes(p.code)}
+                        onChange={() => togglePlan(idx, p.code)}
+                      />
+                      {p.code} · {p.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-dashed border-violet-200 bg-violet-50/50 p-4 space-y-3">
+                <p className="text-[11px] font-black uppercase tracking-wider text-violet-600">
+                  Condición de despliegue
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={lbl}>Se despliega si (pregunta padre)</label>
+                    <select
+                      className={inp}
+                      value={q.showIf?.field ?? ''}
+                      onChange={(e) => {
+                        const field = e.target.value;
+                        if (!field) {
+                          update(idx, { showIf: undefined });
+                          return;
+                        }
+                        const parent = questions.find((p) => p.id === field);
+                        const equals =
+                          parent?.type === 'select' && parent.options?.[0]
+                            ? parent.options[0].value
+                            : true;
+                        update(idx, { showIf: { field, equals } });
+                      }}
+                    >
+                      <option value="">— Siempre visible —</option>
+                      {parentOptionsFor(idx).map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.id} — {p.label.slice(0, 48)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={lbl}>Cuando la respuesta sea</label>
+                    <select
+                      className={inp}
+                      disabled={!q.showIf?.field}
+                      value={
+                        q.showIf
+                          ? String(q.showIf.equals)
+                          : 'true'
+                      }
+                      onChange={(e) => {
+                        if (!q.showIf?.field) return;
+                        const raw = e.target.value;
+                        const equals =
+                          raw === 'true' ? true : raw === 'false' ? false : raw;
+                        update(idx, { showIf: { field: q.showIf.field, equals } });
+                      }}
+                    >
+                      {equalsChoices(q.showIf?.field).map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                {q.type === 'boolean' && (
+                  <button
+                    type="button"
+                    onClick={() => addFollowUp(idx)}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-violet-700 hover:text-violet-900"
+                  >
+                    <CornerDownRight size={14} />
+                    Agregar detalle al Sí (se despliega debajo)
+                  </button>
+                )}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -23,8 +23,15 @@ interface Props {
 }
 
 function isVisible(q: HealthQuestion, answers: Record<string, unknown>): boolean {
-  if (!q.showIf) return true;
-  return answers[q.showIf.field] === q.showIf.equals;
+  if (!q.showIf?.field) return true;
+  const actual = answers[q.showIf.field];
+  const expected = q.showIf.equals;
+  // Boolean (incl. "true"/"false" desde JSON/config)
+  if (expected === true || expected === false || expected === 'true' || expected === 'false') {
+    const want = expected === true || expected === 'true';
+    return actual === want;
+  }
+  return String(actual ?? '') === String(expected);
 }
 
 function validateAnswers(
@@ -90,7 +97,16 @@ export function FuneralHealthModal({
   if (!open) return null;
 
   const setAnswer = (id: string, value: unknown) => {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
+    setAnswers((prev) => {
+      const next = { ...prev, [id]: value };
+      // Si se oculta una hija (showIf), limpiar su respuesta
+      for (const q of questions) {
+        if (q.showIf?.field === id && !isVisible(q, next)) {
+          delete next[q.id];
+        }
+      }
+      return next;
+    });
     setErrors((prev) => {
       const next = { ...prev };
       delete next[id];
@@ -182,10 +198,12 @@ export function FuneralHealthModal({
               <p className="text-sm font-medium">No hay preguntas configuradas para este plan.</p>
             </div>
           ) : (
-            visibleQuestions.map((q, idx) => (
+            visibleQuestions.map((q, idx) => {
+              const nested = Boolean(q.showIf?.field);
+              return (
               <div
                 key={q.id}
-                className="animate-fade-in"
+                className={`animate-fade-in ${nested ? 'pl-3 sm:pl-5 border-l-2 border-violet-200' : ''}`}
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 {q.type === 'boolean' ? (
@@ -224,7 +242,8 @@ export function FuneralHealthModal({
                   </Field>
                 )}
               </div>
-            ))
+              );
+            })
           )}
         </div>
 

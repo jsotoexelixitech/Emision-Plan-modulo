@@ -128,11 +128,22 @@ export function EmisionConfigPanel() {
       producto === 'funerario'
         ? healthQuestions.map((q) => {
             const plans = (q.plans || []).map(String).filter(Boolean);
-            const next = {
+            const next: HealthQuestionDraft = {
               ...q,
               plans: plans.length > 0 ? plans : [...ALL_PLAN_CODES],
             };
             if (!next.showIf?.field) delete next.showIf;
+            if (next.type === 'select') {
+              next.options =
+                Array.isArray(next.options) && next.options.length > 0
+                  ? next.options
+                  : [
+                      { value: 'si', label: 'Sí' },
+                      { value: 'no', label: 'No' },
+                    ];
+            } else {
+              delete next.options;
+            }
             return next;
           })
         : undefined;
