@@ -40,23 +40,27 @@ export function useProductConfig(empresaId: number, producto: string, modulo: st
     setSaving(true);
     setSaveError('');
     try {
+      // Merge con lo cargado: un PUT parcial no debe borrar otras claves
+      const payload = { ...(config ?? {}), ...newConfig };
       const res = await fetch(`${NEXUS_URL}/api/config/${empresaId}/${producto}/${modulo}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-api-key': NEXUS_KEY },
-        body: JSON.stringify(newConfig),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.success) {
         setConfig(data.data);
-      } else {
-        setSaveError(data.message ?? 'Error al guardar.');
+        return data.data as Record<string, any>;
       }
+      setSaveError(data.message ?? 'Error al guardar.');
+      return null;
     } catch {
       setSaveError('No se pudo conectar al servidor Nexus.');
+      return null;
     } finally {
       setSaving(false);
     }
-  }, [empresaId, producto, modulo]);
+  }, [empresaId, producto, modulo, config]);
 
   const resetConfig = useCallback(async () => {
     setSaving(true);

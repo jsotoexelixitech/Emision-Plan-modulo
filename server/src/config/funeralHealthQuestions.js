@@ -160,14 +160,15 @@ function filterQuestionsForPlan(catalog, cplan) {
   const code = String(cplan || '').trim();
   const list = Array.isArray(catalog) ? catalog : [];
   const matched = list.filter((q) => {
-    const plans = (q.plans || []).map((p) => String(p).trim());
-    if (plans.length === 0) return false;
+    const plans = (q.plans || []).map((p) => String(p).trim()).filter(Boolean);
+    // Sin planes → aplica a todos (evita perder preguntas creadas en el panel)
+    if (plans.length === 0) return true;
     return plans.includes(PLAN.ALL) || plans.includes('*') || plans.includes(code);
   });
   if (matched.length === 0) {
     return list.filter((q) => {
-      const plans = (q.plans || []).map((p) => String(p).trim());
-      return plans.includes(PLAN.ALL) || plans.includes('*');
+      const plans = (q.plans || []).map((p) => String(p).trim()).filter(Boolean);
+      return plans.length === 0 || plans.includes(PLAN.ALL) || plans.includes('*');
     });
   }
   return matched;
@@ -205,10 +206,18 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     console.warn(`[funeralHealthQuestions] Nexus fallback: ${msg}`);
   }
   const questions = filterQuestionsForPlan(catalog, cplan);
+  const catalogIds = catalog.map((q) => q?.id).filter(Boolean);
+  const matchedIds = new Set(questions.map((q) => q?.id));
+  const skippedIds = catalogIds.filter((id) => !matchedIds.has(id));
   console.log(
-    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}`,
+    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length} skipped=${skippedIds.join(',') || '-'}`,
   );
-  return { questions, source };
+  return {
+    questions,
+    source,
+    catalogCount: catalog.length,
+    skippedIds,
+  };
 }
 
 /** Etiqueta legible para mostrar en logs/admin */

@@ -41,8 +41,19 @@ router.get('/health-questions', async (req, res) => {
           process.env.VITE_EMPRESA_ID ??
           1,
       ) || 1;
-    const { questions, source } = await resolveQuestionsForPlan(cplan, { empresaId });
-    res.json({ success: true, cplan, questions, source, count: questions.length });
+    const { questions, source, catalogCount, skippedIds } = await resolveQuestionsForPlan(
+      cplan,
+      { empresaId },
+    );
+    res.json({
+      success: true,
+      cplan,
+      questions,
+      source,
+      count: questions.length,
+      catalogCount,
+      skippedIds,
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[funeral/health-questions]', msg);

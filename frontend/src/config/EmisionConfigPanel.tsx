@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useProductConfig } from '../hooks/useProductConfig';
 import { getProductId } from '../lib/product';
 import {
@@ -12,6 +12,8 @@ import {
   DEFAULT_HEALTH_QUESTIONS_SEED,
   type HealthQuestionDraft,
 } from './FuneralHealthQuestionsEditor';
+
+const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 
 const EMPRESA_ID = Number(import.meta.env.VITE_EMPRESA_ID ?? 1);
 
@@ -58,6 +60,8 @@ export function EmisionConfigPanel() {
   const [diasCarencia, setDiasCarencia] = useState(0);
   const [edadMaxima, setEdadMaxima] = useState(70);
   const [healthQuestions, setHealthQuestions] = useState<HealthQuestionDraft[]>([]);
+  /** Evita que un refetch de config borre ediciones locales no guardadas */
+  const healthQuestionsDirty = useRef(false);
 
   // ── Conexión API ──────────────────────────────────────────
   const [apiUrl, setApiUrl] = useState('');
@@ -75,14 +79,16 @@ export function EmisionConfigPanel() {
     setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
     setDiasCarencia(config.diasCarencia ?? 0);
     setEdadMaxima(config.edadMaxima ?? 70);
-    const hq = config.healthQuestions as HealthQuestionDraft[] | undefined;
-    setHealthQuestions(
-      Array.isArray(hq) && hq.length > 0
-        ? hq
-        : producto === 'funerario'
-          ? DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }))
-          : [],
-    );
+    if (!healthQuestionsDirty.current) {
+      const hq = config.healthQuestions as HealthQuestionDraft[] | undefined;
+      setHealthQuestions(
+        Array.isArray(hq) && hq.length > 0
+          ? hq
+          : producto === 'funerario'
+            ? DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }))
+            : [],
+      );
+    }
     // Conexión
     setApiUrl(config.apiUrl ?? '');
     setApiFormat(config.apiFormat ?? 'json');
@@ -100,22 +106,39 @@ export function EmisionConfigPanel() {
   };
   const removeMapEntry = (idx: number) => { setApiMap(p => p.filter((_, i) => i !== idx)); setSaved(false); };
 
+  const onHealthQuestionsChange = (next: HealthQuestionDraft[]) => {
+    healthQuestionsDirty.current = true;
+    setHealthQuestions(next);
+    setSaved(false);
+  };
+
   async function handleSave() {
     const cleanedQuestions =
       producto === 'funerario'
         ? healthQuestions.map((q) => {
-            const next = { ...q, plans: (q.plans || []).map(String) };
+            const plans = (q.plans || []).map(String).filter(Boolean);
+            const next = {
+              ...q,
+              plans: plans.length > 0 ? plans : [...ALL_PLAN_CODES],
+            };
             if (!next.showIf?.field) delete next.showIf;
             return next;
           })
         : undefined;
-    await saveConfig({
+    if (producto === 'funerario' && (!cleanedQuestions || cleanedQuestions.length === 0)) {
+      setSaved(false);
+      return;
+    }
+    const ok = await saveConfig({
       apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
       ...(cleanedQuestions ? { healthQuestions: cleanedQuestions } : {}),
       apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
     });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    if (ok) {
+      healthQuestionsDirty.current = false;
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    }
   }
 
   const inp = 'w-full text-sm border border-slate-200 rounded-xl px-3 py-2 outline-none focus:border-indigo-400 bg-white';
@@ -233,10 +256,7 @@ export function EmisionConfigPanel() {
                 {tab === 'preguntas' && producto === 'funerario' && (
                   <FuneralHealthQuestionsEditor
                     questions={healthQuestions}
-                    onChange={(next) => {
-                      setHealthQuestions(next);
-                      setSaved(false);
-                    }}
+                    onChange={onHealthQuestionsChange}
                   />
                 )}
 
@@ -454,7 +474,7 @@ export function EmisionConfigPanel() {
                 </div>
               )}
               <div className="flex gap-3 w-full sm:w-auto sm:ml-auto">
-                <button onClick={() => { if (confirm('¿Restaurar configuración original?')) resetConfig(); }} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <button onClick={() => { if (confirm('¿Restaurar configuración original?')) { healthQuestionsDirty.current = false; resetConfig(); } }} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
                   <RotateCcw size={15} /> Restaurar defaults
                 </button>
                 <button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-8 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50">
