@@ -12,21 +12,11 @@ import {
   DEFAULT_HEALTH_QUESTIONS_SEED,
   type HealthQuestionDraft,
 } from './FuneralHealthQuestionsEditor';
+import { readConfigPanelContext } from './configPanelContext';
 
 const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
-
-function resolveEmpresaId(): number {
-  try {
-    const token = new URL(window.location.href).searchParams.get('token');
-    if (token) {
-      const payload = JSON.parse(atob(token.split('.')[1] || '')) as { empresaId?: number };
-      if (Number(payload.empresaId) > 0) return Number(payload.empresaId);
-    }
-  } catch { /* ignore */ }
-  return Number(import.meta.env.VITE_EMPRESA_ID ?? 1) || 1;
-}
-
-const EMPRESA_ID = resolveEmpresaId();
+const PANEL_CTX = readConfigPanelContext();
+const EMPRESA_ID = PANEL_CTX.empresaId;
 
 type Tab = 'general' | 'preguntas' | 'conexion' | 'mapeador';
 
@@ -75,7 +65,7 @@ export function EmisionConfigPanel() {
   const [healthByCanal, setHealthByCanal] = useState<Record<string, HealthQuestionDraft[]>>({
     default: [],
   });
-  const [activeCanal, setActiveCanal] = useState('default');
+  const [activeCanal, setActiveCanal] = useState(PANEL_CTX.canal || 'default');
   const [newCanalName, setNewCanalName] = useState('');
   /** Evita que un refetch de config borre ediciones locales no guardadas */
   const healthQuestionsDirty = useRef(false);
@@ -112,10 +102,19 @@ export function EmisionConfigPanel() {
         by.default = Array.isArray(legacy) && legacy.length > 0 ? legacy : seed;
       }
       setHealthByCanal(by);
-      const canal =
-        activeCanal && by[activeCanal] ? activeCanal : 'default';
-      setActiveCanal(canal);
-      setHealthQuestions(by[canal] ?? by.default ?? seed);
+      // Preferir canal de la URL/token; si aún no existe en config, se crea al cambiar
+      const fromUrl = PANEL_CTX.canal || 'default';
+      const canal = by[fromUrl] ? fromUrl : by[activeCanal] ? activeCanal : 'default';
+      if (!by[fromUrl] && fromUrl !== 'default') {
+        by[fromUrl] = (by.default ?? seed).map((q) => ({
+          ...q,
+          plans: [...(q.plans || [])],
+        }));
+        setHealthByCanal({ ...by });
+      }
+      const useCanal = by[fromUrl] ? fromUrl : canal;
+      setActiveCanal(useCanal);
+      setHealthQuestions(by[useCanal] ?? by.default ?? seed);
     } else if (!healthQuestionsDirty.current && producto !== 'funerario') {
       setHealthQuestions([]);
     }
@@ -263,6 +262,26 @@ export function EmisionConfigPanel() {
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
                 Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.
               </p>
+              <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  canal: {PANEL_CTX.canal}
+                </span>
+                {PANEL_CTX.cproductor && (
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                    cproductor: {PANEL_CTX.cproductor}
+                  </span>
+                )}
+                {PANEL_CTX.cusuario && (
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                    cusuario: {PANEL_CTX.cusuario}
+                  </span>
+                )}
+                {PANEL_CTX.ctipocanal && (
+                  <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 border border-slate-200">
+                    ctipocanal: {PANEL_CTX.ctipocanal}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 grid place-items-center shadow-lg shadow-indigo-500/20">
               <Settings2 size={24} className="text-white" />
