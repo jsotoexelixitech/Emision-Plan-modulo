@@ -41,10 +41,14 @@ router.get('/health-questions', async (req, res) => {
           process.env.VITE_EMPRESA_ID ??
           1,
       ) || 1;
-    const { questions, source, catalogCount, skippedIds } = await resolveQuestionsForPlan(
-      cplan,
-      { empresaId },
-    );
+    const {
+      questions,
+      source,
+      catalogCount,
+      skippedIds,
+      empresaId: resolvedEmpresaId,
+      triedEmpresas,
+    } = await resolveQuestionsForPlan(cplan, { empresaId });
     res.json({
       success: true,
       cplan,
@@ -53,6 +57,8 @@ router.get('/health-questions', async (req, res) => {
       count: questions.length,
       catalogCount,
       skippedIds,
+      empresaId: resolvedEmpresaId,
+      triedEmpresas,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

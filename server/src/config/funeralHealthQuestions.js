@@ -188,18 +188,44 @@ function getQuestionsForPlan(cplan) {
  * @param {{ empresaId?: number }} [opts]
  * @returns {Promise<HealthQuestion[]>}
  */
+/**
+ * El parametrizador (Nexus Admin) guarda siempre en empresa 1 hoy.
+ * El flujo funerario puede traer otro empresaId en el JWT → getConfig
+ * devuelve solo defaults (10) y “desaparecen” las preguntas creadas.
+ * Probamos ambos y nos quedamos con el catálogo más completo.
+ */
 async function resolveQuestionsForPlan(cplan, opts = {}) {
-  const empresaId = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 1;
+  const fromReq = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 0;
+  const fromEnv = Number(process.env.PRODUCT_CONFIG_EMPRESA_ID || process.env.EMPRESA_ID || 0);
+  const candidates = [...new Set([fromReq, fromEnv, 1].filter((n) => n > 0))];
+
   let catalog = CATALOG;
   let source = 'catalog';
+  let empresaId = candidates[0] || 1;
   try {
-    const { fetchProductConfig } = require('../services/nexusProductConfig');
-    const cfg = await fetchProductConfig(empresaId, 'funerario', 'emision', {
-      bypassCache: true,
-    });
-    if (Array.isArray(cfg?.healthQuestions) && cfg.healthQuestions.length > 0) {
-      catalog = cfg.healthQuestions;
+    const {
+      fetchProductConfig,
+      clearProductConfigCache,
+    } = require('../services/nexusProductConfig');
+    clearProductConfigCache();
+
+    let bestHq = null;
+    let bestEmpresa = empresaId;
+    for (const eid of candidates) {
+      const cfg = await fetchProductConfig(eid, 'funerario', 'emision', {
+        bypassCache: true,
+      });
+      const hq = cfg?.healthQuestions;
+      if (!Array.isArray(hq) || hq.length === 0) continue;
+      if (!bestHq || hq.length > bestHq.length) {
+        bestHq = hq;
+        bestEmpresa = eid;
+      }
+    }
+    if (bestHq) {
+      catalog = bestHq;
       source = 'nexus';
+      empresaId = bestEmpresa;
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -210,13 +236,15 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
   const matchedIds = new Set(questions.map((q) => q?.id));
   const skippedIds = catalogIds.filter((id) => !matchedIds.has(id));
   console.log(
-    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length} skipped=${skippedIds.join(',') || '-'}`,
+    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} tried=${candidates.join(',')} source=${source} catalog=${catalog.length} matched=${questions.length} skipped=${skippedIds.join(',') || '-'}`,
   );
   return {
     questions,
     source,
     catalogCount: catalog.length,
     skippedIds,
+    empresaId,
+    triedEmpresas: candidates,
   };
 }
 

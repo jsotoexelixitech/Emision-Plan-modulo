@@ -32,12 +32,12 @@ async function fetchProductConfig(empresaId, producto, modulo, opts = {}) {
 
   let lastErr = '';
   for (const base of nexusBases()) {
-    const url = `${base}/api/config/${empresaId}/${producto}/${modulo}`;
+    const url = `${base}/api/config/${empresaId}/${producto}/${modulo}?_=${Date.now()}`;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(url, {
-        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache' },
+        headers: { Accept: 'application/json', 'Cache-Control': 'no-cache', Pragma: 'no-cache' },
         signal: controller.signal,
       });
       clearTimeout(timer);

@@ -15,7 +15,18 @@ import {
 
 const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 
-const EMPRESA_ID = Number(import.meta.env.VITE_EMPRESA_ID ?? 1);
+function resolveEmpresaId(): number {
+  try {
+    const token = new URL(window.location.href).searchParams.get('token');
+    if (token) {
+      const payload = JSON.parse(atob(token.split('.')[1] || '')) as { empresaId?: number };
+      if (Number(payload.empresaId) > 0) return Number(payload.empresaId);
+    }
+  } catch { /* ignore */ }
+  return Number(import.meta.env.VITE_EMPRESA_ID ?? 1) || 1;
+}
+
+const EMPRESA_ID = resolveEmpresaId();
 
 type Tab = 'general' | 'preguntas' | 'conexion' | 'mapeador';
 
