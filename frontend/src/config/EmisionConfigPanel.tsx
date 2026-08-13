@@ -387,8 +387,8 @@ export function EmisionConfigPanel() {
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
                           {canalLocked
-                            ? 'Enlace de integrador: las preguntas se guardan solo en este canal (como metadata SSO en RCV).'
-                            : 'Admin: puedes cambiar de canal. El SSO del flujo debe usar el mismo metadata.canal.'}
+                            ? 'Enlace de integrador: guardas solo este canal. En el flujo, el SSO manda el mismo metadata.canal.'
+                            : 'Editas la empresa del token. Canal default = lo que usa el flujo si el SSO no manda metadata.canal. Puedes crear más canales si un integrador usa uno fijo.'}
                         </p>
                       </div>
                       {canalLocked ? (
