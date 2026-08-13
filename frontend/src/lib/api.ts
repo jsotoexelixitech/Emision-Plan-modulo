@@ -452,7 +452,15 @@ export async function sypagoGetStatus(transactionId: string): Promise<SypagoTran
 
 export interface InmaMarca   { cmarca: string; xmarca: string; }
 export interface InmaModelo  { cmodelo: string; xmodelo: string; }
-export interface InmaVersion { cversion: string; xversion: string; }
+export interface InmaVersion {
+  cversion: string;
+  xversion: string;
+  /** Uso tarifario INMA — se matchea con CategoriaUso.ccategoria_uso */
+  ccategotr?: number | string;
+  ctipo?: number | string;
+  npasajero?: number;
+  xtipo?: string;
+}
 export interface CategoriaUso { ccategoria_uso: number; xcategoria_uso: string; }
 
 export interface ResolverResult {

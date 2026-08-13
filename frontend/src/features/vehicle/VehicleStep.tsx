@@ -301,18 +301,50 @@ export function VehicleStep() {
     loadCategoriasUso(y, vehicle.cmarca, vehicle.cmodelo, vehicle.cversion);
   }, [vehicle.cversion, vehicle.cmodelo, vehicle.cmarca, vehicle.año, loadCategoriasUso]);
 
-  // ── Auto-seleccionar categoría única cuando solo hay una opción ───────────
+  /**
+   * Match versión.ccategotr → categoría.ccategoria_uso.
+   * Preselecciona el uso y deja el campo bloqueado (mismo valor va a planes).
+   */
   useEffect(() => {
-    if (categoriasUso.length === 1 && !vehicle.ccategoria_uso) {
-      const c = categoriasUso[0];
-      setVehicle({
-        ccategoria_uso: c.ccategoria_uso,
-        xcategoria_uso: c.xcategoria_uso,
-        uso: c.xcategoria_uso,
-      });
+    if (loadCu || !vehicle.cversion || categoriasUso.length === 0) return;
+
+    const ver = versiones.find((v) => String(v.cversion) === String(vehicle.cversion));
+    const target = ver?.ccategotr ?? vehicle.ccategotr;
+
+    if (target == null || target === '') {
+      if (categoriasUso.length === 1 && vehicle.ccategoria_uso == null) {
+        const c = categoriasUso[0];
+        setVehicle({
+          ccategoria_uso: c.ccategoria_uso,
+          xcategoria_uso: c.xcategoria_uso,
+          uso: c.xcategoria_uso,
+        });
+      }
+      return;
     }
+
+    const match = categoriasUso.find(
+      (c) => Number(c.ccategoria_uso) === Number(target),
+    );
+    if (!match) return;
+    if (String(vehicle.ccategoria_uso) === String(match.ccategoria_uso)) return;
+
+    setVehicle({
+      ccategoria_uso: match.ccategoria_uso,
+      xcategoria_uso: match.xcategoria_uso,
+      uso: match.xcategoria_uso,
+      ccategotr: target,
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoriasUso]);
+  }, [categoriasUso, vehicle.cversion, vehicle.ccategotr, versiones, loadCu]);
+
+  const usoLockedByCcategotr = (() => {
+    if (!vehicle.cversion || categoriasUso.length === 0) return false;
+    const ver = versiones.find((v) => String(v.cversion) === String(vehicle.cversion));
+    const target = ver?.ccategotr ?? vehicle.ccategotr;
+    if (target == null || target === '') return false;
+    return categoriasUso.some((c) => Number(c.ccategoria_uso) === Number(target));
+  })();
 
   // ── Validación ────────────────────────────────────────────────────────────
   const validate = () => {
@@ -674,10 +706,13 @@ export function VehicleStep() {
                     setVehicle({
                       cversion: e.target.value,
                       // ctipo determina qué planes RCV están disponibles (1=particular, 4=moto...)
-                      ctipo: (ver as any)?.ctipo ?? undefined,
-                      // Reset categoría de uso para forzar al usuario a elegir una válida para esta versión
+                      ctipo: ver?.ctipo != null ? Number(ver.ctipo) : undefined,
+                      // ccategotr → match con ccategoria_uso al cargar categorías
+                      ccategotr: ver?.ccategotr ?? undefined,
+                      // Reset; el efecto de match rellena el uso automáticamente
                       ccategoria_uso: undefined,
                       xcategoria_uso: '',
+                      uso: '',
                     });
                   }}
                   className={!vehicle.cversion ? 'border-violet-300 focus:border-violet-500 ring-2 ring-violet-100' : ''}
@@ -705,6 +740,11 @@ export function VehicleStep() {
                 {vehicle.ccategoria_uso != null && vehicle.ccategoria_uso !== '' && !loadCu && (
                   <span className="text-[0.6rem] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full">✓</span>
                 )}
+                {usoLockedByCcategotr && (
+                  <span className="text-[0.6rem] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full">
+                    según versión
+                  </span>
+                )}
                 {!vehicle.cversion && (
                   <span className="text-[0.6rem] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">
                     selecciona la versión primero
@@ -712,7 +752,13 @@ export function VehicleStep() {
                 )}
               </span> as unknown as string
             }
-            hint={!vehicle.cversion ? 'Selecciona la versión del vehículo para ver las categorías.' : undefined}
+            hint={
+              !vehicle.cversion
+                ? 'Selecciona la versión del vehículo para ver las categorías.'
+                : usoLockedByCcategotr
+                  ? 'Uso definido por la versión del vehículo (no editable).'
+                  : undefined
+            }
           >
             {!vehicle.cversion ? (
               <div className="w-full px-3.5 py-2.5 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-xs text-slate-500 flex items-center gap-2">
@@ -726,7 +772,9 @@ export function VehicleStep() {
             ) : categoriasUso.length > 0 ? (
               <Select
                 value={vehicle.ccategoria_uso != null ? String(vehicle.ccategoria_uso) : ''}
+                disabled={usoLockedByCcategotr}
                 onChange={(e) => {
+                  if (usoLockedByCcategotr) return;
                   const code = e.target.value;
                   const match = categoriasUso.find(c => String(c.ccategoria_uso) === code);
                   setVehicle({
@@ -736,7 +784,13 @@ export function VehicleStep() {
                     uso: match?.xcategoria_uso ?? vehicle.uso,
                   });
                 }}
-                className={vehicle.ccategoria_uso == null ? 'border-violet-300 focus:border-violet-500 ring-2 ring-violet-100' : ''}
+                className={
+                  usoLockedByCcategotr
+                    ? 'bg-slate-50 text-slate-700 cursor-not-allowed'
+                    : vehicle.ccategoria_uso == null
+                      ? 'border-violet-300 focus:border-violet-500 ring-2 ring-violet-100'
+                      : ''
+                }
               >
                 <option value="">— Selecciona la categoría de uso —</option>
                 {categoriasUso.map(c => (

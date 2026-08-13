@@ -151,6 +151,8 @@ export interface VehicleData {
   cmodelo?: string;
   /** Código INMA de versión (ej. "05") — set al elegir en selector de catálogo */
   cversion?: string;
+  /** Uso tarifario de la versión INMA (ccategotr) — se matchea con ccategoria_uso */
+  ccategotr?: number | string;
   /** Código La Mundial de categoría de uso (numérico) — set por getCategoriasUso al elegir versión */
   ccategoria_uso?: number | string;
   /** Etiqueta legible de la categoría de uso (ej. "Auto particular") — para display */
