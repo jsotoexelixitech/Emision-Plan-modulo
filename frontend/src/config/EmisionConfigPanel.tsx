@@ -67,6 +67,9 @@ export function EmisionConfigPanel() {
   });
   const [activeCanal, setActiveCanal] = useState(PANEL_CTX.canal || 'default');
   const [newCanalName, setNewCanalName] = useState('');
+  /** Si la URL trae canal (enlace al integrador), no puede cambiar a otro. */
+  const canalLocked = Boolean(PANEL_CTX.canal && PANEL_CTX.canal !== 'default')
+    || Boolean(PANEL_CTX.cproductor);
   /** Evita que un refetch de config borre ediciones locales no guardadas */
   const healthQuestionsDirty = useRef(false);
 
@@ -208,28 +211,28 @@ export function EmisionConfigPanel() {
     let byCanalPayload: Record<string, HealthQuestionDraft[]> | undefined;
     let cleanedQuestions: HealthQuestionDraft[] | undefined;
     if (producto === 'funerario') {
-      const merged = { ...healthByCanal, [activeCanal]: healthQuestions };
-      byCanalPayload = {};
-      for (const [k, list] of Object.entries(merged)) {
-        if (!Array.isArray(list) || list.length === 0) continue;
-        byCanalPayload[k] = cleanQuestions(list);
-      }
-      if (!byCanalPayload.default?.length && byCanalPayload[activeCanal]?.length) {
-        byCanalPayload.default = byCanalPayload[activeCanal];
-      }
-      cleanedQuestions = byCanalPayload[activeCanal] ?? byCanalPayload.default;
-      if (!cleanedQuestions?.length) {
+      const canalKey = canalLocked ? (PANEL_CTX.canal || activeCanal) : activeCanal;
+      cleanedQuestions = cleanQuestions(healthQuestions);
+      if (!cleanedQuestions.length) {
         setSaved(false);
         alert('No hay preguntas de salud para guardar. Agrega al menos una o restaura defaults.');
         return;
       }
+      // Solo el canal activo (el de la URL del integrador); Nexus hace merge por clave
+      byCanalPayload = { [canalKey]: cleanedQuestions };
+      if (canalKey === 'default') {
+        byCanalPayload.default = cleanedQuestions;
+      }
     }
     const ok = await saveConfig({
       apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
-      ...(cleanedQuestions
+      ...(cleanedQuestions && byCanalPayload
         ? {
-            healthQuestions: byCanalPayload?.default ?? cleanedQuestions,
             healthQuestionsByCanal: byCanalPayload,
+            // Solo tocar legacy healthQuestions si editamos el canal default
+            ...(Object.keys(byCanalPayload).includes('default')
+              ? { healthQuestions: byCanalPayload.default }
+              : {}),
           }
         : {}),
       apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
@@ -378,58 +381,71 @@ export function EmisionConfigPanel() {
                     <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4 space-y-3">
                       <div>
                         <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                          Canal (metadata SSO)
+                          Canal (desde la URL / token)
                         </p>
                         <p className="text-[11px] text-slate-500 mt-0.5">
-                          Debe coincidir con <code className="font-mono text-slate-700">metadata.canal</code> del
-                          token (o <code className="font-mono text-slate-700">p{'{cproductor}'}</code> si no hay canal).
-                          El flujo carga las preguntas de ese canal.
+                          {canalLocked
+                            ? 'Enlace de integrador: las preguntas se guardan solo en este canal (como metadata SSO en RCV).'
+                            : 'Admin: puedes cambiar de canal. El SSO del flujo debe usar el mismo metadata.canal.'}
                         </p>
                       </div>
-                      <div className="flex flex-wrap items-end gap-2">
-                        <div className="min-w-[160px] flex-1">
-                          <label className={lbl}>Canal activo</label>
-                          <select
-                            className={inp}
-                            value={activeCanal}
-                            onChange={(e) => switchCanal(e.target.value)}
+                      {canalLocked ? (
+                        <div className="flex flex-wrap gap-2 text-xs font-bold">
+                          <span className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white">
+                            {activeCanal}
+                          </span>
+                          {PANEL_CTX.cproductor && (
+                            <span className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600">
+                              cproductor {PANEL_CTX.cproductor}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-end gap-2">
+                          <div className="min-w-[160px] flex-1">
+                            <label className={lbl}>Canal activo</label>
+                            <select
+                              className={inp}
+                              value={activeCanal}
+                              onChange={(e) => switchCanal(e.target.value)}
+                            >
+                              {Object.keys(healthByCanal)
+                                .sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
+                                .map((k) => (
+                                  <option key={k} value={k}>
+                                    {k}
+                                    {k === 'default' ? ' (fallback)' : ''}
+                                    {' · '}
+                                    {(healthByCanal[k] || []).length} preg.
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          <div className="min-w-[140px] flex-1">
+                            <label className={lbl}>Nuevo canal</label>
+                            <input
+                              className={inp}
+                              value={newCanalName}
+                              onChange={(e) => setNewCanalName(e.target.value)}
+                              placeholder="ej: web-lm, app"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  addCanal();
+                                }
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={addCanal}
+                            disabled={!newCanalName.trim()}
+                            className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700"
                           >
-                            {Object.keys(healthByCanal)
-                              .sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
-                              .map((k) => (
-                                <option key={k} value={k}>
-                                  {k}
-                                  {k === 'default' ? ' (fallback)' : ''}
-                                  {' · '}
-                                  {(healthByCanal[k] || []).length} preg.
-                                </option>
-                              ))}
-                          </select>
+                            Agregar canal
+                          </button>
                         </div>
-                        <div className="min-w-[140px] flex-1">
-                          <label className={lbl}>Nuevo canal</label>
-                          <input
-                            className={inp}
-                            value={newCanalName}
-                            onChange={(e) => setNewCanalName(e.target.value)}
-                            placeholder="ej: web-lm, app"
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                addCanal();
-                              }
-                            }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={addCanal}
-                          disabled={!newCanalName.trim()}
-                          className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700"
-                        >
-                          Agregar canal
-                        </button>
-                      </div>
+                      )}
                     </div>
                     <FuneralHealthQuestionsEditor
                       questions={healthQuestions}
