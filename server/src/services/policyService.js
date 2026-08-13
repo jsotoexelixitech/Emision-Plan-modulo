@@ -61,9 +61,9 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     `[nest-api][${ts}] EMITIENDO placa=${laMundialPayload.xplaca ?? payload.placa} plan=${laMundialPayload.cplan ?? payload.plan}`,
   );
 
+  // No enviar poliza/cnpoliza_rel: Sis2000 genera cnpoliza; INT-* solo queda en logs locales.
   const emissionBody = {
     ...laMundialPayload,
-    poliza: payload.poliza,
     mprimaext: cotizacion.mprimaext,
     ptasa: cotizacion.ptasa,
     tasa: cotizacion.ptasa,
@@ -340,12 +340,12 @@ async function quoteAndEmit(state, overrides = {}) {
     if (err.code === 'PLATE_ALREADY_INSURED') {
       throw new PolicyError('LAMUNDIAL_PLATE_ALREADY_INSURED', err.message, 409, {
         stage: 'validate',
-        internalPolicyId: payload.poliza,
+        internalPolicyId: metadata.internalPolicyId,
       });
     }
     throw new PolicyError(err.code || 'VALIDATE_EMISSION_ERROR', err.message, 502, {
       stage: 'validate',
-      internalPolicyId: payload.poliza,
+      internalPolicyId: metadata.internalPolicyId,
     });
   }
 
@@ -356,13 +356,13 @@ async function quoteAndEmit(state, overrides = {}) {
       'INVALID_PAYLOAD',
       `Validacion fallida: ${errors.join('; ')}`,
       400,
-      { details: errors, internalPolicyId: payload.poliza }
+      { details: errors, internalPolicyId: metadata.internalPolicyId }
     );
   }
 
-  // 5) Log antes de emitir (idempotencia manual)
+  // 5) Log antes de emitir (idempotencia manual; INT-* no se envía al SP)
   const ts = new Date().toISOString();
-  console.log(`[Policy][${ts}] EMITIENDO internalId=${payload.poliza} placa=${payload.placa}`);
+  console.log(`[Policy][${ts}] EMITIENDO internalId=${metadata.internalPolicyId} placa=${payload.placa}`);
 
   // 6) Emitir via nest-api (inserta en eePoliza_Automovil_RCV2)
   let emission;
@@ -373,7 +373,7 @@ async function quoteAndEmit(state, overrides = {}) {
       ptasa:     quoteResult.ptasa,
     });
   } catch (err) {
-    throw mapClientError(err, 'emit', { internalPolicyId: payload.poliza });
+    throw mapClientError(err, 'emit', { internalPolicyId: metadata.internalPolicyId });
   }
 
   // 5.1) Activar recibo en Sis2000 solo tras pago verificado (ref. bancaria real, monto Bs)
@@ -457,7 +457,7 @@ async function quoteAndEmit(state, overrides = {}) {
 
   // 6) Log de exito
   console.log(
-    `[Policy][${new Date().toISOString()}] EMITIDA internalId=${payload.poliza} cnpoliza=${emission.cnpoliza}`
+    `[Policy][${new Date().toISOString()}] EMITIDA internalId=${metadata.internalPolicyId} cnpoliza=${emission.cnpoliza}`
   );
 
   const emailTo = String(
@@ -500,7 +500,7 @@ async function quoteAndEmit(state, overrides = {}) {
   }
 
   return {
-    internalPolicyId: payload.poliza,
+    internalPolicyId: metadata.internalPolicyId,
     cnpoliza: emission.cnpoliza,
     cnrecibo: emission.cnrecibo,
     urlpoliza: emission.urlpoliza,

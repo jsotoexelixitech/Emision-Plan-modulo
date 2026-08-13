@@ -31,8 +31,7 @@ function validateEmissionPayload(p) {
     return errors;
   }
 
-  // Identificadores
-  if (!p.poliza || !String(p.poliza).trim()) errors.push('poliza (id interno) requerido');
+  // Identificadores (poliza/cnpoliza_rel no se envían; Sis2000 genera cnpoliza)
   if (!p.cramo) errors.push('cramo requerido');
   if (!p.plan || !String(p.plan).trim()) errors.push('plan requerido (vacío)');
   if (!['A', 'S', 'C', 'T', 'M'].includes(p.frecuencia)) errors.push(`frecuencia invalida: ${p.frecuencia}`);

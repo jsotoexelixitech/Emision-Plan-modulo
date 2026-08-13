@@ -304,7 +304,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     : (titular.cciudad ? parseInt(titular.cciudad, 10) : (titular.ciudad ? resolveCityCode(titular.ciudad, stateCodeTitular) : null));
 
   const payload = {
-    poliza: internalId,
+    // No enviar a Nest/SP: cnpoliza_rel debe ir vacío; internalId solo en metadata/logs.
     cramo,
     plan,
     frecuencia,
