@@ -189,19 +189,24 @@ function getQuestionsForPlan(cplan) {
  * @returns {Promise<HealthQuestion[]>}
  */
 /**
- * El parametrizador (Nexus Admin) guarda siempre en empresa 1 hoy.
- * El flujo funerario puede traer otro empresaId en el JWT → getConfig
- * devuelve solo defaults (10) y “desaparecen” las preguntas creadas.
- * Probamos ambos y nos quedamos con el catálogo más completo.
+ * Resuelve preguntas por plan + canal (metadata JWT).
+ * El parametrizador guarda en healthQuestionsByCanal[canal]; legacy usa healthQuestions.
  */
 async function resolveQuestionsForPlan(cplan, opts = {}) {
+  const { resolveCanalKey, pickHealthQuestionsForCanal } = require('../lib/canalKey');
   const fromReq = Number(opts.empresaId) > 0 ? Number(opts.empresaId) : 0;
   const fromEnv = Number(process.env.PRODUCT_CONFIG_EMPRESA_ID || process.env.EMPRESA_ID || 0);
   const candidates = [...new Set([fromReq, fromEnv, 1].filter((n) => n > 0))];
+  const meta = {
+    ...(opts.metadata && typeof opts.metadata === 'object' ? opts.metadata : {}),
+    ...(opts.canal ? { canal: opts.canal } : {}),
+  };
+  const canalKey = resolveCanalKey(meta);
 
   let catalog = CATALOG;
   let source = 'catalog';
   let empresaId = candidates[0] || 1;
+  let resolvedCanal = canalKey;
   try {
     const {
       fetchProductConfig,
@@ -209,22 +214,28 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     } = require('../services/nexusProductConfig');
     clearProductConfigCache();
 
-    let bestHq = null;
+    let best = null;
     let bestEmpresa = empresaId;
     for (const eid of candidates) {
       const cfg = await fetchProductConfig(eid, 'funerario', 'emision', {
         bypassCache: true,
       });
-      const hq = cfg?.healthQuestions;
-      if (!Array.isArray(hq) || hq.length === 0) continue;
-      if (!bestHq || hq.length > bestHq.length) {
-        bestHq = hq;
+      const picked = pickHealthQuestionsForCanal(cfg, canalKey);
+      if (!picked) continue;
+      const score =
+        (picked.source === 'nexus-canal' ? 1000 : 0) + picked.questions.length;
+      const bestScore = best
+        ? (best.source === 'nexus-canal' ? 1000 : 0) + best.questions.length
+        : -1;
+      if (score > bestScore) {
+        best = picked;
         bestEmpresa = eid;
       }
     }
-    if (bestHq) {
-      catalog = bestHq;
-      source = 'nexus';
+    if (best) {
+      catalog = best.questions;
+      source = best.source;
+      resolvedCanal = best.resolvedCanal;
       empresaId = bestEmpresa;
     }
   } catch (err) {
@@ -236,7 +247,7 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
   const matchedIds = new Set(questions.map((q) => q?.id));
   const skippedIds = catalogIds.filter((id) => !matchedIds.has(id));
   console.log(
-    `[funeralHealthQuestions] cplan=${cplan} empresa=${empresaId} tried=${candidates.join(',')} source=${source} catalog=${catalog.length} matched=${questions.length} skipped=${skippedIds.join(',') || '-'}`,
+    `[funeralHealthQuestions] cplan=${cplan} canal=${canalKey}→${resolvedCanal} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}`,
   );
   return {
     questions,
@@ -245,6 +256,8 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     skippedIds,
     empresaId,
     triedEmpresas: candidates,
+    canal: canalKey,
+    resolvedCanal,
   };
 }
 

@@ -71,6 +71,12 @@ export function EmisionConfigPanel() {
   const [diasCarencia, setDiasCarencia] = useState(0);
   const [edadMaxima, setEdadMaxima] = useState(70);
   const [healthQuestions, setHealthQuestions] = useState<HealthQuestionDraft[]>([]);
+  /** Preguntas indexadas por canal (metadata.canal del JWT SSO). */
+  const [healthByCanal, setHealthByCanal] = useState<Record<string, HealthQuestionDraft[]>>({
+    default: [],
+  });
+  const [activeCanal, setActiveCanal] = useState('default');
+  const [newCanalName, setNewCanalName] = useState('');
   /** Evita que un refetch de config borre ediciones locales no guardadas */
   const healthQuestionsDirty = useRef(false);
 
@@ -90,15 +96,28 @@ export function EmisionConfigPanel() {
     setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
     setDiasCarencia(config.diasCarencia ?? 0);
     setEdadMaxima(config.edadMaxima ?? 70);
-    if (!healthQuestionsDirty.current) {
-      const hq = config.healthQuestions as HealthQuestionDraft[] | undefined;
-      setHealthQuestions(
-        Array.isArray(hq) && hq.length > 0
-          ? hq
-          : producto === 'funerario'
-            ? DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }))
-            : [],
-      );
+    if (!healthQuestionsDirty.current && producto === 'funerario') {
+      const legacy = config.healthQuestions as HealthQuestionDraft[] | undefined;
+      const rawBy = config.healthQuestionsByCanal as
+        | Record<string, HealthQuestionDraft[]>
+        | undefined;
+      const seed = DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }));
+      const by: Record<string, HealthQuestionDraft[]> = {};
+      if (rawBy && typeof rawBy === 'object' && !Array.isArray(rawBy)) {
+        for (const [k, v] of Object.entries(rawBy)) {
+          if (Array.isArray(v) && v.length > 0) by[k] = v;
+        }
+      }
+      if (!by.default?.length) {
+        by.default = Array.isArray(legacy) && legacy.length > 0 ? legacy : seed;
+      }
+      setHealthByCanal(by);
+      const canal =
+        activeCanal && by[activeCanal] ? activeCanal : 'default';
+      setActiveCanal(canal);
+      setHealthQuestions(by[canal] ?? by.default ?? seed);
+    } else if (!healthQuestionsDirty.current && producto !== 'funerario') {
+      setHealthQuestions([]);
     }
     // Conexión
     setApiUrl(config.apiUrl ?? '');
@@ -117,44 +136,103 @@ export function EmisionConfigPanel() {
   };
   const removeMapEntry = (idx: number) => { setApiMap(p => p.filter((_, i) => i !== idx)); setSaved(false); };
 
+  const cleanQuestions = (list: HealthQuestionDraft[]): HealthQuestionDraft[] =>
+    list.map((q) => {
+      const plans = (q.plans || []).map(String).filter(Boolean);
+      const next: HealthQuestionDraft = {
+        ...q,
+        plans: plans.length > 0 ? plans : [...ALL_PLAN_CODES],
+      };
+      if (!next.showIf?.field) delete next.showIf;
+      if (next.type === 'select') {
+        next.options =
+          Array.isArray(next.options) && next.options.length > 0
+            ? next.options
+            : [
+                { value: 'si', label: 'Sí' },
+                { value: 'no', label: 'No' },
+              ];
+      } else {
+        delete next.options;
+      }
+      return next;
+    });
+
   const onHealthQuestionsChange = (next: HealthQuestionDraft[]) => {
     healthQuestionsDirty.current = true;
     setHealthQuestions(next);
+    setHealthByCanal((prev) => ({ ...prev, [activeCanal]: next }));
+    setSaved(false);
+  };
+
+  const switchCanal = (canal: string) => {
+    const key = canal.trim() || 'default';
+    setHealthByCanal((prev) => {
+      const snapshot = { ...prev, [activeCanal]: healthQuestions };
+      const nextList =
+        snapshot[key] ??
+        snapshot.default ??
+        DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }));
+      setHealthQuestions(nextList);
+      return snapshot[key] ? snapshot : { ...snapshot, [key]: nextList };
+    });
+    setActiveCanal(key);
+    healthQuestionsDirty.current = true;
+    setSaved(false);
+  };
+
+  const addCanal = () => {
+    const key = newCanalName.trim();
+    if (!key || key === 'default') return;
+    if (healthByCanal[key]) {
+      switchCanal(key);
+      setNewCanalName('');
+      return;
+    }
+    const seed =
+      healthByCanal.default?.length
+        ? healthByCanal.default.map((q) => ({ ...q, plans: [...(q.plans || [])] }))
+        : DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({ ...q, plans: [...q.plans] }));
+    setHealthByCanal((prev) => ({
+      ...prev,
+      [activeCanal]: healthQuestions,
+      [key]: seed,
+    }));
+    setHealthQuestions(seed);
+    setActiveCanal(key);
+    setNewCanalName('');
+    healthQuestionsDirty.current = true;
     setSaved(false);
   };
 
   async function handleSave() {
-    const cleanedQuestions =
-      producto === 'funerario'
-        ? healthQuestions.map((q) => {
-            const plans = (q.plans || []).map(String).filter(Boolean);
-            const next: HealthQuestionDraft = {
-              ...q,
-              plans: plans.length > 0 ? plans : [...ALL_PLAN_CODES],
-            };
-            if (!next.showIf?.field) delete next.showIf;
-            if (next.type === 'select') {
-              next.options =
-                Array.isArray(next.options) && next.options.length > 0
-                  ? next.options
-                  : [
-                      { value: 'si', label: 'Sí' },
-                      { value: 'no', label: 'No' },
-                    ];
-            } else {
-              delete next.options;
-            }
-            return next;
-          })
-        : undefined;
-    if (producto === 'funerario' && (!cleanedQuestions || cleanedQuestions.length === 0)) {
-      setSaved(false);
-      alert('No hay preguntas de salud para guardar. Agrega al menos una o restaura defaults.');
-      return;
+    let byCanalPayload: Record<string, HealthQuestionDraft[]> | undefined;
+    let cleanedQuestions: HealthQuestionDraft[] | undefined;
+    if (producto === 'funerario') {
+      const merged = { ...healthByCanal, [activeCanal]: healthQuestions };
+      byCanalPayload = {};
+      for (const [k, list] of Object.entries(merged)) {
+        if (!Array.isArray(list) || list.length === 0) continue;
+        byCanalPayload[k] = cleanQuestions(list);
+      }
+      if (!byCanalPayload.default?.length && byCanalPayload[activeCanal]?.length) {
+        byCanalPayload.default = byCanalPayload[activeCanal];
+      }
+      cleanedQuestions = byCanalPayload[activeCanal] ?? byCanalPayload.default;
+      if (!cleanedQuestions?.length) {
+        setSaved(false);
+        alert('No hay preguntas de salud para guardar. Agrega al menos una o restaura defaults.');
+        return;
+      }
     }
     const ok = await saveConfig({
       apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
-      ...(cleanedQuestions ? { healthQuestions: cleanedQuestions } : {}),
+      ...(cleanedQuestions
+        ? {
+            healthQuestions: byCanalPayload?.default ?? cleanedQuestions,
+            healthQuestionsByCanal: byCanalPayload,
+          }
+        : {}),
       apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
     });
     if (ok) {
@@ -277,10 +355,68 @@ export function EmisionConfigPanel() {
 
                 {/* ── TAB PREGUNTAS (funerario) ── */}
                 {tab === 'preguntas' && producto === 'funerario' && (
-                  <FuneralHealthQuestionsEditor
-                    questions={healthQuestions}
-                    onChange={onHealthQuestionsChange}
-                  />
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4 space-y-3">
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">
+                          Canal (metadata SSO)
+                        </p>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Debe coincidir con <code className="font-mono text-slate-700">metadata.canal</code> del
+                          token (o <code className="font-mono text-slate-700">p{'{cproductor}'}</code> si no hay canal).
+                          El flujo carga las preguntas de ese canal.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="min-w-[160px] flex-1">
+                          <label className={lbl}>Canal activo</label>
+                          <select
+                            className={inp}
+                            value={activeCanal}
+                            onChange={(e) => switchCanal(e.target.value)}
+                          >
+                            {Object.keys(healthByCanal)
+                              .sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
+                              .map((k) => (
+                                <option key={k} value={k}>
+                                  {k}
+                                  {k === 'default' ? ' (fallback)' : ''}
+                                  {' · '}
+                                  {(healthByCanal[k] || []).length} preg.
+                                </option>
+                              ))}
+                          </select>
+                        </div>
+                        <div className="min-w-[140px] flex-1">
+                          <label className={lbl}>Nuevo canal</label>
+                          <input
+                            className={inp}
+                            value={newCanalName}
+                            onChange={(e) => setNewCanalName(e.target.value)}
+                            placeholder="ej: web-lm, app"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addCanal();
+                              }
+                            }}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={addCanal}
+                          disabled={!newCanalName.trim()}
+                          className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700"
+                        >
+                          Agregar canal
+                        </button>
+                      </div>
+                    </div>
+                    <FuneralHealthQuestionsEditor
+                      questions={healthQuestions}
+                      onChange={onHealthQuestionsChange}
+                    />
+                  </div>
                 )}
 
                 {/* ── TAB CONEXIÓN API ── */}

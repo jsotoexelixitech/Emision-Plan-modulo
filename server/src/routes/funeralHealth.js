@@ -41,6 +41,11 @@ router.get('/health-questions', async (req, res) => {
           process.env.VITE_EMPRESA_ID ??
           1,
       ) || 1;
+    const metadata = {
+      ...(req.nexusMetadata && typeof req.nexusMetadata === 'object' ? req.nexusMetadata : {}),
+      ...(req.query.canal ? { canal: String(req.query.canal) } : {}),
+      ...(req.query.cproductor ? { cproductor: req.query.cproductor } : {}),
+    };
     const {
       questions,
       source,
@@ -48,7 +53,9 @@ router.get('/health-questions', async (req, res) => {
       skippedIds,
       empresaId: resolvedEmpresaId,
       triedEmpresas,
-    } = await resolveQuestionsForPlan(cplan, { empresaId });
+      canal,
+      resolvedCanal,
+    } = await resolveQuestionsForPlan(cplan, { empresaId, metadata });
     res.json({
       success: true,
       cplan,
@@ -59,6 +66,8 @@ router.get('/health-questions', async (req, res) => {
       skippedIds,
       empresaId: resolvedEmpresaId,
       triedEmpresas,
+      canal,
+      resolvedCanal,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
