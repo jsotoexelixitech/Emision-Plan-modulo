@@ -18,6 +18,12 @@ const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 const PANEL_CTX = readConfigPanelContext();
 const EMPRESA_ID = PANEL_CTX.empresaId;
 
+/**
+ * Parametrizador funerario: por ahora solo pestaña Preguntas salud.
+ * Poner en false para volver a mostrar Ajustes / Conexión / Mapeador.
+ */
+const FUNERARIO_SOLO_PREGUNTAS = true;
+
 type Tab = 'general' | 'preguntas' | 'conexion' | 'mapeador';
 
 interface ApiMapEntry {
@@ -51,7 +57,8 @@ export function EmisionConfigPanel() {
   const { config, loadState, saving, saveError, saveConfig, resetConfig } =
     useProductConfig(EMPRESA_ID, producto, 'emision');
 
-  const [tab, setTab] = useState<Tab>('general');
+  const soloPreguntas = producto === 'funerario' && FUNERARIO_SOLO_PREGUNTAS;
+  const [tab, setTab] = useState<Tab>(soloPreguntas ? 'preguntas' : 'general');
   const [saved, setSaved] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
@@ -223,19 +230,38 @@ export function EmisionConfigPanel() {
         byCanalPayload.default = cleanedQuestions;
       }
     }
-    const ok = await saveConfig({
-      apiMap, permitirEstimado, inspeccionObligatoria, diasCarencia, edadMaxima,
-      ...(cleanedQuestions && byCanalPayload
+    // Modo solo-preguntas: no reenviar ajustes/API/mapeador (evita pisar config ajena).
+    const ok = await saveConfig(
+      soloPreguntas && cleanedQuestions && byCanalPayload
         ? {
             healthQuestionsByCanal: byCanalPayload,
-            // Solo tocar legacy healthQuestions si editamos el canal default
             ...(Object.keys(byCanalPayload).includes('default')
               ? { healthQuestions: byCanalPayload.default }
               : {}),
           }
-        : {}),
-      apiUrl, apiFormat, apiMethod, apiAuth, apiToken, apiKeyHeader, apiKeyValue,
-    });
+        : {
+            apiMap,
+            permitirEstimado,
+            inspeccionObligatoria,
+            diasCarencia,
+            edadMaxima,
+            ...(cleanedQuestions && byCanalPayload
+              ? {
+                  healthQuestionsByCanal: byCanalPayload,
+                  ...(Object.keys(byCanalPayload).includes('default')
+                    ? { healthQuestions: byCanalPayload.default }
+                    : {}),
+                }
+              : {}),
+            apiUrl,
+            apiFormat,
+            apiMethod,
+            apiAuth,
+            apiToken,
+            apiKeyHeader,
+            apiKeyValue,
+          },
+    );
     if (ok) {
       healthQuestionsDirty.current = false;
       setSaved(true);
@@ -262,7 +288,9 @@ export function EmisionConfigPanel() {
                 Creación de Póliza
               </h1>
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
-                Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.
+                {soloPreguntas
+                  ? 'Define las preguntas de salud del flujo funerario por empresa y canal.'
+                  : 'Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.'}
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
                 <span className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 border border-violet-100">
@@ -296,25 +324,36 @@ export function EmisionConfigPanel() {
 
         <section className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-xl rounded-3xl overflow-hidden animate-fade-in">
           <div className="p-5 sm:p-8">
-            {/* Tabs */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50">
-              {([
-                ['general', 'Ajustes Generales', Layers],
-                ...(producto === 'funerario'
-                  ? [['preguntas', 'Preguntas salud', ClipboardList] as const]
-                  : []),
-                ['conexion', 'Conexión API', Globe],
-                ['mapeador', 'Mapeador de Campos', ArrowLeftRight],
-              ] as const).map(([t, label, Icon]) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t as Tab)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === t ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}
-                >
-                  <Icon size={15} />{label}
-                </button>
-              ))}
-            </div>
+            {/* Tabs (funerario: solo Preguntas salud por ahora) */}
+            {(() => {
+              const tabs = (
+                soloPreguntas
+                  ? ([['preguntas', 'Preguntas salud', ClipboardList]] as const)
+                  : ([
+                      ['general', 'Ajustes Generales', Layers],
+                      ...(producto === 'funerario'
+                        ? [['preguntas', 'Preguntas salud', ClipboardList] as const]
+                        : []),
+                      ['conexion', 'Conexión API', Globe],
+                      ['mapeador', 'Mapeador de Campos', ArrowLeftRight],
+                    ] as const)
+              );
+              if (tabs.length <= 1) return null;
+              return (
+                <div className="flex flex-col sm:flex-row gap-2 mb-8 bg-slate-100/50 p-1.5 rounded-xl border border-slate-200/50">
+                  {tabs.map(([t, label, Icon]) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setTab(t as Tab)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition-all ${tab === t ? 'bg-white shadow-sm text-indigo-700' : 'text-slate-500 hover:text-slate-700 hover:bg-white/50'}`}
+                    >
+                      <Icon size={15} />{label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
 
             {loadState === 'loading' && (
               <div className="flex items-center justify-center gap-3 py-20 text-slate-500">
