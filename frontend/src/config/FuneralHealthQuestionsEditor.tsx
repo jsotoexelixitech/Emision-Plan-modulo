@@ -179,6 +179,14 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
 
   const addFollowUp = (parentIdx: number) => {
     const parent = questions[parentIdx];
+    // Un solo detalle automático por padre (evitar duplicados al re-clic)
+    const existingIdx = questions.findIndex(
+      (q, i) => i !== parentIdx && q.showIf?.field === parent.id && q.type === 'text',
+    );
+    if (existingIdx >= 0) {
+      setOpenId(questions[existingIdx].id);
+      return;
+    }
     const id = `detalle_${parent.id}_${Date.now().toString(36).slice(-4)}`;
     const child: HealthQuestionDraft = {
       id,
@@ -490,6 +498,36 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
                       </select>
                     </div>
                   </div>
+                  {(() => {
+                    const parentId = q.showIf?.field;
+                    if (!parentId) return null;
+                    const parent = questions.find((p) => p.id === parentId);
+                    if (!parent) {
+                      return (
+                        <p className="text-[11px] text-rose-600 font-semibold">
+                          La pregunta padre «{parentId}» no existe en esta lista. En el flujo no se verá.
+                        </p>
+                      );
+                    }
+                    const overlap = (q.plans || []).filter((p) => parent.plans.includes(p));
+                    if (overlap.length === 0) {
+                      return (
+                        <p className="text-[11px] text-amber-700 font-semibold">
+                          Sin planes en común con «{parentId}» (planes {plansSummary(parent.plans)}).
+                          En esos planes esta pregunta no podrá mostrarse.
+                        </p>
+                      );
+                    }
+                    if (parent.plans.length < ALL_PLANS.length) {
+                      return (
+                        <p className="text-[11px] text-slate-500">
+                          Solo visible en planes donde también esté «{parentId}»
+                          ({plansSummary(parent.plans)}), y si responde {String(q.showIf?.equals)}.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               )}
             </li>

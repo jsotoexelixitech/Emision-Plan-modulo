@@ -175,6 +175,28 @@ function filterQuestionsForPlan(catalog, cplan) {
 }
 
 /**
+ * Si el padre de showIf no está en el plan (p. ej. deporteRiesgo solo cplan 9),
+ * quitar showIf para que la pregunta sea visible en este plan.
+ * Evita “preguntas fantasma” que nunca aparecen en el modal.
+ * @param {HealthQuestion[]} questions
+ * @returns {HealthQuestion[]}
+ */
+function stripOrphanShowIf(questions) {
+  const ids = new Set(
+    (Array.isArray(questions) ? questions : [])
+      .map((q) => (q && q.id != null ? String(q.id) : ''))
+      .filter(Boolean),
+  );
+  return (Array.isArray(questions) ? questions : []).map((q) => {
+    if (!q || !q.showIf || !q.showIf.field) return q;
+    if (ids.has(String(q.showIf.field))) return q;
+    const next = { ...q };
+    delete next.showIf;
+    return next;
+  });
+}
+
+/**
  * @param {string} cplan Código del plan La Mundial (ej. "4", "6", "7", "8", "9")
  * @returns {HealthQuestion[]}
  */
@@ -250,18 +272,25 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[funeralHealthQuestions] Nexus fallback: ${msg}`);
   }
-  const questions = filterQuestionsForPlan(catalog, cplan);
+  const filtered = filterQuestionsForPlan(catalog, cplan);
+  const questions = stripOrphanShowIf(filtered);
   const catalogIds = catalog.map((q) => q?.id).filter(Boolean);
   const matchedIds = new Set(questions.map((q) => q?.id));
   const skippedIds = catalogIds.filter((id) => !matchedIds.has(id));
+  const strippedShowIf = filtered
+    .filter((q) => q?.showIf?.field && !matchedIds.has(String(q.showIf.field)))
+    .map((q) => q.id)
+    .filter(Boolean);
   console.log(
-    `[funeralHealthQuestions] cplan=${cplan} canal=${canalKey}→${resolvedCanal} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}`,
+    `[funeralHealthQuestions] cplan=${cplan} canal=${canalKey}→${resolvedCanal} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}` +
+      (strippedShowIf.length ? ` strippedShowIf=${strippedShowIf.join(',')}` : ''),
   );
   return {
     questions,
     source,
     catalogCount: catalog.length,
     skippedIds,
+    strippedShowIf,
     empresaId,
     triedEmpresas: candidates,
     canal: canalKey,
@@ -288,5 +317,6 @@ module.exports = {
   PLAN_LABELS,
   getQuestionsForPlan,
   filterQuestionsForPlan,
+  stripOrphanShowIf,
   resolveQuestionsForPlan,
 };
