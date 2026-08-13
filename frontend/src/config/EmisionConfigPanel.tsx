@@ -479,56 +479,62 @@ export function EmisionConfigPanel() {
                 {/* ── TAB PREGUNTAS (funerario) ── */}
                 {tab === 'preguntas' && producto === 'funerario' && (
                   <div className="space-y-4">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4 space-y-3">
-                      <div>
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-[11px] font-black uppercase tracking-wider text-slate-500">
-                          Canal (desde la URL / token)
+                          Canal
                         </p>
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-[11px] text-slate-400">
                           {canalLocked
-                            ? 'Enlace de integrador: guardas solo este canal. En el flujo, el SSO manda el mismo metadata.canal.'
-                            : 'Editas la empresa del token. Canal default = lo que usa el flujo si el SSO no manda metadata.canal. Puedes crear más canales si un integrador usa uno fijo.'}
+                            ? 'Fijo por el enlace del integrador'
+                            : 'default = si el SSO no envía canal'}
                         </p>
                       </div>
                       {canalLocked ? (
-                        <div className="flex flex-wrap gap-2 text-xs font-bold">
-                          <span className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 text-white text-xs font-semibold">
                             {activeCanal}
+                            <span className="text-slate-300 font-normal">
+                              {(healthByCanal[activeCanal] || healthQuestions).length} preg.
+                            </span>
                           </span>
                           {PANEL_CTX.cproductor && (
-                            <span className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600">
+                            <span className="text-[11px] text-slate-500">
                               cproductor {PANEL_CTX.cproductor}
                             </span>
                           )}
                         </div>
                       ) : (
-                        <div className="flex flex-wrap items-end gap-2">
-                          <div className="min-w-[160px] flex-1">
-                            <label className={lbl}>Canal activo</label>
-                            <select
-                              className={inp}
-                              value={activeCanal}
-                              onChange={(e) => switchCanal(e.target.value)}
-                            >
-                              {Object.keys(healthByCanal)
-                                .sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
-                                .map((k) => (
-                                  <option key={k} value={k}>
-                                    {k}
-                                    {k === 'default' ? ' (fallback)' : ''}
-                                    {' · '}
-                                    {(healthByCanal[k] || []).length} preg.
-                                  </option>
-                                ))}
-                            </select>
-                          </div>
-                          <div className="min-w-[140px] flex-1">
-                            <label className={lbl}>Nuevo canal</label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {Object.keys(healthByCanal)
+                            .sort((a, b) => (a === 'default' ? -1 : b === 'default' ? 1 : a.localeCompare(b)))
+                            .map((k) => {
+                              const active = activeCanal === k;
+                              const count = (healthByCanal[k] || []).length;
+                              return (
+                                <button
+                                  key={k}
+                                  type="button"
+                                  onClick={() => switchCanal(k)}
+                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
+                                    active
+                                      ? 'bg-slate-900 text-white'
+                                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                  }`}
+                                >
+                                  {k === 'default' ? 'default' : k}
+                                  <span className={active ? 'text-slate-300 font-normal' : 'text-slate-400 font-normal'}>
+                                    {count}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          <div className="inline-flex items-center gap-1.5 pl-1">
                             <input
-                              className={inp}
+                              className="w-[7.5rem] text-xs border-0 border-b border-slate-200 rounded-none px-1 py-1 outline-none focus:border-slate-400 bg-transparent placeholder:text-slate-300"
                               value={newCanalName}
                               onChange={(e) => setNewCanalName(e.target.value)}
-                              placeholder="ej: web-lm, app"
+                              placeholder="Nuevo canal…"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -536,15 +542,15 @@ export function EmisionConfigPanel() {
                                 }
                               }}
                             />
+                            <button
+                              type="button"
+                              onClick={addCanal}
+                              disabled={!newCanalName.trim()}
+                              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 disabled:opacity-30 disabled:hover:text-indigo-600"
+                            >
+                              +
+                            </button>
                           </div>
-                          <button
-                            type="button"
-                            onClick={addCanal}
-                            disabled={!newCanalName.trim()}
-                            className="px-3 py-2 rounded-xl text-xs font-bold bg-indigo-600 text-white disabled:opacity-40 hover:bg-indigo-700"
-                          >
-                            Agregar canal
-                          </button>
                         </div>
                       )}
                     </div>
