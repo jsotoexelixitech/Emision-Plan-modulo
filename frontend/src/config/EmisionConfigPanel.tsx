@@ -57,8 +57,18 @@ const INTERNAL_FIELDS = [
 
 export function EmisionConfigPanel() {
   const producto = getProductId();
-  const { config, loadState, saving, saveError, saveConfig, resetConfig } =
+  const { config, empresaNombre: empresaNombreApi, loadState, saving, saveError, saveConfig, resetConfig } =
     useProductConfig(EMPRESA_ID, producto, 'emision');
+  const empresaLabel =
+    (empresaNombreApi && !/^empresa\s*\d+$/i.test(empresaNombreApi)
+      ? empresaNombreApi
+      : '') ||
+    (PANEL_CTX.empresaNombre && !/^empresa\s*\d+$/i.test(PANEL_CTX.empresaNombre)
+      ? PANEL_CTX.empresaNombre
+      : '') ||
+    empresaNombreApi ||
+    PANEL_CTX.empresaNombre ||
+    `Empresa ${EMPRESA_ID}`;
 
   const soloPreguntas = producto === 'funerario' && FUNERARIO_SOLO_PREGUNTAS;
   const [tab, setTab] = useState<Tab>(soloPreguntas ? 'preguntas' : 'general');
@@ -354,7 +364,7 @@ export function EmisionConfigPanel() {
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
                 <span className="px-2.5 py-1 rounded-lg bg-violet-50 text-violet-700 border border-violet-100">
-                  {PANEL_CTX.empresaNombre}
+                  {empresaLabel}
                   <span className="ml-1 font-normal text-violet-400">#{EMPRESA_ID}</span>
                 </span>
                 <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-100">

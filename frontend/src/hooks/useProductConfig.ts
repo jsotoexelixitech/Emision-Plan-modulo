@@ -38,6 +38,7 @@ function authHeaders(extra?: Record<string, string>): Record<string, string> {
 
 export function useProductConfig(empresaId: number, producto: string, modulo: string) {
   const [config, setConfig] = useState<Record<string, any> | null>(null);
+  const [empresaNombre, setEmpresaNombre] = useState<string>('');
   const [loadState, setLoadState] = useState<LoadState>('loading');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -49,6 +50,8 @@ export function useProductConfig(empresaId: number, producto: string, modulo: st
       const data = await res.json();
       if (data.success) {
         setConfig(data.data);
+        const nombre = typeof data.empresaNombre === 'string' ? data.empresaNombre.trim() : '';
+        setEmpresaNombre(nombre);
         setLoadState('ready');
       } else {
         setLoadState('error');
@@ -129,5 +132,14 @@ export function useProductConfig(empresaId: number, producto: string, modulo: st
     }
   }, [empresaId, producto, modulo]);
 
-  return { config, loadState, saving, saveError, saveConfig, resetConfig, refetch: fetchConfig };
+  return {
+    config,
+    empresaNombre,
+    loadState,
+    saving,
+    saveError,
+    saveConfig,
+    resetConfig,
+    refetch: fetchConfig,
+  };
 }
