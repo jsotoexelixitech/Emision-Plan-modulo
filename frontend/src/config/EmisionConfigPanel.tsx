@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProductConfig } from '../hooks/useProductConfig';
-import { getProductId } from '../lib/product';
+import { getProductConfig, getProductId } from '../lib/product';
+import { moduleApiBase } from '../lib/app-base';
 import {
   Settings2, RotateCcw, Save, CheckCircle2, AlertTriangle,
   Loader2, Plus, Trash2, ArrowLeftRight, Layers, Sparkles, Globe, Lock, Eye, EyeOff,
@@ -10,7 +11,9 @@ import { AuroraBackground } from '../components/AuroraBackground';
 import {
   FuneralHealthQuestionsEditor,
   DEFAULT_HEALTH_QUESTIONS_SEED,
+  FALLBACK_FUNERAL_PLAN_OPTIONS,
   type HealthQuestionDraft,
+  type PlanOption,
 } from './FuneralHealthQuestionsEditor';
 import { readConfigPanelContext } from './configPanelContext';
 
@@ -78,6 +81,63 @@ export function EmisionConfigPanel() {
   const canalLocked = Boolean(PANEL_CTX.canal && PANEL_CTX.canal !== 'default');
   /** Evita que un refetch de config borre ediciones locales no guardadas */
   const healthQuestionsDirty = useRef(false);
+
+  /** Planes reales ramo funerario (personas) para el editor de preguntas. */
+  const [funeralPlanOptions, setFuneralPlanOptions] = useState<PlanOption[]>(
+    FALLBACK_FUNERAL_PLAN_OPTIONS,
+  );
+  const [funeralPlansLoading, setFuneralPlansLoading] = useState(false);
+  const [funeralPlansError, setFuneralPlansError] = useState(false);
+
+  useEffect(() => {
+    if (producto !== 'funerario') return;
+    let cancelled = false;
+    const cramo = getProductConfig().cramo || 9;
+    setFuneralPlansLoading(true);
+    setFuneralPlansError(false);
+
+    (async () => {
+      try {
+        const panelToken =
+          new URL(window.location.href).searchParams.get('token')?.trim() || '';
+        const headers: Record<string, string> = {};
+        if (panelToken) headers.Authorization = `Bearer ${panelToken}`;
+        const res = await fetch(
+          `${moduleApiBase()}/personas/planes?cramo=${encodeURIComponent(String(cramo))}`,
+          { headers },
+        );
+        const data = await res.json().catch(() => ({}));
+        if (cancelled) return;
+        const raw = Array.isArray(data?.planes) ? data.planes : [];
+        const mapped: PlanOption[] = raw
+          .map((p: { cplan?: string | number; xplan?: string }) => {
+            const code = String(p?.cplan ?? '').trim();
+            if (!code) return null;
+            const label = String(p?.xplan ?? '').trim() || `Plan ${code}`;
+            return { code, label };
+          })
+          .filter(Boolean) as PlanOption[];
+        if (mapped.length > 0) {
+          setFuneralPlanOptions(mapped);
+          setFuneralPlansError(false);
+        } else {
+          setFuneralPlanOptions(FALLBACK_FUNERAL_PLAN_OPTIONS);
+          setFuneralPlansError(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setFuneralPlanOptions(FALLBACK_FUNERAL_PLAN_OPTIONS);
+          setFuneralPlansError(true);
+        }
+      } finally {
+        if (!cancelled) setFuneralPlansLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [producto]);
 
   // ── Conexión API ──────────────────────────────────────────
   const [apiUrl, setApiUrl] = useState('');
@@ -491,6 +551,9 @@ export function EmisionConfigPanel() {
                     <FuneralHealthQuestionsEditor
                       questions={healthQuestions}
                       onChange={onHealthQuestionsChange}
+                      planOptions={funeralPlanOptions}
+                      plansLoading={funeralPlansLoading}
+                      plansError={funeralPlansError}
                     />
                   </div>
                 )}

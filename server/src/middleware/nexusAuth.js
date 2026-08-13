@@ -127,6 +127,32 @@ async function nexusAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, SECRET, { ignoreExpiration: true });
+
+    // Token del parametrizador (Nexus Admin): solo lecturas de catálogo (planes).
+    // No es tenant_access; no pasa por heartbeat SSO.
+    if (payload.scope === 'config-panel') {
+      const path = String(req.path || '');
+      const url = String(req.originalUrl || '');
+      const isPlanesCatalog =
+        req.method === 'GET' &&
+        (path === '/planes' ||
+          path.endsWith('/planes') ||
+          /\/personas\/planes(\?|$)/.test(url));
+      if (!isPlanesCatalog) {
+        return res.status(403).json({
+          success: false,
+          code: 'NEXUS_CONFIG_PANEL_READ_ONLY',
+          message: 'El token del parametrizador solo permite consultar catálogo de planes.',
+        });
+      }
+      req.empresa = { id: Number(payload.empresaId) || 1 };
+      req.nexusMetadata = payload.metadata || {};
+      if (payload.canal) {
+        req.nexusMetadata = { ...req.nexusMetadata, canal: payload.canal };
+      }
+      return next();
+    }
+
     if (payload.type !== 'tenant_access') {
       return res.status(401).json({
         success: false,

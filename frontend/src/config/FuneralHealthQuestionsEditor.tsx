@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Plus, Trash2, CornerDownRight, ChevronDown, ChevronRight, GitBranch,
 } from 'lucide-react';
@@ -16,18 +16,21 @@ export interface HealthQuestionDraft {
   options?: { value: string; label: string }[];
 }
 
-const PLAN_OPTIONS: { code: string; label: string }[] = [
-  { code: '2', label: '1.000$' },
-  { code: '3', label: '1.500$' },
-  { code: '4', label: '2.000$' },
-  { code: '5', label: '2.500$' },
-  { code: '6', label: '3.000$' },
-  { code: '7', label: '4.000$' },
-  { code: '8', label: '5.000$' },
-  { code: '9', label: '7.500$' },
+export type PlanOption = { code: string; label: string };
+
+/** Fallback si aún no llegan los planes del API (mismas etiquetas del flujo). */
+export const FALLBACK_FUNERAL_PLAN_OPTIONS: PlanOption[] = [
+  { code: '2', label: '1.000$ Funerario Individual' },
+  { code: '3', label: '1.500$ Funerario Individual' },
+  { code: '4', label: '2.000$ Funerario Individual' },
+  { code: '5', label: '2.500$ Funerario Individual' },
+  { code: '6', label: '3.000$ Funerario Individual' },
+  { code: '7', label: '4.000$ Funerario Individual' },
+  { code: '8', label: '5.000$ Funerario Individual' },
+  { code: '9', label: '7.500$ Individual' },
 ];
 
-const ALL_PLANS = PLAN_OPTIONS.map((p) => p.code);
+const FALLBACK_CODES = FALLBACK_FUNERAL_PLAN_OPTIONS.map((p) => p.code);
 
 const TYPE_LABEL: Record<HealthQuestionType, string> = {
   boolean: 'Sí/No',
@@ -43,7 +46,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     label: '¿Fuma o ha fumado en los últimos 12 meses?',
     description: 'Incluye cigarrillos, tabaco, puros o vapeo.',
     required: true,
-    plans: [...ALL_PLANS],
+    plans: [...FALLBACK_CODES],
   },
   {
     id: 'diagnosticoEnfermedad',
@@ -51,7 +54,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     label: '¿Ha sido diagnosticado con alguna enfermedad grave?',
     description: 'Cáncer, diabetes, hipertensión, cardiopatías, VIH, etc.',
     required: true,
-    plans: [...ALL_PLANS],
+    plans: [...FALLBACK_CODES],
   },
   {
     id: 'descripcionEnfermedad',
@@ -59,7 +62,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     label: 'Describa la enfermedad diagnosticada',
     description: 'Indique enfermedad, tratamiento y fecha aproximada del diagnóstico.',
     required: true,
-    plans: [...ALL_PLANS],
+    plans: [...FALLBACK_CODES],
     showIf: { field: 'diagnosticoEnfermedad', equals: true },
   },
   {
@@ -68,7 +71,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     label: 'Acepto los términos y condiciones',
     description: 'Declaro que la información suministrada es verídica y acepto las condiciones de la póliza.',
     required: true,
-    plans: [...ALL_PLANS],
+    plans: [...FALLBACK_CODES],
   },
   {
     id: 'consumeAlcohol',
@@ -130,22 +133,49 @@ function slugId(label: string): string {
   return base || `pregunta_${Date.now().toString(36)}`;
 }
 
-function plansSummary(plans: string[]): string {
+function plansSummary(
+  plans: string[],
+  planOptions: PlanOption[],
+): string {
+  const allCodes = planOptions.map((p) => p.code);
   if (!plans?.length) return 'ningún plan';
-  if (plans.length === ALL_PLANS.length) return 'todos';
-  return plans.slice().sort().join(', ');
+  if (allCodes.length > 0 && plans.length >= allCodes.length && allCodes.every((c) => plans.includes(c))) {
+    return 'todos';
+  }
+  const byCode = new Map(planOptions.map((p) => [p.code, p.label]));
+  return plans
+    .slice()
+    .sort()
+    .map((c) => byCode.get(c) || c)
+    .join(' · ');
 }
 
 type Props = {
   questions: HealthQuestionDraft[];
   onChange: (next: HealthQuestionDraft[]) => void;
+  /** Planes reales del módulo (cplan + nombre). */
+  planOptions?: PlanOption[];
+  plansLoading?: boolean;
+  plansError?: boolean;
 };
 
 const inp = 'w-full text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:border-indigo-400 bg-white';
 const lbl = 'text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1';
 
-export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
+export function FuneralHealthQuestionsEditor({
+  questions,
+  onChange,
+  planOptions: planOptionsProp,
+  plansLoading = false,
+  plansError = false,
+}: Props) {
   const [openId, setOpenId] = useState<string | null>(null);
+
+  const planOptions = useMemo(
+    () => (planOptionsProp?.length ? planOptionsProp : FALLBACK_FUNERAL_PLAN_OPTIONS),
+    [planOptionsProp],
+  );
+  const allPlanCodes = useMemo(() => planOptions.map((p) => p.code), [planOptions]);
 
   const update = (idx: number, patch: Partial<HealthQuestionDraft>) => {
     onChange(questions.map((q, i) => (i === idx ? { ...q, ...patch } : q)));
@@ -159,7 +189,7 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
   };
 
   const setAllPlans = (idx: number, all: boolean) => {
-    update(idx, { plans: all ? [...ALL_PLANS] : [] });
+    update(idx, { plans: all ? [...allPlanCodes] : [] });
   };
 
   const addQuestion = () => {
@@ -171,7 +201,7 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
         type: 'boolean',
         label: 'Nueva pregunta',
         required: true,
-        plans: [...ALL_PLANS],
+        plans: [...allPlanCodes],
       },
     ]);
     setOpenId(id);
@@ -179,7 +209,6 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
 
   const addFollowUp = (parentIdx: number) => {
     const parent = questions[parentIdx];
-    // Un solo detalle automático por padre (evitar duplicados al re-clic)
     const existingIdx = questions.findIndex(
       (q, i) => i !== parentIdx && q.showIf?.field === parent.id && q.type === 'text',
     );
@@ -229,7 +258,7 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
             Preguntas · {questions.length}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-            Clic en una fila para editar. Condicional = se despliega según otra respuesta.
+            Clic en una fila para editar. «Se despliega si» = otra pregunta del cuestionario (no es el plan).
           </p>
         </div>
         <button
@@ -253,7 +282,6 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
           const isChild = Boolean(q.showIf?.field);
           return (
             <li key={`${q.id}-${idx}`} className={isChild ? 'bg-violet-50/30' : ''}>
-              {/* Fila compacta */}
               <div className="flex items-stretch gap-1">
                 <button
                   type="button"
@@ -287,7 +315,7 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
                     <span className="block text-[10px] text-slate-400 font-mono truncate">
                       {q.id}
                       {' · '}
-                      planes {plansSummary(q.plans)}
+                      planes {plansSummary(q.plans, planOptions)}
                       {q.showIf?.field
                         ? ` · si ${q.showIf.field}=${String(q.showIf.equals)}`
                         : ''}
@@ -305,7 +333,6 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
                 </button>
               </div>
 
-              {/* Editor expandido */}
               {open && (
                 <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-slate-100 bg-slate-50/50">
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5">
@@ -410,7 +437,7 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className={lbl + ' mb-0'}>Planes (cplan)</label>
+                      <label className={lbl + ' mb-0'}>Planes del módulo (dónde aplica)</label>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -428,106 +455,127 @@ export function FuneralHealthQuestionsEditor({ questions, onChange }: Props) {
                         </button>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {PLAN_OPTIONS.map((p) => (
+                    {plansLoading && (
+                      <p className="text-[11px] text-slate-500 mb-1.5">Cargando planes del módulo…</p>
+                    )}
+                    {plansError && !plansLoading && (
+                      <p className="text-[11px] text-amber-700 mb-1.5 font-semibold">
+                        No se pudieron cargar los planes del API; se muestran los nombres de respaldo.
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-1">
+                      {planOptions.map((p) => (
                         <label
                           key={p.code}
-                          className={`inline-flex items-center px-2 py-0.5 rounded-md border text-[10px] font-bold cursor-pointer ${
+                          className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold cursor-pointer ${
                             q.plans.includes(p.code)
-                              ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                              : 'border-slate-200 text-slate-400'
+                              ? 'border-indigo-400 bg-indigo-50 text-indigo-800'
+                              : 'border-slate-200 text-slate-500'
                           }`}
                         >
                           <input
                             type="checkbox"
-                            className="sr-only"
+                            className="rounded text-indigo-600"
                             checked={q.plans.includes(p.code)}
                             onChange={() => togglePlan(idx, p.code)}
                           />
-                          {p.code}
+                          <span className="min-w-0 flex-1 leading-snug">{p.label}</span>
+                          <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                            cplan {p.code}
+                          </span>
                         </label>
                       ))}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-end gap-2 pt-0.5">
-                    <div className="flex-1 min-w-[140px]">
-                      <label className={lbl}>Se despliega si</label>
-                      <select
-                        className={inp}
-                        value={q.showIf?.field ?? ''}
-                        onChange={(e) => {
-                          const field = e.target.value;
-                          if (!field) {
-                            update(idx, { showIf: undefined });
-                            return;
-                          }
-                          const parent = questions.find((p) => p.id === field);
-                          const equals =
-                            parent?.type === 'select' && parent.options?.[0]
-                              ? parent.options[0].value
-                              : true;
-                          update(idx, { showIf: { field, equals } });
-                        }}
-                      >
-                        <option value="">Siempre visible</option>
-                        {parentOptionsFor(idx).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.id}
-                          </option>
-                        ))}
-                      </select>
+                  <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-2.5 space-y-2">
+                    <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">
+                      Condición (otra pregunta del cuestionario)
+                    </p>
+                    <p className="text-[11px] text-slate-500 -mt-1">
+                      No elige el plan. Define si esta pregunta aparece según la respuesta de otra.
+                    </p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[160px]">
+                        <label className={lbl}>Se despliega si</label>
+                        <select
+                          className={inp}
+                          value={q.showIf?.field ?? ''}
+                          onChange={(e) => {
+                            const field = e.target.value;
+                            if (!field) {
+                              update(idx, { showIf: undefined });
+                              return;
+                            }
+                            const parent = questions.find((p) => p.id === field);
+                            const equals =
+                              parent?.type === 'select' && parent.options?.[0]
+                                ? parent.options[0].value
+                                : true;
+                            update(idx, { showIf: { field, equals } });
+                          }}
+                        >
+                          <option value="">Siempre visible</option>
+                          {parentOptionsFor(idx).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {(p.label || p.id).slice(0, 60)}
+                              {p.label ? ` · ${p.id}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-28">
+                        <label className={lbl}>Respuesta</label>
+                        <select
+                          className={inp}
+                          disabled={!q.showIf?.field}
+                          value={q.showIf ? String(q.showIf.equals) : 'true'}
+                          onChange={(e) => {
+                            if (!q.showIf?.field) return;
+                            const raw = e.target.value;
+                            const equals =
+                              raw === 'true' ? true : raw === 'false' ? false : raw;
+                            update(idx, { showIf: { field: q.showIf.field, equals } });
+                          }}
+                        >
+                          {equalsChoices(q.showIf?.field).map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="w-28">
-                      <label className={lbl}>Respuesta</label>
-                      <select
-                        className={inp}
-                        disabled={!q.showIf?.field}
-                        value={q.showIf ? String(q.showIf.equals) : 'true'}
-                        onChange={(e) => {
-                          if (!q.showIf?.field) return;
-                          const raw = e.target.value;
-                          const equals =
-                            raw === 'true' ? true : raw === 'false' ? false : raw;
-                          update(idx, { showIf: { field: q.showIf.field, equals } });
-                        }}
-                      >
-                        {equalsChoices(q.showIf?.field).map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {(() => {
+                      const parentId = q.showIf?.field;
+                      if (!parentId) return null;
+                      const parent = questions.find((p) => p.id === parentId);
+                      if (!parent) {
+                        return (
+                          <p className="text-[11px] text-rose-600 font-semibold">
+                            La pregunta padre «{parentId}» no existe en esta lista. En el flujo no se verá.
+                          </p>
+                        );
+                      }
+                      const overlap = (q.plans || []).filter((p) => parent.plans.includes(p));
+                      if (overlap.length === 0) {
+                        return (
+                          <p className="text-[11px] text-amber-700 font-semibold">
+                            Sin planes en común con «{parent.label || parentId}»
+                            ({plansSummary(parent.plans, planOptions)}).
+                            En esos planes esta pregunta no podrá mostrarse.
+                          </p>
+                        );
+                      }
+                      if (parent.plans.length < allPlanCodes.length) {
+                        return (
+                          <p className="text-[11px] text-slate-500">
+                            Solo visible en planes donde también esté «{parent.label || parentId}»
+                            ({plansSummary(parent.plans, planOptions)}), y si responde {String(q.showIf?.equals)}.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
-                  {(() => {
-                    const parentId = q.showIf?.field;
-                    if (!parentId) return null;
-                    const parent = questions.find((p) => p.id === parentId);
-                    if (!parent) {
-                      return (
-                        <p className="text-[11px] text-rose-600 font-semibold">
-                          La pregunta padre «{parentId}» no existe en esta lista. En el flujo no se verá.
-                        </p>
-                      );
-                    }
-                    const overlap = (q.plans || []).filter((p) => parent.plans.includes(p));
-                    if (overlap.length === 0) {
-                      return (
-                        <p className="text-[11px] text-amber-700 font-semibold">
-                          Sin planes en común con «{parentId}» (planes {plansSummary(parent.plans)}).
-                          En esos planes esta pregunta no podrá mostrarse.
-                        </p>
-                      );
-                    }
-                    if (parent.plans.length < ALL_PLANS.length) {
-                      return (
-                        <p className="text-[11px] text-slate-500">
-                          Solo visible en planes donde también esté «{parentId}»
-                          ({plansSummary(parent.plans)}), y si responde {String(q.showIf?.equals)}.
-                        </p>
-                      );
-                    }
-                    return null;
-                  })()}
                 </div>
               )}
             </li>
