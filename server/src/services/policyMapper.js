@@ -18,6 +18,7 @@ const {
   resolveStateCode,
   resolveCityCode,
 } = require('./catalogs');
+const { resolveCusuarioCoberturas } = require('./planesClient');
 
 // ---------- helpers ----------
 
@@ -567,6 +568,7 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       sumaAsegAd: rcv.sumaAsegAd != null ? Number(rcv.sumaAsegAd) : 0,
       recargo: 0,
       recargoRcv: 0,
+      cusuario: resolveCusuarioCoberturas(state.metadataCanal || {}),
     },
     metadata,
   };
