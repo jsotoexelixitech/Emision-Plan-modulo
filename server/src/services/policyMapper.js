@@ -164,6 +164,8 @@ function resolveVigenciaAnual(femisionYmd) {
 }
 
 function resolveMsumaaseg(state, quoteMeta = {}) {
+  const fromRcv = state.rcv?.sumaAsegurada;
+  if (fromRcv != null && Number(fromRcv) > 0) return Number(fromRcv);
   const fromMeta = quoteMeta.referenceSuma ?? quoteMeta.sumaAsegurada;
   if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
   const fromVehicle = state.vehicle?.msumaaseg ?? state.vehicle?.mvalor;
@@ -410,9 +412,14 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
       : 60,
 
     coberAdicional,
-    tasa_ca: rcv.tasaCA != null ? Number(rcv.tasaCA) : (tasasMeta.tasaCA != null ? Number(tasasMeta.tasaCA) : 0),
-    tasa_pt: rcv.tasaPT != null ? Number(rcv.tasaPT) : (tasasMeta.tasaPT != null ? Number(tasasMeta.tasaPT) : 0),
-    tasa_pp: rcv.tasaPP != null ? Number(rcv.tasaPP) : (tasasMeta.tasaPP != null ? Number(tasasMeta.tasaPP) : 0),
+    ...(() => {
+      const t = resolveTasasForCober(coberAdicional, rcv, tasasMeta);
+      return {
+        tasa_ca: t.tasaCa,
+        tasa_pt: t.tasaPt,
+        tasa_pp: t.tasaPp,
+      };
+    })(),
 
     // Datos economicos (vienen de cotizacion; se envian como Number)
     mprima: Number(cotizacion.mprima),
@@ -520,18 +527,37 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   if (p.conductor) body.conductor = p.conductor;
   if (p.beneficiario) body.beneficiario = p.beneficiario;
   if (p.coberAdicional) body.coberAdicional = String(p.coberAdicional).trim().toUpperCase();
-  if (p.tasa_ca != null) body.tasaCa = Number(p.tasa_ca);
-  if (p.tasa_pt != null) body.tasaPt = Number(p.tasa_pt);
-  if (p.tasa_pp != null) body.tasaPp = Number(p.tasa_pp);
+  const cober = String(p.coberAdicional || 'RC').trim().toUpperCase();
+  if (cober === 'CA' && p.tasa_ca != null && Number(p.tasa_ca) > 0) {
+    body.tasaCa = Number(p.tasa_ca);
+  }
+  if (cober === 'PT' && p.tasa_pt != null && Number(p.tasa_pt) > 0) {
+    body.tasaPt = Number(p.tasa_pt);
+  }
+  if (cober === 'PP' && p.tasa_pp != null && Number(p.tasa_pp) > 0) {
+    body.tasaPp = Number(p.tasa_pp);
+  }
 
   return body;
 }
 
-/**
- * Body para POST /api/v1/valrep/calculate-plan-coberturas (réplica SysIP calculatePlanSis).
- * tipo/puestos los resuelve nest-api desde VInma si se omiten.
- */
-/** Cobertura opcional activa (máx. una — paridad SysIP / Sis2000 emisión). */
+/** Tasas casco para calculate-plan / emisión — solo la tasa de la cobertura activa (paridad SysIP). */
+function resolveTasasForCober(coberAdicional, rcv = {}, tasasMeta = {}) {
+  const cober = String(coberAdicional || 'RC').trim().toUpperCase();
+  const pick = (rcvKey, metaKey) => {
+    const fromRcv = rcv[rcvKey];
+    if (fromRcv != null && Number(fromRcv) > 0) return Number(fromRcv);
+    const fromMeta = tasasMeta[metaKey];
+    if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+    return 0;
+  };
+  return {
+    tasaCa: cober === 'CA' ? pick('tasaCA', 'tasaCA') : 0,
+    tasaPt: cober === 'PT' ? pick('tasaPT', 'tasaPT') : 0,
+    tasaPp: cober === 'PP' ? pick('tasaPP', 'tasaPP') : 0,
+  };
+}
+
 function resolveSelectedCoberturas(rcv = {}, overrides = {}) {
   let selected = [];
   if (Array.isArray(rcv.coberAdicionales) && rcv.coberAdicionales.length > 0) {
@@ -575,6 +601,7 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
     quoteMeta.referenceSuma ??
     quoteMeta.sumaAsegurada ??
     undefined;
+  const tasasForCober = resolveTasasForCober(coberAdicional, rcv, quoteMeta.tasas || {});
 
   return {
     payload: {
@@ -592,9 +619,9 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       ifrecuencia: payload.ifrecuencia || resolveRcvFrecuencia(state, overrides),
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
       coberAdicional,
-      tasaCa: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
-      tasaPt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
-      tasaPp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+      tasaCa: tasasForCober.tasaCa,
+      tasaPt: tasasForCober.tasaPt,
+      tasaPp: tasasForCober.tasaPp,
       sumaAsegBl: rcv.sumaAsegBl != null ? Number(rcv.sumaAsegBl) : 0,
       sumaAsegAd: rcv.sumaAsegAd != null ? Number(rcv.sumaAsegAd) : 0,
       recargo: 0,
@@ -612,6 +639,7 @@ module.exports = {
   toLaMundialEmissionPayload,
   resolveSelectedCoberturas,
   resolvePrimaryCoberAdicional,
+  resolveTasasForCober,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,

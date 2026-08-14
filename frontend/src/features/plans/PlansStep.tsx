@@ -180,13 +180,21 @@ export function PlansStep() {
         const metaFull = r.metadata as {
           tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number };
           coverageOptions?: { value: string; text: string }[];
+          referenceSuma?: number;
+          sumaAsegurada?: number;
         } | undefined;
+        const rcvPatch: Record<string, unknown> = {};
+        const refSuma = metaFull?.referenceSuma ?? metaFull?.sumaAsegurada;
+        if (refSuma != null && Number(refSuma) > 0) {
+          rcvPatch.sumaAsegurada = Number(refSuma);
+        }
         if (metaFull?.tasas && (metaFull.tasas.tasaCA != null || metaFull.tasas.tasaPT != null || metaFull.tasas.tasaPP != null)) {
-          useWizardStore.getState().setRcv({
-            tasaCA: metaFull.tasas.tasaCA,
-            tasaPT: metaFull.tasas.tasaPT,
-            tasaPP: metaFull.tasas.tasaPP,
-          });
+          rcvPatch.tasaCA = metaFull.tasas.tasaCA;
+          rcvPatch.tasaPT = metaFull.tasas.tasaPT;
+          rcvPatch.tasaPP = metaFull.tasas.tasaPP;
+        }
+        if (Object.keys(rcvPatch).length > 0) {
+          useWizardStore.getState().setRcv(rcvPatch);
         }
         if (Array.isArray(metaFull?.coverageOptions) && metaFull.coverageOptions.length > 0) {
           setQuoteCoverageOptions(metaFull.coverageOptions);

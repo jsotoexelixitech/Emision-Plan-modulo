@@ -128,6 +128,39 @@ function normalizeSelectedCoberturas(input) {
 }
 
 /**
+ * Tasas casco desde mount — paridad SysIP (cada fila trae tasaCA/PT/PP del plan).
+ * @param {object[]} mount
+ */
+function extractTasasFromMount(mount) {
+  if (!Array.isArray(mount) || mount.length === 0) return {};
+
+  const fromRow = (row) => ({
+    tasaCA: row?.tasaCA != null ? Number(row.tasaCA) : undefined,
+    tasaPT: row?.tasaPT != null ? Number(row.tasaPT) : undefined,
+    tasaPP: row?.tasaPP != null ? Number(row.tasaPP) : undefined,
+  });
+
+  const coberCA = mount.find((item) => String(item?.ccobertura) === '1');
+  if (coberCA?.tasaCA != null) return fromRow(coberCA);
+
+  const withTasa = mount.find(
+    (item) => item?.tasaCA != null || item?.tasaPT != null || item?.tasaPP != null,
+  );
+  if (withTasa) return fromRow(withTasa);
+
+  return {};
+}
+
+function buildTasasPayloadForCober(code, basePayload) {
+  const upper = String(code || '').toUpperCase();
+  return {
+    tasaCa: upper === 'CA' ? Number(basePayload.tasaCa ?? 0) : 0,
+    tasaPt: upper === 'PT' ? Number(basePayload.tasaPt ?? 0) : 0,
+    tasaPp: upper === 'PP' ? Number(basePayload.tasaPp ?? 0) : 0,
+  };
+}
+
+/**
  * Obtiene prima base (pa) y componentes CA/PT/PP vía calculate-plan (una llamada por tipo).
  * @param {object} basePayload
  * @param {string[]} [optionCodes]
@@ -136,17 +169,28 @@ async function fetchCoberturaComponentPremiums(basePayload, optionCodes = ['CA',
   const rcBreakdown = await calculatePlanCoberturasViaNestApi({
     ...basePayload,
     coberAdicional: 'RC',
+    tasaCa: 0,
+    tasaPt: 0,
+    tasaPp: 0,
   });
   const pa = Number(rcBreakdown.pa ?? 0);
   const premiums = {};
   const codes = optionCodes.filter((c) => c && c !== 'RC');
+  const tasas = extractTasasFromMount(rcBreakdown.mount);
+  const enrichedPayload = {
+    ...basePayload,
+    tasaCa: tasas.tasaCA ?? basePayload.tasaCa ?? 0,
+    tasaPt: tasas.tasaPT ?? basePayload.tasaPt ?? 0,
+    tasaPp: tasas.tasaPP ?? basePayload.tasaPp ?? 0,
+  };
 
   await Promise.all(
     codes.map(async (code) => {
       try {
         const b = await calculatePlanCoberturasViaNestApi({
-          ...basePayload,
+          ...enrichedPayload,
           coberAdicional: code,
+          ...buildTasasPayloadForCober(code, enrichedPayload),
         });
         const key = COBER_COMPONENT_MAP[code];
         premiums[code] = key ? Number(b[key] ?? 0) : 0;
@@ -156,23 +200,7 @@ async function fetchCoberturaComponentPremiums(basePayload, optionCodes = ['CA',
     }),
   );
 
-  return { pa, premiums, rcBreakdown };
-}
-
-/**
- * Tasas casco desde mount (ccobertura 1=CA, 2=PT, 28=PP) — paridad SysIP searchPrice.
- * @param {object[]} mount
- */
-function extractTasasFromMount(mount) {
-  if (!Array.isArray(mount)) return {};
-  const coberCA = mount.find((item) => String(item?.ccobertura) === '1');
-  const coberPT = mount.find((item) => String(item?.ccobertura) === '2');
-  const coberPP = mount.find((item) => String(item?.ccobertura) === '28');
-  return {
-    tasaCA: coberCA?.tasaCA != null ? Number(coberCA.tasaCA) : undefined,
-    tasaPT: coberPT?.tasaPT != null ? Number(coberPT.tasaPT) : undefined,
-    tasaPP: coberPP?.tasaPP != null ? Number(coberPP.tasaPP) : undefined,
-  };
+  return { pa, premiums, rcBreakdown, tasas };
 }
 
 /**
@@ -530,6 +558,7 @@ module.exports = {
   normalizeSelectedCoberturas,
   fetchCoberturaComponentPremiums,
   extractTasasFromMount,
+  buildTasasPayloadForCober,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,

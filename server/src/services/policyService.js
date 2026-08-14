@@ -21,6 +21,7 @@ const {
   computeCoverageTotalUsd,
   fetchCoberturaComponentPremiums,
   extractTasasFromMount,
+  buildTasasPayloadForCober,
   createEmissionAutoViaNestApi: emitViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
@@ -82,7 +83,7 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     tasa: cotizacion.ptasa,
   };
   console.log(
-    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} cusuario=${emissionBody.cusuario ?? '?'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'}`,
+    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} cusuario=${emissionBody.cusuario ?? '?'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'} tasaCa=${emissionBody.tasaCa ?? 0} tasaPt=${emissionBody.tasaPt ?? 0} tasaPp=${emissionBody.tasaPp ?? 0}`,
   );
 
   const emission = await emitViaNestApi(emissionBody);
@@ -290,17 +291,27 @@ async function quote(state, overrides = {}) {
             ? selectedCoberturas
             : (optionCodes.length > 0 ? optionCodes : ['CA', 'PT', 'PP']);
 
-          const { pa, premiums, rcBreakdown } = await fetchCoberturaComponentPremiums(
+          const { pa, premiums, rcBreakdown, tasas: tasasFromFetch } = await fetchCoberturaComponentPremiums(
             covPayload,
             codesForPremiums,
           );
 
-          breakdown = await calculatePlanCoberturasViaNestApi({
+          const enrichedCov = {
             ...covPayload,
+            tasaCa: tasasFromFetch.tasaCA ?? covPayload.tasaCa ?? 0,
+            tasaPt: tasasFromFetch.tasaPT ?? covPayload.tasaPt ?? 0,
+            tasaPp: tasasFromFetch.tasaPP ?? covPayload.tasaPp ?? 0,
+          };
+          breakdown = await calculatePlanCoberturasViaNestApi({
+            ...enrichedCov,
             coberAdicional: primaryCober,
+            ...buildTasasPayloadForCober(primaryCober, enrichedCov),
           });
           coberturas = breakdown.coberturas;
-          const tasas = extractTasasFromMount(breakdown.mount);
+          const tasasMount = extractTasasFromMount(breakdown.mount);
+          const tasas = (tasasMount.tasaCA || tasasMount.tasaPT || tasasMount.tasaPP)
+            ? tasasMount
+            : (tasasFromFetch || {});
           metadata.coverageTotals = {
             pa,
             ca: premiums.CA ?? 0,
