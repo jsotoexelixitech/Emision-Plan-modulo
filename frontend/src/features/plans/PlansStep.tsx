@@ -50,6 +50,10 @@ export function PlansStep() {
   const [plansError, setPlansError] = useState(false);
   const [apiFrecuencias, setApiFrecuencias] = useState<CatalogItem[]>([]);
   const [frecLoading, setFrecLoading] = useState(false);
+  /** Fallback si xcober no viene en catálogo pero calculate-plan habilita CA/PT/PP */
+  const [quoteCoverageOptions, setQuoteCoverageOptions] = useState<
+    { value: string; text: string }[]
+  >([]);
 
   const categoryLabel =
     (vehicle.xcategoria_uso?.trim() || vehicle.uso || 'RCV');
@@ -168,13 +172,19 @@ export function PlansStep() {
           quoteSig,
         );
 
-        const tasas = (r.metadata as { tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number } } | undefined)?.tasas;
-        if (tasas && (tasas.tasaCA != null || tasas.tasaPT != null || tasas.tasaPP != null)) {
+        const metaFull = r.metadata as {
+          tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number };
+          coverageOptions?: { value: string; text: string }[];
+        } | undefined;
+        if (metaFull?.tasas && (metaFull.tasas.tasaCA != null || metaFull.tasas.tasaPT != null || metaFull.tasas.tasaPP != null)) {
           useWizardStore.getState().setRcv({
-            tasaCA: tasas.tasaCA,
-            tasaPT: tasas.tasaPT,
-            tasaPP: tasas.tasaPP,
+            tasaCA: metaFull.tasas.tasaCA,
+            tasaPT: metaFull.tasas.tasaPT,
+            tasaPP: metaFull.tasas.tasaPP,
           });
+        }
+        if (Array.isArray(metaFull?.coverageOptions) && metaFull.coverageOptions.length > 0) {
+          setQuoteCoverageOptions(metaFull.coverageOptions);
         }
       })
       .catch((err) => {
@@ -192,7 +202,10 @@ export function PlansStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteSig]);
 
-  const coberturasAdicionales = selectedPlan?.coberturasAdicionales ?? [];
+  const coberturasAdicionales =
+    (selectedPlan?.coberturasAdicionales?.length
+      ? selectedPlan.coberturasAdicionales
+      : quoteCoverageOptions);
   const coberSeleccionada = rcv.coberAdicional ?? 'RC';
   const isLoadingQuote = quoteState === 'loading';
   const hasRealQuote   = quoteState === 'ready' && Boolean(quote);
@@ -259,6 +272,7 @@ export function PlansStep() {
                 const found = apiPlans.find((p) => p.cplan === e.target.value);
                 setSelectedPlan(found ?? null);
                 setRcv({ coberAdicional: 'RC' });
+                setQuoteCoverageOptions([]);
               }}
               disabled={plansLoading || apiPlans.length === 0}
               className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
@@ -334,7 +348,8 @@ export function PlansStep() {
             Incluir cobertura adicional
           </p>
           <p className="text-xs text-slate-500 mb-3">
-            Solo aplica a planes que lo permiten (como en Sys2000). Sin selección = RCV básico.
+            Pulsa una opción para añadirla a la póliza (como &quot;Incluir&quot; en Sys2000).
+            Sin selección = solo RCV. Vuelve a pulsar la misma para quitarla.
           </p>
           <div className="flex flex-wrap gap-2">
             {coberturasAdicionales.map((cober) => {

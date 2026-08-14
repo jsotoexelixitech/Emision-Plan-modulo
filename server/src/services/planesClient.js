@@ -170,41 +170,68 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
 }
 
 /**
+ * Parsea un ítem JSON de cobertura opcional (CA/PT/PP/AP).
+ * @param {unknown} raw
+ * @returns {{ value: string, text: string }|null}
+ */
+function parseJsonCoberturaItem(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object' && raw.id != null) {
+    return {
+      value: String(raw.id).trim(),
+      text: String(raw.value ?? raw.text ?? raw.id).trim(),
+    };
+  }
+  if (typeof raw === 'string') {
+    const s = raw.trim();
+    if (!s || s.toLowerCase() === 'cober') return null;
+    try {
+      const item = JSON.parse(s);
+      if (item?.id != null) {
+        return {
+          value: String(item.id).trim(),
+          text: String(item.value ?? item.text ?? item.id).trim(),
+        };
+      }
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
  * Parsea xcober de valrep/planes/v2 → chips "Incluir" (paridad SysIP receipt-vehicle-form).
+ * El SP devuelve xcobertura1..4 y/o varias columnas alias xcober/cober con JSON.
  * @param {Record<string, unknown>} p
  * @returns {{ value: string, text: string }[]|undefined}
  */
 function parsePlanCoberturasAdicionales(p) {
-  const raw = p.xcober ?? p.XCOBER;
-  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+  const sources = [];
+  const rawXcober = p.xcober ?? p.XCOBER;
+  if (Array.isArray(rawXcober)) sources.push(...rawXcober);
+  else if (rawXcober) sources.push(rawXcober);
 
-  const parsed = raw
-    .map((cober) => {
-      if (!cober) return null;
-      if (typeof cober === 'object' && cober.id != null) {
-        return {
-          value: String(cober.id).trim(),
-          text: String(cober.value ?? cober.text ?? cober.id).trim(),
-        };
-      }
-      if (typeof cober === 'string') {
-        try {
-          const item = JSON.parse(cober);
-          if (item?.id != null) {
-            return {
-              value: String(item.id).trim(),
-              text: String(item.value ?? item.text ?? item.id).trim(),
-            };
-          }
-        } catch {
-          return null;
-        }
-      }
-      return null;
-    })
-    .filter(Boolean);
+  for (let i = 1; i <= 4; i += 1) {
+    if (p[`xcobertura${i}`]) sources.push(p[`xcobertura${i}`]);
+    if (p[`XCOBERTURA${i}`]) sources.push(p[`XCOBERTURA${i}`]);
+  }
 
-  return parsed.length > 0 ? parsed : undefined;
+  const rawCober = p.cober ?? p.COBER;
+  if (Array.isArray(rawCober)) sources.push(...rawCober);
+  else if (rawCober) sources.push(rawCober);
+
+  const seen = new Set();
+  const items = [];
+  for (const raw of sources) {
+    const item = parseJsonCoberturaItem(raw);
+    if (item && !seen.has(item.value)) {
+      seen.add(item.value);
+      items.push(item);
+    }
+  }
+
+  return items.length > 0 ? items : undefined;
 }
 
 /**

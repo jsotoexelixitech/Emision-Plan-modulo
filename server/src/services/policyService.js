@@ -112,6 +112,18 @@ function getMode() {
   return (process.env.POLICY_MODE || 'live').toLowerCase();
 }
 
+/** Opciones "Incluir" desde flags calculate-plan si el catálogo no trae xcober. */
+function buildCoverageOptionsFromFlags(breakdown, planOptions) {
+  if (Array.isArray(planOptions) && planOptions.length > 0) return planOptions;
+  if (!breakdown) return undefined;
+  const opts = [];
+  if (breakdown.boolCA) opts.push({ value: 'CA', text: 'COBERTURA AMPLIA' });
+  if (breakdown.boolPT) opts.push({ value: 'PT', text: 'PERDIDA TOTAL' });
+  if (breakdown.boolPP) opts.push({ value: 'PP', text: 'PERDIDA PARCIAL' });
+  if (breakdown.boolAP) opts.push({ value: 'AP', text: 'APOV' });
+  return opts.length > 0 ? opts : undefined;
+}
+
 /** Resuelve frecuencia/ndias para emisión (bridge pagos puede omitir state.rcv). */
 async function resolveEmitOverrides(state, overrides = {}) {
   const plan =
@@ -286,8 +298,10 @@ async function quote(state, overrides = {}) {
           };
           metadata.coberAdicional = coberAdicional;
           metadata.tasas = tasas;
-          metadata.coverageOptions =
-            enrichedState.selectedPlan?.coberturasAdicionales ?? undefined;
+          metadata.coverageOptions = buildCoverageOptionsFromFlags(
+            breakdown,
+            enrichedState.selectedPlan?.coberturasAdicionales,
+          );
         }
       } catch (covErr) {
         console.warn(`[Policy][quote] coberturas no disponibles: ${covErr.message}`);
