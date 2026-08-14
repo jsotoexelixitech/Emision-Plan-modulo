@@ -286,7 +286,9 @@ async function quote(state, overrides = {}) {
           const optionCodes = (enrichedState.selectedPlan?.coberturasAdicionales ?? [])
             .map((o) => String(o.value || '').trim().toUpperCase())
             .filter(Boolean);
-          const codesForPremiums = optionCodes.length > 0 ? optionCodes : ['CA', 'PT', 'PP'];
+          const codesForPremiums = selectedCoberturas.length > 0
+            ? selectedCoberturas
+            : (optionCodes.length > 0 ? optionCodes : ['CA', 'PT', 'PP']);
 
           const { pa, premiums, rcBreakdown } = await fetchCoberturaComponentPremiums(
             covPayload,

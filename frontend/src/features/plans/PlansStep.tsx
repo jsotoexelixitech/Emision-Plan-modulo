@@ -20,14 +20,6 @@ const RCV_BENEFITS = [
   'Asistencia en el lugar del accidente',
 ];
 
-function resolvePrimaryCober(codes: string[]): string {
-  if (!codes.length) return 'RC';
-  const order = ['PT', 'CA', 'PP', 'AP'];
-  for (const code of order) {
-    if (codes.includes(code)) return code;
-  }
-  return codes[0];
-}
 function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
   return {
     cplan:     p.cplan,
@@ -140,9 +132,12 @@ export function PlansStep() {
 
   const sig = hasVehicleData ? vehicleSignature(vehicle) : '';
   const planCode = selectedPlan?.cplan ?? '';
-  const selectedCoberturas = rcv.coberAdicionales ?? [];
-  const coberSig = selectedCoberturas.length > 0
-    ? [...selectedCoberturas].sort().join('+')
+  const selectedOptionalCober =
+    (rcv.coberAdicional && rcv.coberAdicional !== 'RC'
+      ? rcv.coberAdicional
+      : (rcv.coberAdicionales ?? [])[0]) ?? '';
+  const coberSig = selectedOptionalCober
+    ? String(selectedOptionalCober).toUpperCase()
     : 'RC';
   const quoteSig = sig && planCode
     ? `${sig}|${planCode}|${coberSig}|${rcv.frecuencia ?? 'A'}`
@@ -216,9 +211,9 @@ export function PlansStep() {
     (selectedPlan?.coberturasAdicionales?.length
       ? selectedPlan.coberturasAdicionales
       : quoteCoverageOptions);
-  const selectedCoberturasSet = new Set(
-    (rcv.coberAdicionales ?? []).map((c) => c.toUpperCase()),
-  );
+  const selectedCoberturaCode = selectedOptionalCober
+    ? String(selectedOptionalCober).toUpperCase()
+    : '';
   const isLoadingQuote = quoteState === 'loading';
   const hasRealQuote   = quoteState === 'ready' && Boolean(quote);
 
@@ -360,27 +355,25 @@ export function PlansStep() {
             Incluir cobertura adicional
           </p>
           <p className="text-xs text-slate-500 mb-3">
-            Activa una o varias coberturas de casco. La prima suma RCV + cada opción marcada.
+            Elige una cobertura de casco opcional (como SysIP). La prima suma RCV + la opción elegida.
           </p>
           <div className="flex flex-wrap gap-2">
             {coberturasAdicionales.map((cober) => {
-              const selected = selectedCoberturasSet.has(cober.value.toUpperCase());
+              const code = cober.value.toUpperCase();
+              const selected = selectedCoberturaCode === code;
               return (
                 <button
                   key={cober.value}
                   type="button"
                   disabled={isLoadingQuote}
                   onClick={() => {
-                    const cur = [...(rcv.coberAdicionales ?? [])];
-                    const idx = cur.findIndex(
-                      (c) => c.toUpperCase() === cober.value.toUpperCase(),
-                    );
-                    const next = idx >= 0
-                      ? cur.filter((_, i) => i !== idx)
-                      : [...cur, cober.value];
+                    if (selected) {
+                      setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
+                      return;
+                    }
                     setRcv({
-                      coberAdicionales: next,
-                      coberAdicional: resolvePrimaryCober(next),
+                      coberAdicional: code,
+                      coberAdicionales: [cober.value],
                     });
                   }}
                   className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition-all ${
@@ -395,12 +388,11 @@ export function PlansStep() {
               );
             })}
           </div>
-          {selectedCoberturasSet.size > 0 && (
+          {selectedCoberturaCode && (
             <p className="mt-3 text-[0.7rem] font-semibold text-indigo-700">
-              Incluidas:{' '}
-              {[...selectedCoberturasSet].map((code) => (
-                coberturasAdicionales.find((c) => c.value.toUpperCase() === code)?.text ?? code
-              )).join(' · ')}
+              Incluida:{' '}
+              {coberturasAdicionales.find((c) => c.value.toUpperCase() === selectedCoberturaCode)?.text
+                ?? selectedCoberturaCode}
               {isLoadingQuote && (
                 <span className="ml-2 inline-flex items-center gap-1 text-slate-500">
                   <Loader2 size={12} className="animate-spin" />

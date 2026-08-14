@@ -531,23 +531,26 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
  * Body para POST /api/v1/valrep/calculate-plan-coberturas (réplica SysIP calculatePlanSis).
  * tipo/puestos los resuelve nest-api desde VInma si se omiten.
  */
-/** Lista de coberturas opcionales activas (CA, PT, PP…). */
+/** Cobertura opcional activa (máx. una — paridad SysIP / Sis2000 emisión). */
 function resolveSelectedCoberturas(rcv = {}, overrides = {}) {
+  let selected = [];
   if (Array.isArray(rcv.coberAdicionales) && rcv.coberAdicionales.length > 0) {
-    return [...new Set(
+    selected = [...new Set(
       rcv.coberAdicionales
         .map((c) => String(c || '').trim().toUpperCase())
         .filter((c) => c && c !== 'RC'),
     )];
+  } else if (Array.isArray(overrides.coberAdicionales) && overrides.coberAdicionales.length > 0) {
+    selected = overrides.coberAdicionales.map((c) => String(c).trim().toUpperCase()).filter(Boolean);
+  } else {
+    const one = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
+    if (one && one !== 'RC') selected = [one];
   }
-  if (Array.isArray(overrides.coberAdicionales) && overrides.coberAdicionales.length > 0) {
-    return overrides.coberAdicionales.map((c) => String(c).trim().toUpperCase()).filter(Boolean);
-  }
-  const one = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
-  return one && one !== 'RC' ? [one] : [];
+  if (selected.length <= 1) return selected;
+  return [resolvePrimaryCoberAdicional(selected)];
 }
 
-/** coberAdicional del SP cuando hay varias seleccionadas (prioridad PT > CA > PP > AP). */
+/** coberAdicional del SP (prioridad PT > CA > PP > AP si llega legacy multi-select). */
 function resolvePrimaryCoberAdicional(selected = []) {
   if (!selected.length) return 'RC';
   const order = ['PT', 'CA', 'PP', 'AP'];
