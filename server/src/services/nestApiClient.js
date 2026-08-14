@@ -36,7 +36,7 @@ async function axiosOpts(extra = {}) {
 }
 
 /**
- * Cotiza vía POST /api/v1/valrep/cotizacion (spCalculoAuto en Sis2000).
+ * Cotiza vía POST /api/v1/valrep/cotizacion (sp_calculo_auto_nexus en Sis2000).
  * @param {object} payload - { cmarca, cmodelo, cversion, fano, cplan, ccategoria_uso, iplaca?, ntoneladas?, cramo? }
  */
 async function getCotizacionViaNestApi(payload) {
