@@ -88,7 +88,8 @@ function getModuleTokenKey(): string {
   return PORT_TO_TOKEN_KEY[window.location.port ?? ''] ?? 'nexus_access_token';
 }
 
-const BRIDGE_HOST = resolveNexusApiUrl(import.meta.env?.VITE_NEXUS_API_URL as string | undefined);
+const bridgeHost = () =>
+  resolveNexusApiUrl(import.meta.env?.VITE_NEXUS_API_URL as string | undefined);
 const QUERY_KEY   = 'sid';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -128,7 +129,7 @@ function moduleOrder(): number | null {
  */
 async function tryAutoStart(nexusToken: string): Promise<string | null> {
   try {
-    const r = await fetch(`${BRIDGE_HOST}/api/flow/start-from-token`, {
+    const r = await fetch(`${bridgeHost()}/api/flow/start-from-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nexus_token: nexusToken }),
@@ -252,7 +253,7 @@ function makeBridge(): BridgeAPI {
     if (!active || !sid) return;
     try {
       const r = await fetchJson<{ success: boolean; data: { data: Record<string, unknown> } }>(
-        `${BRIDGE_HOST}/api/flow/session/${sid}`,
+        `${bridgeHost()}/api/flow/session/${sid}`,
       );
       if (r?.data?.data) {
         applyHydration(r.data.data);
@@ -295,7 +296,7 @@ function makeBridge(): BridgeAPI {
   const save = async (extra: Record<string, unknown> = {}) => {
     if (!active || !sid) return;
     try {
-      await fetchJson(`${BRIDGE_HOST}/api/flow/save/${sid}`, {
+      await fetchJson(`${bridgeHost()}/api/flow/save/${sid}`, {
         method: 'POST',
         body: JSON.stringify({ ...collectState(), ...extra }),
       });
@@ -308,7 +309,7 @@ function makeBridge(): BridgeAPI {
       const r = await fetchJson<{
         success: boolean;
         data: { finished: boolean; nextUrl?: string };
-      }>(`${BRIDGE_HOST}/api/flow/done/${sid}?from=${order}`, {
+      }>(`${bridgeHost()}/api/flow/done/${sid}?from=${order}`, {
         method: 'POST',
         body: JSON.stringify({ ...collectState(), ...extra }),
       });
@@ -377,7 +378,7 @@ function makeBridge(): BridgeAPI {
       const r = await fetchJson<{
         success: boolean;
         data: { url: string };
-      }>(`${BRIDGE_HOST}/api/flow/navigate/${sid}?to=${targetModule}`, {
+      }>(`${bridgeHost()}/api/flow/navigate/${sid}?to=${targetModule}`, {
         method: 'POST',
         body: JSON.stringify(collectState()),
       });

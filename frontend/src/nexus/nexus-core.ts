@@ -8,22 +8,48 @@ const STORAGE_KEY = 'nexus_access_token_emision';
 
 const INTERNAL_HTTP_RE = /^http:\/\/(192\.168\.|10\.|127\.0\.0\.1|localhost)(:\d+)?/i;
 
-/**
- * Resuelve la URL de nexus-api en el navegador.
- * En páginas HTTPS no se puede llamar a IP interna HTTP (mixed content).
- */
+const MODULE_NEXUS_API: [string, string][] = [
+  ['/ocr', '/ocr/nexus-api'],
+  ['/formulario', '/formulario/nexus-api'],
+  ['/emision', '/emision/nexus-api'],
+  ['/pagos', '/pagos/nexus-api'],
+];
+
+function resolveModuleNexusApiOnHttps(): string | null {
+  if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
+    return null;
+  }
+  const path = window.location.pathname.replace(/\/$/, '') || '/';
+  for (const [prefix, apiPath] of MODULE_NEXUS_API) {
+    if (path === prefix || path.startsWith(`${prefix}/`)) {
+      return `${window.location.origin}${apiPath}`;
+    }
+  }
+  return null;
+}
+
+function useModuleProxyBuild(): boolean {
+  const flag = import.meta.env.VITE_NEXUS_USE_MODULE_PROXY;
+  return flag === '1' || flag === 'true';
+}
+
 export function resolveNexusApiUrl(configured?: string): string {
-  const trimmed = configured?.trim().replace(/\/$/, '');
+  const moduleOnHttps = resolveModuleNexusApiOnHttps();
+  if (moduleOnHttps && useModuleProxyBuild()) {
+    return moduleOnHttps;
+  }
+
+  const trimmed = configured?.trim().replace(/\/$/, '') ?? '';
   const pageIsHttps =
     typeof window !== 'undefined' && window.location.protocol === 'https:';
 
-  if (pageIsHttps && trimmed && INTERNAL_HTTP_RE.test(trimmed)) {
-    return `${window.location.origin}/nexus-api`;
+  if (trimmed && !INTERNAL_HTTP_RE.test(trimmed)) {
+    return trimmed;
+  }
+  if (pageIsHttps && typeof window !== 'undefined') {
+    return moduleOnHttps ?? `${window.location.origin}/nexus-api`;
   }
   if (trimmed) return trimmed;
-  if (typeof window !== 'undefined' && pageIsHttps) {
-    return `${window.location.origin}/nexus-api`;
-  }
   return 'http://localhost:3092';
 }
 
