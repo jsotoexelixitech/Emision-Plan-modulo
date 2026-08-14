@@ -273,7 +273,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const metadata = state.metadataCanal || {};
 
   const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
-  const cusuario = metadata.cusuario !== undefined ? metadata.cusuario : (process.env.LAMUNDIAL_CUSUARIO || 4);
+  const cusuario = resolveCusuarioCoberturas(metadata);
+  const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
+  const tasasMeta = quoteMeta.tasas || {};
   const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
@@ -291,7 +293,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ndias = resolveRcvNdias(state, overrides);
   const fecha_emision = overrides.fechaEmision || todayYmd();
   const vigencia = resolveVigenciaAnual(fecha_emision);
-  const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
+  const msumaaseg = resolveMsumaaseg(state, quoteMeta);
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
   const rcv = state.rcv || {};
   const selectedCoberturas = resolveSelectedCoberturas(rcv, overrides);
@@ -408,9 +410,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
       : 60,
 
     coberAdicional,
-    tasa_ca: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
-    tasa_pt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
-    tasa_pp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+    tasa_ca: rcv.tasaCA != null ? Number(rcv.tasaCA) : (tasasMeta.tasaCA != null ? Number(tasasMeta.tasaCA) : 0),
+    tasa_pt: rcv.tasaPT != null ? Number(rcv.tasaPT) : (tasasMeta.tasaPT != null ? Number(tasasMeta.tasaPT) : 0),
+    tasa_pp: rcv.tasaPP != null ? Number(rcv.tasaPP) : (tasasMeta.tasaPP != null ? Number(tasasMeta.tasaPP) : 0),
 
     // Datos economicos (vienen de cotizacion; se envian como Number)
     mprima: Number(cotizacion.mprima),
@@ -505,7 +507,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
-    cusuario: parseInt(p.cusuario || process.env.LAMUNDIAL_CUSUARIO || 4, 10),
+    cusuario: parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
     msumaaseg,
     ifrecuencia: p.frecuencia || 'A',
     femision,

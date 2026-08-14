@@ -73,7 +73,7 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
   );
 
   // No enviar poliza/cnpoliza_rel: Sis2000 genera cnpoliza; INT-* solo queda en logs locales.
-  // mprima siempre 0 al SP (no reinyectar prima cotizada).
+  // mprima siempre 0 al SP (La Mundial recalcula; no reinyectar prima cotizada).
   const emissionBody = {
     ...laMundialPayload,
     mprima: 0,
@@ -82,7 +82,7 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     tasa: cotizacion.ptasa,
   };
   console.log(
-    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia}`,
+    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} cusuario=${emissionBody.cusuario ?? '?'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'}`,
   );
 
   const emission = await emitViaNestApi(emissionBody);
