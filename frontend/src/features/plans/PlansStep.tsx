@@ -709,14 +709,24 @@ function PrimaCard({
             <p className="text-xs font-black uppercase tracking-wider text-white/90 mb-3">
               Desglose por cobertura
             </p>
+            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1 text-[0.62rem] font-black uppercase tracking-wider text-white/50 mb-2 pr-1">
+              <span>Cobertura</span>
+              <span className="text-right">Suma aseg.</span>
+              <span className="text-right">Prima</span>
+            </div>
             <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
               {quote.coberturas.map((c) => (
                 <div
                   key={`${c.ccobertura ?? c.name}`}
-                  className="flex items-start justify-between gap-3 text-sm leading-snug"
+                  className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-0.5 text-sm leading-snug items-start"
                 >
                   <span className="text-white/95 font-medium">{c.name}</span>
-                  <span className="font-bold text-white tabular-nums shrink-0">
+                  <span className="text-white/70 tabular-nums shrink-0 sm:text-right text-xs sm:text-sm">
+                    {c.sumaAsegurada != null && c.sumaAsegurada > 0
+                      ? `$${c.sumaAsegurada.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                      : '—'}
+                  </span>
+                  <span className="font-bold text-white tabular-nums shrink-0 sm:text-right">
                     ${c.prima.toFixed(2)}
                   </span>
                 </div>
