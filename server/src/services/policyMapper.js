@@ -240,8 +240,8 @@ function buildQuoteRequest(state, overrides = {}) {
         ? parseInt(v.ntoneladas, 10)
         : undefined,
       cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-      ifrecuencia: resolveRcvFrecuencia(state, overrides),
-      ndias: resolveRcvNdias(state, overrides),
+      // Prima cotizada siempre anual; ifrecuencia solo define recibos en emisión.
+      ifrecuencia: 'A',
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -616,7 +616,7 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       iplaca: payload.iplaca,
       toneladas: payload.ntoneladas,
       cramo: payload.cramo,
-      ifrecuencia: payload.ifrecuencia || resolveRcvFrecuencia(state, overrides),
+      ifrecuencia: 'A',
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
       coberAdicional,
       tasaCa: tasasForCober.tasaCa,
