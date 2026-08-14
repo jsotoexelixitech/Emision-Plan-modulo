@@ -292,6 +292,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const vigencia = resolveVigenciaAnual(fecha_emision);
   const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
+  const rcv = state.rcv || {};
+  const coberAdicional = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
 
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
   const tipo_cedula_titular = sameInsured ? tipo_cedula_tomador : (titular.tipoDoc ? normalizeTipoCedula(titular.tipoDoc) : null);
@@ -403,6 +405,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
       ? parseInt(v.ntoneladas, 10)
       : 60,
 
+    coberAdicional,
+    tasa_ca: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
+    tasa_pt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
+    tasa_pp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+
     // Datos economicos (vienen de cotizacion; se envian como Number)
     mprima: Number(cotizacion.mprima),
     mprimaext: Number(cotizacion.mprimaext),
@@ -508,6 +515,10 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   body.cscanalalt = parseCanalAltOptional(p.cscanalalt);
   if (p.conductor) body.conductor = p.conductor;
   if (p.beneficiario) body.beneficiario = p.beneficiario;
+  if (p.coberAdicional) body.coberAdicional = String(p.coberAdicional).trim().toUpperCase();
+  if (p.tasa_ca != null) body.tasaCa = Number(p.tasa_ca);
+  if (p.tasa_pt != null) body.tasaPt = Number(p.tasa_pt);
+  if (p.tasa_pp != null) body.tasaPp = Number(p.tasa_pp);
 
   return body;
 }
@@ -522,7 +533,12 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
     return { payload: null, metadata: { error: 'MISSING_PLAN' } };
   }
   const { fdesde, fhasta } = resolveVigenciaAnual(todayYmd());
+  const rcv = state.rcv || {};
+  const coberAdicional = String(
+    rcv.coberAdicional || overrides.coberAdicional || 'RC',
+  ).trim().toUpperCase();
   const suma =
+    rcv.sumaAsegurada ??
     payload.sumaAsegurada ??
     quoteMeta.referenceSuma ??
     quoteMeta.sumaAsegurada ??
@@ -543,7 +559,14 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       cramo: payload.cramo,
       ifrecuencia: payload.ifrecuencia || resolveRcvFrecuencia(state, overrides),
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
-      coberAdicional: 'RC',
+      coberAdicional,
+      tasaCa: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
+      tasaPt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
+      tasaPp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+      sumaAsegBl: rcv.sumaAsegBl != null ? Number(rcv.sumaAsegBl) : 0,
+      sumaAsegAd: rcv.sumaAsegAd != null ? Number(rcv.sumaAsegAd) : 0,
+      recargo: 0,
+      recargoRcv: 0,
     },
     metadata,
   };

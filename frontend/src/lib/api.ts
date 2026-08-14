@@ -481,6 +481,8 @@ export interface PlanRcv {
   xplan_c?: string;
   cramo?:  number;
   cmoneda?: string;
+  cproducto?: string;
+  coberturasAdicionales?: { value: string; text: string }[];
 }
 
 export const catalogoApi = {

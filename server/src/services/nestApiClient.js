@@ -77,7 +77,40 @@ function mapMountToCoberturas(mount) {
         ? Number(row.masegurada)
         : null,
     cproducto: row.cproducto != null ? String(row.cproducto).trim() : undefined,
+    badicional: row.badicional === true,
+    xvalor: row.xvalor != null ? String(row.xvalor).trim() : undefined,
   }));
+}
+
+/**
+ * Prima total USD — paridad SysIP calculateTotalFromResponse (pa + ca/pt/pp/ap).
+ * @param {{ pa?: number, ca?: number, pt?: number, pp?: number, ap?: number }} totals
+ * @param {string} [coberAdicional]
+ */
+function computeCoverageTotalUsd(totals, coberAdicional = 'RC') {
+  let total = Number(totals?.pa ?? 0);
+  const cober = String(coberAdicional || 'RC').trim().toUpperCase();
+  if (cober === 'CA') total += Number(totals?.ca ?? 0);
+  if (cober === 'PT') total += Number(totals?.pt ?? 0);
+  if (cober === 'PP') total += Number(totals?.pp ?? 0);
+  if (cober === 'AP') total += Number(totals?.ap ?? 0);
+  return total;
+}
+
+/**
+ * Tasas casco desde mount (ccobertura 1=CA, 2=PT, 28=PP) — paridad SysIP searchPrice.
+ * @param {object[]} mount
+ */
+function extractTasasFromMount(mount) {
+  if (!Array.isArray(mount)) return {};
+  const coberCA = mount.find((item) => String(item?.ccobertura) === '1');
+  const coberPT = mount.find((item) => String(item?.ccobertura) === '2');
+  const coberPP = mount.find((item) => String(item?.ccobertura) === '28');
+  return {
+    tasaCA: coberCA?.tasaCA != null ? Number(coberCA.tasaCA) : undefined,
+    tasaPT: coberPT?.tasaPT != null ? Number(coberPT.tasaPT) : undefined,
+    tasaPP: coberPP?.tasaPP != null ? Number(coberPP.tasaPP) : undefined,
+  };
 }
 
 /**
@@ -106,6 +139,10 @@ async function calculatePlanCoberturasViaNestApi(payload) {
       ap: Number(body.ap ?? 0),
       pp: Number(body.pp ?? 0),
       cproducto: body.cproducto,
+      boolCA: body.boolCA === true,
+      boolPT: body.boolPT === true,
+      boolPP: body.boolPP === true,
+      boolAP: body.boolAP === true,
       coberturas: mapMountToCoberturas(mount),
     };
   }
@@ -427,6 +464,8 @@ module.exports = {
   getCotizacionViaNestApi,
   calculatePlanCoberturasViaNestApi,
   mapMountToCoberturas,
+  computeCoverageTotalUsd,
+  extractTasasFromMount,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,

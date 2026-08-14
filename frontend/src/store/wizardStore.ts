@@ -64,6 +64,7 @@ const defaultVehicle = (): VehicleData => ({
 const defaultRcv = (): RcvPlanData => ({
   frecuencia: 'A',
   ndias: null,
+  coberAdicional: 'RC',
 });
 
 const defaultFuneral = (): FuneralData => ({

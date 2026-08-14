@@ -18,6 +18,8 @@ const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
   getCotizacionViaNestApi,
   calculatePlanCoberturasViaNestApi,
+  computeCoverageTotalUsd,
+  extractTasasFromMount,
   createEmissionAutoViaNestApi: emitViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
@@ -254,6 +256,8 @@ async function quote(state, overrides = {}) {
       }
     }
     let coberturas;
+    let breakdown;
+    const coberAdicional = String(enrichedState.rcv?.coberAdicional || 'RC').trim().toUpperCase();
     const coverageEnabled = process.env.COVERAGE_BREAKDOWN_ENABLED !== 'false';
     if (coverageEnabled && metadata.quoteSource !== 'sis2000' && metadata.quoteSource !== 'sis2000_fallback') {
       try {
@@ -263,8 +267,9 @@ async function quote(state, overrides = {}) {
           { referenceSuma: result.referenceSuma },
         );
         if (covPayload) {
-          const breakdown = await calculatePlanCoberturasViaNestApi(covPayload);
+          breakdown = await calculatePlanCoberturasViaNestApi(covPayload);
           coberturas = breakdown.coberturas;
+          const tasas = extractTasasFromMount(breakdown.mount);
           metadata.coverageTotals = {
             pa: breakdown.pa,
             ca: breakdown.ca,
@@ -273,15 +278,38 @@ async function quote(state, overrides = {}) {
             pp: breakdown.pp,
             cproducto: breakdown.cproducto,
           };
+          metadata.coverageFlags = {
+            boolCA: breakdown.boolCA,
+            boolPT: breakdown.boolPT,
+            boolPP: breakdown.boolPP,
+            boolAP: breakdown.boolAP,
+          };
+          metadata.coberAdicional = coberAdicional;
+          metadata.tasas = tasas;
+          metadata.coverageOptions =
+            enrichedState.selectedPlan?.coberturasAdicionales ?? undefined;
         }
       } catch (covErr) {
         console.warn(`[Policy][quote] coberturas no disponibles: ${covErr.message}`);
         metadata.coverageWarning = covErr.message;
       }
     }
+
+    let mprimaext = result.mprimaext;
+    let mprima = result.mprima;
+    if (breakdown && breakdown.pa > 0) {
+      const totalUsd = computeCoverageTotalUsd(breakdown, coberAdicional);
+      if (totalUsd > 0) {
+        mprimaext = totalUsd;
+        if (result.ptasa > 0) {
+          mprima = totalUsd * result.ptasa;
+        }
+      }
+    }
+
     return {
-      mprima: result.mprima,
-      mprimaext: result.mprimaext,
+      mprima,
+      mprimaext,
       ptasa: result.ptasa,
       coberturas,
       metadata: {

@@ -84,6 +84,11 @@ export type PersonData = {
   direccion?: string;
 };
 
+export interface PlanCoberturaAdicional {
+  value: string;
+  text: string;
+}
+
 export interface Plan {
   /** Código del plan en Sis2000 (ej. "RCVBAS", "Auto"). Se envía al backend en quote/emit. */
   cplan?: string;
@@ -97,6 +102,10 @@ export interface Plan {
   sumaAsegurada: number;
   /** Sufijo opcional para la suma asegurada (ej. "/unidad") */
   sumaAseguradaUnit?: string;
+  /** Producto Sis2000 (0, E, E1…) — define reglas de coberturas adicionales */
+  cproducto?: string;
+  /** Opciones "Incluir" del plan (CA, PT, PP…) — paridad SysIP xcober */
+  coberturasAdicionales?: PlanCoberturaAdicional[];
 }
 
 export type PaymentMethod = 'card' | 'transfer' | 'mobile' | 'otp';
@@ -119,6 +128,15 @@ export interface FuneralPerson {
 export interface RcvPlanData {
   frecuencia: string;
   ndias?: number | null;
+  /** Cobertura adicional seleccionada (RC=solo RCV, CA, PT, PP, AP) — paridad SysIP coberAdicional */
+  coberAdicional?: string;
+  /** Suma asegurada casco (USD) cuando aplica CA/PT/PP */
+  sumaAsegurada?: number;
+  tasaCA?: number;
+  tasaPT?: number;
+  tasaPP?: number;
+  sumaAsegBl?: number;
+  sumaAsegAd?: number;
 }
 
 /** Datos del producto Funerario (personas). Se usa cuando product = 'funerario'. */

@@ -31,6 +31,8 @@ function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
     desc:      ((p.xplan ?? '').trim() || 'Cobertura de Responsabilidad Civil Vehicular conforme a la Ley.'),
     benefits:  RCV_BENEFITS,
     sumaAsegurada: 0,
+    cproducto: p.cproducto,
+    coberturasAdicionales: p.coberturasAdicionales,
   };
 }
 
@@ -127,8 +129,9 @@ export function PlansStep() {
 
   const sig = hasVehicleData ? vehicleSignature(vehicle) : '';
   const planCode = selectedPlan?.cplan ?? '';
+  const coberAdicional = rcv.coberAdicional ?? 'RC';
   const quoteSig = sig && planCode
-    ? `${sig}|${planCode}`
+    ? `${sig}|${planCode}|${coberAdicional}|${rcv.frecuencia ?? 'A'}`
     : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.
@@ -164,6 +167,15 @@ export function PlansStep() {
           },
           quoteSig,
         );
+
+        const tasas = (r.metadata as { tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number } } | undefined)?.tasas;
+        if (tasas && (tasas.tasaCA != null || tasas.tasaPT != null || tasas.tasaPP != null)) {
+          useWizardStore.getState().setRcv({
+            tasaCA: tasas.tasaCA,
+            tasaPT: tasas.tasaPT,
+            tasaPP: tasas.tasaPP,
+          });
+        }
       })
       .catch((err) => {
         if (activeQuoteSigRef.current !== quoteSig) return;
@@ -180,6 +192,8 @@ export function PlansStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteSig]);
 
+  const coberturasAdicionales = selectedPlan?.coberturasAdicionales ?? [];
+  const coberSeleccionada = rcv.coberAdicional ?? 'RC';
   const isLoadingQuote = quoteState === 'loading';
   const hasRealQuote   = quoteState === 'ready' && Boolean(quote);
 
@@ -244,6 +258,7 @@ export function PlansStep() {
               onChange={(e) => {
                 const found = apiPlans.find((p) => p.cplan === e.target.value);
                 setSelectedPlan(found ?? null);
+                setRcv({ coberAdicional: 'RC' });
               }}
               disabled={plansLoading || apiPlans.length === 0}
               className="w-full pl-14 pr-10 py-3.5 rounded-xl border-2 border-slate-200 bg-white text-sm font-bold text-slate-900 appearance-none cursor-pointer hover:border-indigo-300 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-50"
@@ -312,6 +327,51 @@ export function PlansStep() {
           </div>
         </div>
       </div>
+
+      {selectedPlan && coberturasAdicionales.length > 0 && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
+          <p className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-3">
+            Incluir cobertura adicional
+          </p>
+          <p className="text-xs text-slate-500 mb-3">
+            Solo aplica a planes que lo permiten (como en Sys2000). Sin selección = RCV básico.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {coberturasAdicionales.map((cober) => {
+              const selected = coberSeleccionada === cober.value;
+              return (
+                <button
+                  key={cober.value}
+                  type="button"
+                  disabled={isLoadingQuote}
+                  onClick={() => {
+                    const next = selected ? 'RC' : cober.value;
+                    setRcv({ coberAdicional: next });
+                  }}
+                  className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition-all ${
+                    selected
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50'
+                  } disabled:opacity-50`}
+                >
+                  {cober.text}
+                </button>
+              );
+            })}
+          </div>
+          {coberSeleccionada !== 'RC' && (
+            <p className="mt-3 text-[0.7rem] font-semibold text-indigo-700">
+              Seleccionado: {coberturasAdicionales.find((c) => c.value === coberSeleccionada)?.text ?? coberSeleccionada}
+              {isLoadingQuote && (
+                <span className="ml-2 inline-flex items-center gap-1 text-slate-500">
+                  <Loader2 size={12} className="animate-spin" />
+                  Recalculando…
+                </span>
+              )}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Card de detalle del plan */}
       {selectedPlan ? (

@@ -170,6 +170,44 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
 }
 
 /**
+ * Parsea xcober de valrep/planes/v2 → chips "Incluir" (paridad SysIP receipt-vehicle-form).
+ * @param {Record<string, unknown>} p
+ * @returns {{ value: string, text: string }[]|undefined}
+ */
+function parsePlanCoberturasAdicionales(p) {
+  const raw = p.xcober ?? p.XCOBER;
+  if (!Array.isArray(raw) || raw.length === 0) return undefined;
+
+  const parsed = raw
+    .map((cober) => {
+      if (!cober) return null;
+      if (typeof cober === 'object' && cober.id != null) {
+        return {
+          value: String(cober.id).trim(),
+          text: String(cober.value ?? cober.text ?? cober.id).trim(),
+        };
+      }
+      if (typeof cober === 'string') {
+        try {
+          const item = JSON.parse(cober);
+          if (item?.id != null) {
+            return {
+              value: String(item.id).trim(),
+              text: String(item.value ?? item.text ?? item.id).trim(),
+            };
+          }
+        } catch {
+          return null;
+        }
+      }
+      return null;
+    })
+    .filter(Boolean);
+
+  return parsed.length > 0 ? parsed : undefined;
+}
+
+/**
  * Normaliza una fila de plan al formato consumido por el frontend.
  * @param {Record<string, unknown>} p
  * @param {number} defaultRamo
@@ -181,6 +219,8 @@ function normalizePlanRow(p, defaultRamo) {
     xplan_c: String(p.xplan_c ?? p.XPLAN_C ?? p.xplan ?? p.XPLAN ?? '').trim(),
     cramo: Number(p.cramo ?? p.CRAMO ?? defaultRamo),
     cmoneda: String(p.cmoneda ?? p.CMONEDA ?? 'USD').trim(),
+    cproducto: String(p.cproducto ?? p.CPRODUCTO ?? '').trim() || undefined,
+    coberturasAdicionales: parsePlanCoberturasAdicionales(p),
   };
 }
 
