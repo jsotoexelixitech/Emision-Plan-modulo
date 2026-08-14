@@ -82,19 +82,81 @@ function mapMountToCoberturas(mount) {
   }));
 }
 
+const COBER_COMPONENT_MAP = { CA: 'ca', PT: 'pt', PP: 'pp', AP: 'ap' };
+
 /**
- * Prima total USD — paridad SysIP calculateTotalFromResponse (pa + ca/pt/pp/ap).
+ * Prima total USD — pa + componentes seleccionados (uno o varios CA/PT/PP/AP).
  * @param {{ pa?: number, ca?: number, pt?: number, pp?: number, ap?: number }} totals
- * @param {string} [coberAdicional]
+ * @param {string|string[]} [coberAdicional]
+ * @param {Record<string, number>} [componentPremiums] primas por código (CA/PT/PP)
  */
-function computeCoverageTotalUsd(totals, coberAdicional = 'RC') {
-  let total = Number(totals?.pa ?? 0);
-  const cober = String(coberAdicional || 'RC').trim().toUpperCase();
-  if (cober === 'CA') total += Number(totals?.ca ?? 0);
-  if (cober === 'PT') total += Number(totals?.pt ?? 0);
-  if (cober === 'PP') total += Number(totals?.pp ?? 0);
-  if (cober === 'AP') total += Number(totals?.ap ?? 0);
+function computeCoverageTotalUsd(totals, coberAdicional = 'RC', componentPremiums = null) {
+  const pa = Number(totals?.pa ?? 0);
+  const selected = normalizeSelectedCoberturas(coberAdicional);
+  if (selected.length === 0) return pa;
+
+  if (componentPremiums && typeof componentPremiums === 'object') {
+    let total = pa;
+    for (const code of selected) {
+      total += Number(componentPremiums[code] ?? 0);
+    }
+    return total;
+  }
+
+  let total = pa;
+  for (const code of selected) {
+    const key = COBER_COMPONENT_MAP[code];
+    if (key) total += Number(totals?.[key] ?? 0);
+  }
   return total;
+}
+
+/**
+ * @param {string|string[]|undefined|null} input
+ * @returns {string[]}
+ */
+function normalizeSelectedCoberturas(input) {
+  if (Array.isArray(input)) {
+    return [...new Set(
+      input
+        .map((c) => String(c || '').trim().toUpperCase())
+        .filter((c) => c && c !== 'RC'),
+    )];
+  }
+  const one = String(input || 'RC').trim().toUpperCase();
+  return one && one !== 'RC' ? [one] : [];
+}
+
+/**
+ * Obtiene prima base (pa) y componentes CA/PT/PP vía calculate-plan (una llamada por tipo).
+ * @param {object} basePayload
+ * @param {string[]} [optionCodes]
+ */
+async function fetchCoberturaComponentPremiums(basePayload, optionCodes = ['CA', 'PT', 'PP']) {
+  const rcBreakdown = await calculatePlanCoberturasViaNestApi({
+    ...basePayload,
+    coberAdicional: 'RC',
+  });
+  const pa = Number(rcBreakdown.pa ?? 0);
+  const premiums = {};
+  const codes = optionCodes.filter((c) => c && c !== 'RC');
+
+  await Promise.all(
+    codes.map(async (code) => {
+      try {
+        const b = await calculatePlanCoberturasViaNestApi({
+          ...basePayload,
+          coberAdicional: code,
+        });
+        const key = COBER_COMPONENT_MAP[code];
+        premiums[code] = key ? Number(b[key] ?? 0) : 0;
+      } catch {
+        premiums[code] = 0;
+      }
+    }),
+  );
+
+  return { pa, premiums, rcBreakdown };
 }
 
 /**
@@ -465,6 +527,8 @@ module.exports = {
   calculatePlanCoberturasViaNestApi,
   mapMountToCoberturas,
   computeCoverageTotalUsd,
+  normalizeSelectedCoberturas,
+  fetchCoberturaComponentPremiums,
   extractTasasFromMount,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,

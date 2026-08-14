@@ -294,7 +294,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
   const rcv = state.rcv || {};
-  const coberAdicional = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
+  const selectedCoberturas = resolveSelectedCoberturas(rcv, overrides);
+  const coberAdicional = resolvePrimaryCoberAdicional(selectedCoberturas);
 
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
   const tipo_cedula_titular = sameInsured ? tipo_cedula_tomador : (titular.tipoDoc ? normalizeTipoCedula(titular.tipoDoc) : null);
@@ -528,6 +529,32 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
  * Body para POST /api/v1/valrep/calculate-plan-coberturas (réplica SysIP calculatePlanSis).
  * tipo/puestos los resuelve nest-api desde VInma si se omiten.
  */
+/** Lista de coberturas opcionales activas (CA, PT, PP…). */
+function resolveSelectedCoberturas(rcv = {}, overrides = {}) {
+  if (Array.isArray(rcv.coberAdicionales) && rcv.coberAdicionales.length > 0) {
+    return [...new Set(
+      rcv.coberAdicionales
+        .map((c) => String(c || '').trim().toUpperCase())
+        .filter((c) => c && c !== 'RC'),
+    )];
+  }
+  if (Array.isArray(overrides.coberAdicionales) && overrides.coberAdicionales.length > 0) {
+    return overrides.coberAdicionales.map((c) => String(c).trim().toUpperCase()).filter(Boolean);
+  }
+  const one = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
+  return one && one !== 'RC' ? [one] : [];
+}
+
+/** coberAdicional del SP cuando hay varias seleccionadas (prioridad PT > CA > PP > AP). */
+function resolvePrimaryCoberAdicional(selected = []) {
+  if (!selected.length) return 'RC';
+  const order = ['PT', 'CA', 'PP', 'AP'];
+  for (const code of order) {
+    if (selected.includes(code)) return code;
+  }
+  return selected[0];
+}
+
 function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = {}) {
   const { payload, metadata } = buildQuoteRequest(state, overrides);
   if (!payload?.cplan) {
@@ -535,9 +562,8 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
   }
   const { fdesde, fhasta } = resolveVigenciaAnual(todayYmd());
   const rcv = state.rcv || {};
-  const coberAdicional = String(
-    rcv.coberAdicional || overrides.coberAdicional || 'RC',
-  ).trim().toUpperCase();
+  const selected = resolveSelectedCoberturas(rcv, overrides);
+  const coberAdicional = resolvePrimaryCoberAdicional(selected);
   const suma =
     rcv.sumaAsegurada ??
     payload.sumaAsegurada ??
@@ -579,6 +605,8 @@ module.exports = {
   buildCalculatePlanCoberturasRequest,
   buildEmissionRequest,
   toLaMundialEmissionPayload,
+  resolveSelectedCoberturas,
+  resolvePrimaryCoberAdicional,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,

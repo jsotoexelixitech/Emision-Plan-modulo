@@ -128,8 +128,10 @@ export interface FuneralPerson {
 export interface RcvPlanData {
   frecuencia: string;
   ndias?: number | null;
-  /** Cobertura adicional seleccionada (RC=solo RCV, CA, PT, PP, AP) — paridad SysIP coberAdicional */
+  /** Cobertura adicional principal para el SP (prioridad PT>CA>PP). */
   coberAdicional?: string;
+  /** Coberturas opcionales activas — multi-selección (CA, PT, PP). */
+  coberAdicionales?: string[];
   /** Suma asegurada casco (USD) cuando aplica CA/PT/PP */
   sumaAsegurada?: number;
   tasaCA?: number;
