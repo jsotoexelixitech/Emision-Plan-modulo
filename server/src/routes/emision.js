@@ -114,6 +114,7 @@ router.post('/policies/quote', async (req, res) => {
       mprima: result.mprima,
       mprimaext: result.mprimaext,
       ptasa: result.ptasa,
+      coberturas: result.coberturas,
       metadata: result.metadata,
     });
   } catch (err) {

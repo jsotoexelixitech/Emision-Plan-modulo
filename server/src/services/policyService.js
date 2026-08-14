@@ -17,6 +17,7 @@ const axios = require('axios');
 const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
   getCotizacionViaNestApi,
+  calculatePlanCoberturasViaNestApi,
   createEmissionAutoViaNestApi: emitViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
@@ -25,7 +26,12 @@ const {
   getBaseUrl: getNestApiUrl,
 } = require('./nestApiClient');
 const { resolveIngresoCajaAfterPayment } = require('./collectionAfterPayment');
-const { buildQuoteRequest, buildEmissionRequest, toLaMundialEmissionPayload } = require('./policyMapper');
+const {
+  buildQuoteRequest,
+  buildCalculatePlanCoberturasRequest,
+  buildEmissionRequest,
+  toLaMundialEmissionPayload,
+} = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
 
@@ -247,10 +253,37 @@ async function quote(state, overrides = {}) {
         }
       }
     }
+    let coberturas;
+    const coverageEnabled = process.env.COVERAGE_BREAKDOWN_ENABLED !== 'false';
+    if (coverageEnabled && metadata.quoteSource !== 'sis2000' && metadata.quoteSource !== 'sis2000_fallback') {
+      try {
+        const { payload: covPayload } = buildCalculatePlanCoberturasRequest(
+          enrichedState,
+          overrides,
+          { referenceSuma: result.referenceSuma },
+        );
+        if (covPayload) {
+          const breakdown = await calculatePlanCoberturasViaNestApi(covPayload);
+          coberturas = breakdown.coberturas;
+          metadata.coverageTotals = {
+            pa: breakdown.pa,
+            ca: breakdown.ca,
+            pt: breakdown.pt,
+            ap: breakdown.ap,
+            pp: breakdown.pp,
+            cproducto: breakdown.cproducto,
+          };
+        }
+      } catch (covErr) {
+        console.warn(`[Policy][quote] coberturas no disponibles: ${covErr.message}`);
+        metadata.coverageWarning = covErr.message;
+      }
+    }
     return {
       mprima: result.mprima,
       mprimaext: result.mprimaext,
       ptasa: result.ptasa,
+      coberturas,
       metadata: {
         ...metadata,
         referenceSuma: result.referenceSuma,

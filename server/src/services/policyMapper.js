@@ -237,7 +237,8 @@ function buildQuoteRequest(state, overrides = {}) {
         ? parseInt(v.ntoneladas, 10)
         : undefined,
       cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-      // spCalculoAuto cotiza prima ANUAL; ifrecuencia/ndias no alteran el monto.
+      ifrecuencia: resolveRcvFrecuencia(state, overrides),
+      ndias: resolveRcvNdias(state, overrides),
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -511,8 +512,46 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   return body;
 }
 
+/**
+ * Body para POST /api/v1/valrep/calculate-plan-coberturas (réplica SysIP calculatePlanSis).
+ * tipo/puestos los resuelve nest-api desde VInma si se omiten.
+ */
+function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = {}) {
+  const { payload, metadata } = buildQuoteRequest(state, overrides);
+  if (!payload?.cplan) {
+    return { payload: null, metadata: { error: 'MISSING_PLAN' } };
+  }
+  const { fdesde, fhasta } = resolveVigenciaAnual(todayYmd());
+  const suma =
+    payload.sumaAsegurada ??
+    quoteMeta.referenceSuma ??
+    quoteMeta.sumaAsegurada ??
+    undefined;
+
+  return {
+    payload: {
+      cmarca: payload.cmarca,
+      cmodelo: payload.cmodelo,
+      cversion: payload.cversion,
+      cano: payload.fano,
+      idPlan: payload.cplan,
+      fdesde,
+      fhasta,
+      uso: payload.ccategoria_uso,
+      iplaca: payload.iplaca,
+      toneladas: payload.ntoneladas,
+      cramo: payload.cramo,
+      ifrecuencia: payload.ifrecuencia || resolveRcvFrecuencia(state, overrides),
+      suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
+      coberAdicional: 'RC',
+    },
+    metadata,
+  };
+}
+
 module.exports = {
   buildQuoteRequest,
+  buildCalculatePlanCoberturasRequest,
   buildEmissionRequest,
   toLaMundialEmissionPayload,
   // Helpers expuestos para tests:

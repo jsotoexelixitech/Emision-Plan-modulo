@@ -158,6 +158,7 @@ export function PlansStep() {
             mprima: r.mprima,
             mprimaext: r.mprimaext,
             ptasa: r.ptasa,
+            coberturas: r.coberturas,
             vehicleLabel: meta?.vehicleLabel,
             vehicleFallback: meta?.vehicleFallback,
           },
@@ -598,6 +599,29 @@ function PrimaCard({
             <div className="flex items-center justify-between text-[0.67rem] pt-1 border-t border-white/10">
               <span className="text-white/40">Tasa de cambio</span>
               <span className="text-white/50 tabular-nums">{quote.ptasa.toFixed(2)} Bs/$</span>
+            </div>
+          )}
+          {quote.coberturas && quote.coberturas.length > 0 && (
+            <div className="pt-2 mt-1 border-t border-white/10 space-y-1">
+              <p className="text-[0.6rem] font-black uppercase tracking-wider text-white/45">
+                Coberturas incluidas
+              </p>
+              {quote.coberturas.slice(0, 6).map((c) => (
+                <div
+                  key={`${c.ccobertura ?? c.name}`}
+                  className="flex items-start justify-between gap-2 text-[0.65rem]"
+                >
+                  <span className="text-white/70 leading-snug">{c.name}</span>
+                  <span className="font-semibold text-white/85 tabular-nums shrink-0">
+                    ${c.prima.toFixed(2)}
+                  </span>
+                </div>
+              ))}
+              {quote.coberturas.length > 6 && (
+                <p className="text-[0.6rem] text-white/40">
+                  + {quote.coberturas.length - 6} coberturas más
+                </p>
+              )}
             </div>
           )}
         </div>

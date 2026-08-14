@@ -165,6 +165,14 @@ export interface VehicleData {
   ntoneladas?: number;
 }
 
+export interface PolicyCoverageLine {
+  ccobertura?: number | string;
+  name: string;
+  prima: number;
+  sumaAsegurada: number | null;
+  cproducto?: string;
+}
+
 export interface PolicyQuote {
   /** Prima anual en bolivares (VES). */
   mprima: number;
@@ -172,6 +180,8 @@ export interface PolicyQuote {
   mprimaext: number;
   /** Tasa de cambio Bs/USD usada en la cotizacion. */
   ptasa: number;
+  /** Desglose por cobertura (calculate-plan-coberturas). */
+  coberturas?: PolicyCoverageLine[];
   /** Etiqueta legible del vehiculo cotizado (ej. "TOYOTA / COROLLA"). */
   vehicleLabel?: string;
   /** Indica si La Mundial uso el catalogo por defecto (vehiculo no encontrado). */

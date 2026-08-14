@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { DocType, OcrResult, DocumentFile } from '../types';
+import type { DocType, OcrResult, DocumentFile, PolicyCoverageLine } from '../types';
 import { moduleApiBase } from './app-base';
 import { attachNexusTokenAxios } from './nexus-token-client';
 
@@ -223,6 +223,7 @@ export interface QuotePolicyResponse {
   mprima: number;
   mprimaext: number;
   ptasa: number;
+  coberturas?: PolicyCoverageLine[];
   metadata?: Record<string, unknown>;
 }
 

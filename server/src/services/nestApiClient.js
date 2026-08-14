@@ -66,6 +66,59 @@ async function getCotizacionViaNestApi(payload) {
   throw err;
 }
 
+function mapMountToCoberturas(mount) {
+  if (!Array.isArray(mount)) return [];
+  return mount.map((row) => ({
+    ccobertura: row.ccobertura,
+    name: String(row.xdescripcion_l ?? row.xdescripcion ?? row.ccobertura ?? '').trim(),
+    prima: Number(row.prima) || 0,
+    sumaAsegurada:
+      row.masegurada != null && !Number.isNaN(Number(row.masegurada))
+        ? Number(row.masegurada)
+        : null,
+    cproducto: row.cproducto != null ? String(row.cproducto).trim() : undefined,
+  }));
+}
+
+/**
+ * Desglose por cobertura vía POST /api/v1/valrep/calculate-plan-coberturas.
+ * @param {object} payload - buildCalculatePlanCoberturasRequest().payload
+ */
+async function calculatePlanCoberturasViaNestApi(payload) {
+  const url = `${getBaseUrl()}/api/v1/valrep/calculate-plan-coberturas`;
+  const response = trackResponse(await axios.post(url, payload, await axiosOpts({
+    validateStatus: () => true,
+  })));
+
+  const body = response.data ?? {};
+  if (response.status >= 200 && response.status < 300 && body.status !== false) {
+    const mount = body.mount ?? body.data?.mount ?? [];
+    if (!Array.isArray(mount) || mount.length === 0) {
+      const err = new Error('calculate-plan-coberturas retornó detalle vacío.');
+      err.code = 'NEST_API_COVERAGE_EMPTY';
+      throw err;
+    }
+    return {
+      mount,
+      pa: Number(body.pa ?? 0),
+      ca: Number(body.ca ?? 0),
+      pt: Number(body.pt ?? 0),
+      ap: Number(body.ap ?? 0),
+      pp: Number(body.pp ?? 0),
+      cproducto: body.cproducto,
+      coberturas: mapMountToCoberturas(mount),
+    };
+  }
+
+  const err = new Error(
+    body.message || `HTTP ${response.status} en calculate-plan-coberturas`,
+  );
+  err.code = 'NEST_API_COVERAGE_ERROR';
+  err.httpStatus = response.status;
+  err.raw = body;
+  throw err;
+}
+
 /**
  * Emite vía POST /api/v1/external/createEmissionAuto (SP sp_pre_emision_Automovil_RCV2).
  * @param {object} payload - payload de emisión (policyMapper)
@@ -372,6 +425,8 @@ async function sendPolicyEmailViaNestApi(payload) {
 
 module.exports = {
   getCotizacionViaNestApi,
+  calculatePlanCoberturasViaNestApi,
+  mapMountToCoberturas,
   createEmissionAutoViaNestApi,
   validateEmissionAutoViaNestApi,
   generateConductorHabitualViaNestApi,
