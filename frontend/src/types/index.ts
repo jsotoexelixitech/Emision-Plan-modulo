@@ -128,9 +128,9 @@ export interface FuneralPerson {
 export interface RcvPlanData {
   frecuencia: string;
   ndias?: number | null;
-  /** Cobertura adicional principal para el SP (prioridad PT>CA>PP). */
+  /** Cobertura opcional activa para emisión (RC = solo RCV). */
   coberAdicional?: string;
-  /** Coberturas opcionales activas — multi-selección (CA, PT, PP). */
+  /** Sync con coberAdicional; máximo una opción (CA, PT o PP). */
   coberAdicionales?: string[];
   /** Suma asegurada casco (USD) cuando aplica CA/PT/PP */
   sumaAsegurada?: number;
