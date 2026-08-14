@@ -363,9 +363,6 @@ export function PlansStep() {
           <p className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-3">
             Incluir cobertura adicional
           </p>
-          <p className="text-xs text-slate-500 mb-3">
-            Elige una cobertura de casco opcional (como SysIP). La prima suma RCV + la opción elegida.
-          </p>
           <div className="flex flex-wrap gap-2">
             {coberturasAdicionales.map((cober) => {
               const code = cober.value.toUpperCase();
