@@ -643,7 +643,7 @@ function PrimaCard({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.12),transparent_55%)] pointer-events-none" />
       <div className="absolute -bottom-20 -right-12 w-44 h-44 rounded-full bg-fuchsia-500/15 blur-3xl pointer-events-none" />
 
-      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] gap-5 lg:gap-8">
+      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 lg:gap-6 min-w-0">
         <div>
           <div className="flex items-center justify-between gap-2 mb-3">
             <span className="inline-flex items-center gap-2 text-xs font-black text-white uppercase tracking-widest">
@@ -705,32 +705,47 @@ function PrimaCard({
         </div>
 
         {quote.coberturas && quote.coberturas.length > 0 && (
-          <div className="rounded-xl bg-white/10 ring-1 ring-white/15 p-4 flex flex-col min-h-0">
+          <div className="rounded-xl bg-white/10 ring-1 ring-white/15 p-3 sm:p-4 flex flex-col min-w-0 min-h-0 overflow-hidden">
             <p className="text-xs font-black uppercase tracking-wider text-white/90 mb-3">
               Desglose por cobertura
             </p>
-            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1 text-[0.62rem] font-black uppercase tracking-wider text-white/50 mb-2 pr-1">
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] gap-x-2 text-[0.58rem] font-black uppercase tracking-wider text-white/45 mb-2">
               <span>Cobertura</span>
-              <span className="text-right">Suma aseg.</span>
+              <span className="text-right">S.A.</span>
               <span className="text-right">Prima</span>
             </div>
-            <div className="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar">
-              {quote.coberturas.map((c) => (
-                <div
-                  key={`${c.ccobertura ?? c.name}`}
-                  className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-0.5 text-sm leading-snug items-start"
-                >
-                  <span className="text-white/95 font-medium">{c.name}</span>
-                  <span className="text-white/70 tabular-nums shrink-0 sm:text-right text-xs sm:text-sm">
-                    {c.sumaAsegurada != null && c.sumaAsegurada > 0
-                      ? `$${c.sumaAsegurada.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-                      : '—'}
-                  </span>
-                  <span className="font-bold text-white tabular-nums shrink-0 sm:text-right">
-                    ${c.prima.toFixed(2)}
-                  </span>
-                </div>
-              ))}
+            <div className="max-h-56 overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar divide-y divide-white/10 md:divide-y-0 md:space-y-1">
+              {quote.coberturas.map((c) => {
+                const sumaLabel =
+                  c.sumaAsegurada != null && c.sumaAsegurada > 0
+                    ? `$${c.sumaAsegurada.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                    : '—';
+                const primaLabel = `$${c.prima.toFixed(2)}`;
+
+                return (
+                  <div
+                    key={`${c.ccobertura ?? c.name}`}
+                    className="py-2.5 first:pt-0 last:pb-0 md:py-1 md:grid md:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] md:gap-x-2 md:items-start"
+                  >
+                    <p className="text-[0.68rem] sm:text-xs text-white/90 font-medium leading-snug break-words min-w-0">
+                      {c.name}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-3 md:hidden text-[0.68rem] tabular-nums">
+                      <span className="text-white/55">
+                        <span className="font-bold uppercase tracking-wide text-[0.58rem] mr-1">S.A.</span>
+                        {sumaLabel}
+                      </span>
+                      <span className="font-bold text-white shrink-0">{primaLabel}</span>
+                    </div>
+                    <span className="hidden md:block text-white/70 tabular-nums text-xs text-right shrink-0 leading-snug">
+                      {sumaLabel}
+                    </span>
+                    <span className="hidden md:block font-bold text-white tabular-nums text-xs text-right shrink-0 leading-snug">
+                      {primaLabel}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
