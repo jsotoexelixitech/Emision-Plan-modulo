@@ -6,7 +6,7 @@ import { SectionCard } from '../emission/EmissionStep';
 import { useCatalogs, useCiudades } from '../../hooks/useCatalogs';
 import { SearchSelect } from '../../components/ui/SearchSelect';
 import { IdentityInput } from '../../components/ui/IdentityInput';
-import { formatTelefono, isValidPhonePrefix } from '@exelixi/shared';
+import { formatTelefono, isValidPhonePrefix } from '../../lib/phone';
 import {
   Car, UserCog, Sparkles, ScanLine, ShieldCheck,
   Loader2, AlertTriangle,
