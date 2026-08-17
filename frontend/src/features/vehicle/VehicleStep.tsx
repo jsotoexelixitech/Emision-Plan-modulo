@@ -417,7 +417,7 @@ export function VehicleStep() {
       } else if (digs(conductor.telefono) !== 11) {
         e.cond_telefono = 'El teléfono debe tener exactamente 11 dígitos (ej. 04121234567)';
       } else if (!isValidPhonePrefix(conductor.telefono || '')) {
-        e.cond_telefono = 'El prefijo debe ser válido en Venezuela (ej. 0414, 0412, 0212)';
+        e.cond_telefono = 'El prefijo no es válido (Digitel 0412/0422 · Movistar 0414/0424 · Movilnet 0416/0426 · fijos 02XX)';
       }
 
       if (req(conductor.email ?? '')) {
