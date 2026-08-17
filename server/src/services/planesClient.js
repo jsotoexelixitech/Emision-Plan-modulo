@@ -15,6 +15,11 @@ const { buildAuthHeaders } = require('./nestTokenService');
 
 const DEFAULT_PRODUCTOR = process.env.LAMUNDIAL_PRODUCTOR || '80080';
 const DEFAULT_CUSUARIO = process.env.LAMUNDIAL_CUSUARIO || '4';
+/** fn_validateCoberAccess (Sis2000) — usuario 4/7 no lista CA/PT/PP en spBuscaPlan. */
+const DEFAULT_CUSUARIO_COBERTURAS =
+  process.env.LAMUNDIAL_CUSUARIO_PLANES
+  || process.env.LAMUNDIAL_CUSUARIO_COBERTURAS
+  || '6';
 const DEFAULT_RAMO = parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
 /** SysIP `automobile_binac` / maplanes BINAC* asignados al productor en ramo 28. */
 const RAMO_BINACIONAL = parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
@@ -115,6 +120,21 @@ function resolveCproductor(raw) {
 }
 
 /**
+ * cusuario con permiso fn_validateCoberAccess para listar/aplicar CA/PT/PP.
+ * @param {Record<string, unknown>} [nexusMetadata]
+ * @returns {number}
+ */
+function resolveCusuarioCoberturas(nexusMetadata = {}) {
+  const raw =
+    nexusMetadata.cusuario_planes
+    ?? process.env.LAMUNDIAL_CUSUARIO_PLANES
+    ?? process.env.LAMUNDIAL_CUSUARIO_COBERTURAS
+    ?? DEFAULT_CUSUARIO_COBERTURAS;
+  const n = parseInt(String(raw), 10);
+  return Number.isFinite(n) && n > 0 ? n : 6;
+}
+
+/**
  * Resuelve parámetros de canal/productor desde metadata del token Nexus.
  * @param {Record<string, unknown>} [nexusMetadata]
  * @returns {{ cproductor: number, cusuario: string|number, cramo: number, ctipo?: number, cproductorSource: string }}
@@ -167,7 +187,7 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
     centidad: 'P',
     citem: String(cproductor),
     cproductor,
-    cusuario: String(cusuario),
+    cusuario: String(resolveCusuarioCoberturas(nexusMetadata)),
     cramo,
   };
 
@@ -386,6 +406,7 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
 
 module.exports = {
   resolveCproductor,
+  resolveCusuarioCoberturas,
   resolvePlanesParams,
   buildPlanesV2Body,
   normalizePlanRow,

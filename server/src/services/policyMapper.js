@@ -18,6 +18,7 @@ const {
   resolveStateCode,
   resolveCityCode,
 } = require('./catalogs');
+const { resolveCusuarioCoberturas } = require('./planesClient');
 
 // ---------- helpers ----------
 
@@ -163,6 +164,8 @@ function resolveVigenciaAnual(femisionYmd) {
 }
 
 function resolveMsumaaseg(state, quoteMeta = {}) {
+  const fromRcv = state.rcv?.sumaAsegurada;
+  if (fromRcv != null && Number(fromRcv) > 0) return Number(fromRcv);
   const fromMeta = quoteMeta.referenceSuma ?? quoteMeta.sumaAsegurada;
   if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
   const fromVehicle = state.vehicle?.msumaaseg ?? state.vehicle?.mvalor;
@@ -250,9 +253,9 @@ function buildQuoteRequest(state, overrides = {}) {
       ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
         ? parseInt(v.ntoneladas, 10)
         : undefined,
-      cramo: resolveRcvCramo(v),
-      ifrecuencia: resolveRcvFrecuencia(state, overrides),
-      ndias: resolveRcvNdias(state, overrides),
+      cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      // Prima cotizada siempre anual; ifrecuencia solo define recibos en emisión.
+      ifrecuencia: 'A',
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -286,8 +289,10 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const metadata = state.metadataCanal || {};
 
   const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
-  const cusuario = metadata.cusuario !== undefined ? metadata.cusuario : (process.env.LAMUNDIAL_CUSUARIO || 4);
-  const cramo = resolveRcvCramo(v, metadata);
+  const cusuario = resolveCusuarioCoberturas(metadata);
+  const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
+  const tasasMeta = quoteMeta.tasas || {};
+  const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
     : undefined;
@@ -304,10 +309,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ndias = resolveRcvNdias(state, overrides);
   const fecha_emision = overrides.fechaEmision || todayYmd();
   const vigencia = resolveVigenciaAnual(fecha_emision);
-  const msumaaseg = resolveMsumaaseg(state, overrides.quoteMeta || state.quoteMeta || {});
+  const msumaaseg = resolveMsumaaseg(state, quoteMeta);
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
   const rcv = state.rcv || {};
-  const coberAdicional = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
+  const selectedCoberturas = resolveSelectedCoberturas(rcv, overrides);
+  const coberAdicional = resolvePrimaryCoberAdicional(selectedCoberturas);
 
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
   const tipo_cedula_titular = sameInsured ? tipo_cedula_tomador : (titular.tipoDoc ? normalizeTipoCedula(titular.tipoDoc) : null);
@@ -420,9 +426,14 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
       : 60,
 
     coberAdicional,
-    tasa_ca: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
-    tasa_pt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
-    tasa_pp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+    ...(() => {
+      const t = resolveTasasForCober(coberAdicional, rcv, tasasMeta);
+      return {
+        tasa_ca: t.tasaCa,
+        tasa_pt: t.tasaPt,
+        tasa_pp: t.tasaPp,
+      };
+    })(),
 
     // Datos economicos (vienen de cotizacion; se envian como Number)
     mprima: Number(cotizacion.mprima),
@@ -517,7 +528,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
-    cusuario: parseInt(p.cusuario || process.env.LAMUNDIAL_CUSUARIO || 4, 10),
+    cusuario: parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
     msumaaseg,
     ifrecuencia: p.frecuencia || 'A',
     femision,
@@ -530,17 +541,65 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   if (p.conductor) body.conductor = p.conductor;
   if (p.beneficiario) body.beneficiario = p.beneficiario;
   if (p.coberAdicional) body.coberAdicional = String(p.coberAdicional).trim().toUpperCase();
-  if (p.tasa_ca != null) body.tasaCa = Number(p.tasa_ca);
-  if (p.tasa_pt != null) body.tasaPt = Number(p.tasa_pt);
-  if (p.tasa_pp != null) body.tasaPp = Number(p.tasa_pp);
+  const cober = String(p.coberAdicional || 'RC').trim().toUpperCase();
+  if (cober === 'CA' && p.tasa_ca != null && Number(p.tasa_ca) > 0) {
+    body.tasaCa = Number(p.tasa_ca);
+  }
+  if (cober === 'PT' && p.tasa_pt != null && Number(p.tasa_pt) > 0) {
+    body.tasaPt = Number(p.tasa_pt);
+  }
+  if (cober === 'PP' && p.tasa_pp != null && Number(p.tasa_pp) > 0) {
+    body.tasaPp = Number(p.tasa_pp);
+  }
 
   return body;
 }
 
-/**
- * Body para POST /api/v1/valrep/calculate-plan-coberturas (réplica SysIP calculatePlanSis).
- * tipo/puestos los resuelve nest-api desde VInma si se omiten.
- */
+/** Tasas casco para calculate-plan / emisión — solo la tasa de la cobertura activa (paridad SysIP). */
+function resolveTasasForCober(coberAdicional, rcv = {}, tasasMeta = {}) {
+  const cober = String(coberAdicional || 'RC').trim().toUpperCase();
+  const pick = (rcvKey, metaKey) => {
+    const fromRcv = rcv[rcvKey];
+    if (fromRcv != null && Number(fromRcv) > 0) return Number(fromRcv);
+    const fromMeta = tasasMeta[metaKey];
+    if (fromMeta != null && Number(fromMeta) > 0) return Number(fromMeta);
+    return 0;
+  };
+  return {
+    tasaCa: cober === 'CA' ? pick('tasaCA', 'tasaCA') : 0,
+    tasaPt: cober === 'PT' ? pick('tasaPT', 'tasaPT') : 0,
+    tasaPp: cober === 'PP' ? pick('tasaPP', 'tasaPP') : 0,
+  };
+}
+
+function resolveSelectedCoberturas(rcv = {}, overrides = {}) {
+  let selected = [];
+  if (Array.isArray(rcv.coberAdicionales) && rcv.coberAdicionales.length > 0) {
+    selected = [...new Set(
+      rcv.coberAdicionales
+        .map((c) => String(c || '').trim().toUpperCase())
+        .filter((c) => c && c !== 'RC'),
+    )];
+  } else if (Array.isArray(overrides.coberAdicionales) && overrides.coberAdicionales.length > 0) {
+    selected = overrides.coberAdicionales.map((c) => String(c).trim().toUpperCase()).filter(Boolean);
+  } else {
+    const one = String(rcv.coberAdicional || overrides.coberAdicional || 'RC').trim().toUpperCase();
+    if (one && one !== 'RC') selected = [one];
+  }
+  if (selected.length <= 1) return selected;
+  return [resolvePrimaryCoberAdicional(selected)];
+}
+
+/** coberAdicional del SP (prioridad PT > CA > PP > AP si llega legacy multi-select). */
+function resolvePrimaryCoberAdicional(selected = []) {
+  if (!selected.length) return 'RC';
+  const order = ['PT', 'CA', 'PP', 'AP'];
+  for (const code of order) {
+    if (selected.includes(code)) return code;
+  }
+  return selected[0];
+}
+
 function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = {}) {
   const { payload, metadata } = buildQuoteRequest(state, overrides);
   if (!payload?.cplan) {
@@ -548,15 +607,15 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
   }
   const { fdesde, fhasta } = resolveVigenciaAnual(todayYmd());
   const rcv = state.rcv || {};
-  const coberAdicional = String(
-    rcv.coberAdicional || overrides.coberAdicional || 'RC',
-  ).trim().toUpperCase();
+  const selected = resolveSelectedCoberturas(rcv, overrides);
+  const coberAdicional = resolvePrimaryCoberAdicional(selected);
   const suma =
     rcv.sumaAsegurada ??
     payload.sumaAsegurada ??
     quoteMeta.referenceSuma ??
     quoteMeta.sumaAsegurada ??
     undefined;
+  const tasasForCober = resolveTasasForCober(coberAdicional, rcv, quoteMeta.tasas || {});
 
   return {
     payload: {
@@ -571,16 +630,17 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       iplaca: payload.iplaca,
       toneladas: payload.ntoneladas,
       cramo: payload.cramo,
-      ifrecuencia: payload.ifrecuencia || resolveRcvFrecuencia(state, overrides),
+      ifrecuencia: 'A',
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
       coberAdicional,
-      tasaCa: rcv.tasaCA != null ? Number(rcv.tasaCA) : 0,
-      tasaPt: rcv.tasaPT != null ? Number(rcv.tasaPT) : 0,
-      tasaPp: rcv.tasaPP != null ? Number(rcv.tasaPP) : 0,
+      tasaCa: tasasForCober.tasaCa,
+      tasaPt: tasasForCober.tasaPt,
+      tasaPp: tasasForCober.tasaPp,
       sumaAsegBl: rcv.sumaAsegBl != null ? Number(rcv.sumaAsegBl) : 0,
       sumaAsegAd: rcv.sumaAsegAd != null ? Number(rcv.sumaAsegAd) : 0,
       recargo: 0,
       recargoRcv: 0,
+      cusuario: resolveCusuarioCoberturas(state.metadataCanal || {}),
     },
     metadata,
   };
@@ -591,8 +651,9 @@ module.exports = {
   buildCalculatePlanCoberturasRequest,
   buildEmissionRequest,
   toLaMundialEmissionPayload,
-  resolveIplaca,
-  resolveRcvCramo,
+  resolveSelectedCoberturas,
+  resolvePrimaryCoberAdicional,
+  resolveTasasForCober,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,

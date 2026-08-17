@@ -8,7 +8,7 @@ import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
-import { vehicleSignature, vesAnnual } from '../../lib/money';
+import { vehicleSignature } from '../../lib/money';
 import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 
@@ -20,7 +20,6 @@ const RCV_BENEFITS = [
   'Asistencia en el lugar del accidente',
 ];
 
-/** Convierte un PlanRcv de la API al tipo Plan del wizard */
 function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
   return {
     cplan:     p.cplan,
@@ -143,9 +142,15 @@ export function PlansStep() {
 
   const sig = hasVehicleData ? vehicleSignature(vehicle) : '';
   const planCode = selectedPlan?.cplan ?? '';
-  const coberAdicional = rcv.coberAdicional ?? 'RC';
+  const selectedOptionalCober =
+    (rcv.coberAdicional && rcv.coberAdicional !== 'RC'
+      ? rcv.coberAdicional
+      : (rcv.coberAdicionales ?? [])[0]) ?? '';
+  const coberSig = selectedOptionalCober
+    ? String(selectedOptionalCober).toUpperCase()
+    : 'RC';
   const quoteSig = sig && planCode
-    ? `${sig}|${planCode}|${coberAdicional}|${rcv.frecuencia ?? 'A'}`
+    ? `${sig}|${planCode}|${coberSig}`
     : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.
@@ -185,13 +190,21 @@ export function PlansStep() {
         const metaFull = r.metadata as {
           tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number };
           coverageOptions?: { value: string; text: string }[];
+          referenceSuma?: number;
+          sumaAsegurada?: number;
         } | undefined;
+        const rcvPatch: Record<string, unknown> = {};
+        const refSuma = metaFull?.referenceSuma ?? metaFull?.sumaAsegurada;
+        if (refSuma != null && Number(refSuma) > 0) {
+          rcvPatch.sumaAsegurada = Number(refSuma);
+        }
         if (metaFull?.tasas && (metaFull.tasas.tasaCA != null || metaFull.tasas.tasaPT != null || metaFull.tasas.tasaPP != null)) {
-          useWizardStore.getState().setRcv({
-            tasaCA: metaFull.tasas.tasaCA,
-            tasaPT: metaFull.tasas.tasaPT,
-            tasaPP: metaFull.tasas.tasaPP,
-          });
+          rcvPatch.tasaCA = metaFull.tasas.tasaCA;
+          rcvPatch.tasaPT = metaFull.tasas.tasaPT;
+          rcvPatch.tasaPP = metaFull.tasas.tasaPP;
+        }
+        if (Object.keys(rcvPatch).length > 0) {
+          useWizardStore.getState().setRcv(rcvPatch);
         }
         if (Array.isArray(metaFull?.coverageOptions) && metaFull.coverageOptions.length > 0) {
           setQuoteCoverageOptions(metaFull.coverageOptions);
@@ -216,18 +229,21 @@ export function PlansStep() {
     (selectedPlan?.coberturasAdicionales?.length
       ? selectedPlan.coberturasAdicionales
       : quoteCoverageOptions);
-  const coberSeleccionada = rcv.coberAdicional ?? 'RC';
+  const selectedCoberturaCode = selectedOptionalCober
+    ? String(selectedOptionalCober).toUpperCase()
+    : '';
   const isLoadingQuote = quoteState === 'loading';
   const hasRealQuote   = quoteState === 'ready' && Boolean(quote);
 
   const frecuenciaLabel =
     apiFrecuencias.find((f) => String(f.code) === rcv.frecuencia)?.label
     ?? 'Anual';
-  const annualUsd = hasRealQuote ? quote!.mprimaext : 0;
-  const displayPrice = annualUsd;
   const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, rcv.frecuencia, {
+    frecuenciaLabel,
     quoteBasis: 'annual-total',
   });
+  const annualUsd = hasRealQuote ? freqAmounts.annualUsd : 0;
+  const displayPrice = annualUsd;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -281,7 +297,7 @@ export function PlansStep() {
               onChange={(e) => {
                 const found = apiPlans.find((p) => p.cplan === e.target.value);
                 setSelectedPlan(found ?? null);
-                setRcv({ coberAdicional: 'RC' });
+                setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
                 setQuoteCoverageOptions([]);
               }}
               disabled={plansLoading || apiPlans.length === 0}
@@ -357,36 +373,42 @@ export function PlansStep() {
           <p className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-3">
             Incluir cobertura adicional
           </p>
-          <p className="text-xs text-slate-500 mb-3">
-            Pulsa una opción para añadirla a la póliza (como &quot;Incluir&quot; en Sys2000).
-            Sin selección = solo RCV. Vuelve a pulsar la misma para quitarla.
-          </p>
           <div className="flex flex-wrap gap-2">
             {coberturasAdicionales.map((cober) => {
-              const selected = coberSeleccionada === cober.value;
+              const code = cober.value.toUpperCase();
+              const selected = selectedCoberturaCode === code;
               return (
                 <button
                   key={cober.value}
                   type="button"
                   disabled={isLoadingQuote}
                   onClick={() => {
-                    const next = selected ? 'RC' : cober.value;
-                    setRcv({ coberAdicional: next });
+                    if (selected) {
+                      setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
+                      return;
+                    }
+                    setRcv({
+                      coberAdicional: code,
+                      coberAdicionales: [cober.value],
+                    });
                   }}
                   className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition-all ${
                     selected
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm'
+                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm ring-2 ring-indigo-200/80'
                       : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50'
                   } disabled:opacity-50`}
                 >
+                  {selected && <Check size={12} className="inline mr-1 -mt-px" />}
                   {cober.text}
                 </button>
               );
             })}
           </div>
-          {coberSeleccionada !== 'RC' && (
+          {selectedCoberturaCode && (
             <p className="mt-3 text-[0.7rem] font-semibold text-indigo-700">
-              Seleccionado: {coberturasAdicionales.find((c) => c.value === coberSeleccionada)?.text ?? coberSeleccionada}
+              Incluida:{' '}
+              {coberturasAdicionales.find((c) => c.value.toUpperCase() === selectedCoberturaCode)?.text
+                ?? selectedCoberturaCode}
               {isLoadingQuote && (
                 <span className="ml-2 inline-flex items-center gap-1 text-slate-500">
                   <Loader2 size={12} className="animate-spin" />
@@ -405,7 +427,7 @@ export function PlansStep() {
           displayPrice={displayPrice}
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
-          quoteVes={vesAnnual(quote)}
+          quoteVes={hasRealQuote ? freqAmounts.annualVes : 0}
           frecuenciaLabel={frecuenciaLabel}
           freqAmounts={freqAmounts}
           ptasa={quote?.ptasa}
@@ -493,7 +515,7 @@ function PlanDetailCard({
             </div>
           </div>
 
-          <div className="w-full sm:w-auto sm:shrink-0 sm:max-w-[260px] flex flex-col items-stretch sm:items-end gap-3">
+          <div className="w-full sm:w-auto sm:shrink-0 flex flex-col items-stretch sm:items-end gap-1">
             <div className="text-left sm:text-right">
               <div className="flex items-end gap-1 sm:justify-end">
                 <span className="text-base sm:text-[1.2rem] font-display font-black text-slate-500 leading-none pb-1 sm:pb-2">$</span>
@@ -530,7 +552,11 @@ function PlanDetailCard({
                 </p>
               )}
             </div>
+          </div>
+        </div>
 
+        {hasRealQuote && quote && (
+          <div className="mb-5">
             <PrimaCard
               quote={quote}
               freqAmounts={freqAmounts}
@@ -539,7 +565,7 @@ function PlanDetailCard({
               hasReal={hasRealQuote}
             />
           </div>
-        </div>
+        )}
 
         <div className="divider-soft mb-5" />
 
@@ -623,93 +649,116 @@ function PrimaCard({
   const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
-    <div className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-800 via-indigo-700 to-violet-700 p-4 sm:p-5 shadow-[0_22px_42px_-14px_rgba(9,17,51,0.6)] ring-1 ring-white/10">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.16),transparent_55%)] pointer-events-none" />
-      <div className="absolute -bottom-20 -right-12 w-44 h-44 rounded-full bg-fuchsia-500/18 blur-3xl pointer-events-none" />
+    <div className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 p-5 sm:p-6 shadow-[0_22px_42px_-14px_rgba(9,17,51,0.65)] ring-1 ring-white/15">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.12),transparent_55%)] pointer-events-none" />
+      <div className="absolute -bottom-20 -right-12 w-44 h-44 rounded-full bg-fuchsia-500/15 blur-3xl pointer-events-none" />
 
-      <div className="relative">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="inline-flex items-center gap-2 text-[0.62rem] font-black text-white uppercase tracking-widest">
-            <span className="w-6 h-6 rounded-lg bg-white/15 grid place-items-center ring-1 ring-white/20">
-              <ShieldCheck size={12} className="text-white" strokeWidth={2.5} />
+      <div className="relative grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 lg:gap-6 min-w-0">
+        <div>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <span className="inline-flex items-center gap-2 text-xs font-black text-white uppercase tracking-widest">
+              <span className="w-7 h-7 rounded-lg bg-white/15 grid place-items-center ring-1 ring-white/25">
+                <ShieldCheck size={14} className="text-white" strokeWidth={2.5} />
+              </span>
+              Prima La Mundial
             </span>
-            Prima La Mundial
-          </span>
-          <span className="text-[0.55rem] font-black text-emerald-200 bg-emerald-500/20 px-2 py-0.5 rounded-md ring-1 ring-emerald-300/30 tracking-wider">
-            OFICIAL
-          </span>
-        </div>
+            <span className="text-[0.65rem] font-black text-emerald-200 bg-emerald-500/25 px-2.5 py-1 rounded-md ring-1 ring-emerald-300/40 tracking-wider">
+              OFICIAL
+            </span>
+          </div>
 
-        <div className="flex items-baseline gap-1 mb-0.5">
-          <span className="text-base font-display font-black text-white/50 leading-none pb-1">$</span>
-          <span className="font-display font-black text-white text-[2.1rem] leading-none tabular-nums tracking-tight">
-            {quote.mprimaext.toFixed(2)}
-          </span>
-          <span className="text-[0.7rem] text-white/50 font-semibold pb-1 ml-1">USD / año</span>
-        </div>
+          <div className="flex items-baseline gap-1 mb-1">
+            <span className="text-lg font-display font-black text-white/60 leading-none pb-1">$</span>
+            <span className="font-display font-black text-white text-[2.35rem] sm:text-[2.6rem] leading-none tabular-nums tracking-tight">
+              {freqAmounts.annualUsd.toFixed(2)}
+            </span>
+            <span className="text-sm text-white/70 font-semibold pb-1 ml-1">USD / año</span>
+          </div>
 
-        <p className="text-[0.72rem] font-bold text-indigo-300 tabular-nums mb-3">
-          ≈ Bs {fmt(quote.mprima)} / año
-        </p>
+          <p className="text-sm font-bold text-indigo-200 tabular-nums mb-4">
+            ≈ Bs {fmt(freqAmounts.annualVes)} / año
+          </p>
 
-        <div className="h-px bg-white/10 mb-3" />
-
-        <div className="space-y-1.5">
-          {freqAmounts.cuotas > 1 ? (
-            <>
-              <div className="flex items-center justify-between text-[0.67rem]">
-                <span className="text-white/55">1er recibo ({frecuenciaLabel})</span>
-                <span className="font-bold text-white/80 tabular-nums">
-                  ${freqAmounts.installmentUsd.toFixed(2)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[0.67rem]">
-                <span className="text-white/55">1er recibo Bs</span>
-                <span className="font-bold text-white/80 tabular-nums">
-                  Bs {fmt(freqAmounts.installmentVes)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-[0.67rem] pt-1 border-t border-white/10">
-                <span className="text-white/55">{freqAmounts.cuotas} recibos al año</span>
-                <span className="text-white/50 tabular-nums">{freqAmounts.paySummary}</span>
-              </div>
-            </>
-          ) : (
-            <div className="flex items-center justify-between text-[0.67rem]">
-              <span className="text-white/55">Pago único anual</span>
-              <span className="font-bold text-white/80 tabular-nums">${quote.mprimaext.toFixed(2)}</span>
-            </div>
-          )}
-          {quote.ptasa > 0 && (
-            <div className="flex items-center justify-between text-[0.67rem] pt-1 border-t border-white/10">
-              <span className="text-white/40">Tasa de cambio</span>
-              <span className="text-white/50 tabular-nums">{quote.ptasa.toFixed(2)} Bs/$</span>
-            </div>
-          )}
-          {quote.coberturas && quote.coberturas.length > 0 && (
-            <div className="pt-2 mt-1 border-t border-white/10 space-y-1">
-              <p className="text-[0.6rem] font-black uppercase tracking-wider text-white/45">
-                Coberturas incluidas
-              </p>
-              {quote.coberturas.slice(0, 6).map((c) => (
-                <div
-                  key={`${c.ccobertura ?? c.name}`}
-                  className="flex items-start justify-between gap-2 text-[0.65rem]"
-                >
-                  <span className="text-white/70 leading-snug">{c.name}</span>
-                  <span className="font-semibold text-white/85 tabular-nums shrink-0">
-                    ${c.prima.toFixed(2)}
+          <div className="space-y-2 text-sm">
+            {freqAmounts.cuotas > 1 ? (
+              <>
+                <div className="flex items-center justify-between">
+                  <span className="text-white/75">1er recibo ({frecuenciaLabel})</span>
+                  <span className="font-bold text-white tabular-nums">
+                    ${freqAmounts.installmentUsd.toFixed(2)}
                   </span>
                 </div>
-              ))}
-              {quote.coberturas.length > 6 && (
-                <p className="text-[0.6rem] text-white/40">
-                  + {quote.coberturas.length - 6} coberturas más
-                </p>
-              )}
-            </div>
-          )}
+                <div className="flex items-center justify-between">
+                  <span className="text-white/75">1er recibo Bs</span>
+                  <span className="font-bold text-white tabular-nums">
+                    Bs {fmt(freqAmounts.installmentVes)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-2 border-t border-white/15">
+                  <span className="text-white/75">{freqAmounts.cuotas} recibos al año</span>
+                  <span className="text-white/80 tabular-nums">{freqAmounts.paySummary}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="text-white/75">Pago único anual</span>
+                <span className="font-bold text-white tabular-nums">${freqAmounts.annualUsd.toFixed(2)}</span>
+              </div>
+            )}
+            {quote.ptasa > 0 && (
+              <div className="flex items-center justify-between pt-2 border-t border-white/15">
+                <span className="text-white/65">Tasa de cambio</span>
+                <span className="text-white/90 tabular-nums font-semibold">{quote.ptasa.toFixed(2)} Bs/$</span>
+              </div>
+            )}
+          </div>
         </div>
+
+        {quote.coberturas && quote.coberturas.length > 0 && (
+          <div className="rounded-xl bg-white/10 ring-1 ring-white/15 p-3 sm:p-4 flex flex-col min-w-0 min-h-0 overflow-hidden">
+            <p className="text-xs font-black uppercase tracking-wider text-white/90 mb-3">
+              Desglose por cobertura
+            </p>
+            <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] gap-x-2 text-[0.58rem] font-black uppercase tracking-wider text-white/45 mb-2">
+              <span>Cobertura</span>
+              <span className="text-right">S.A.</span>
+              <span className="text-right">Prima</span>
+            </div>
+            <div className="max-h-56 overflow-y-auto overflow-x-hidden pr-1 custom-scrollbar divide-y divide-white/10 md:divide-y-0 md:space-y-1">
+              {quote.coberturas.map((c) => {
+                const sumaLabel =
+                  c.sumaAsegurada != null && c.sumaAsegurada > 0
+                    ? `$${c.sumaAsegurada.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                    : '—';
+                const primaLabel = `$${c.prima.toFixed(2)}`;
+
+                return (
+                  <div
+                    key={`${c.ccobertura ?? c.name}`}
+                    className="py-2.5 first:pt-0 last:pb-0 md:py-1 md:grid md:grid-cols-[minmax(0,1fr)_4.5rem_3.5rem] md:gap-x-2 md:items-start"
+                  >
+                    <p className="text-[0.68rem] sm:text-xs text-white/90 font-medium leading-snug break-words min-w-0">
+                      {c.name}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-3 md:hidden text-[0.68rem] tabular-nums">
+                      <span className="text-white/55">
+                        <span className="font-bold uppercase tracking-wide text-[0.58rem] mr-1">S.A.</span>
+                        {sumaLabel}
+                      </span>
+                      <span className="font-bold text-white shrink-0">{primaLabel}</span>
+                    </div>
+                    <span className="hidden md:block text-white/70 tabular-nums text-xs text-right shrink-0 leading-snug">
+                      {sumaLabel}
+                    </span>
+                    <span className="hidden md:block font-bold text-white tabular-nums text-xs text-right shrink-0 leading-snug">
+                      {primaLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
