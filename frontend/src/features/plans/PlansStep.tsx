@@ -66,8 +66,16 @@ export function PlansStep() {
     setPlansLoading(true);
     setPlansError(false);
 
-    const ctipo = (vehicle as any).ctipo as number | undefined;
-    catalogoApi.planesRcv(ctipo)
+    const ctipo = (vehicle as { ctipo?: number }).ctipo;
+    // Sis2000 / spBuscaPlan: iplaca 'B' → bnacional=1 (planes binacionales).
+    const iplaca =
+      vehicle.tipoPlaca === 'binacional'
+        ? 'B'
+        : vehicle.tipoPlaca === 'extranjera'
+          ? 'E'
+          : 'N';
+
+    catalogoApi.planesRcv(ctipo, iplaca)
       .then((res) => {
         if (cancelled) return;
         const label = vehicle.xcategoria_uso?.trim() || vehicle.uso || 'RCV';
@@ -88,7 +96,7 @@ export function PlansStep() {
 
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [vehicle.ctipo as any, vehicle.cversion, vehicle.cmarca]);
+  }, [vehicle.ctipo, vehicle.cversion, vehicle.cmarca, vehicle.tipoPlaca]);
 
   // ── Frecuencias por plan (spBuscaFrecuenciaPlan) ─────────────────────────
   useEffect(() => {
@@ -100,7 +108,9 @@ export function PlansStep() {
 
     let cancelled = false;
     setFrecLoading(true);
-    getFrecuenciasByPlan(planCode, product.cramo)
+    const cramo =
+      vehicle.tipoPlaca === 'binacional' ? 28 : product.cramo;
+    getFrecuenciasByPlan(planCode, cramo)
       .then((items) => {
         if (cancelled) return;
         setApiFrecuencias(items);
@@ -122,7 +132,7 @@ export function PlansStep() {
       });
 
     return () => { cancelled = true; };
-  }, [selectedPlan?.cplan, product.cramo, setRcv, rcv.frecuencia]);
+  }, [selectedPlan?.cplan, product.cramo, vehicle.tipoPlaca, setRcv, rcv.frecuencia]);
 
   // ── Cotización automática contra La Mundial ───────────────────────────────
   const hasVehicleData =

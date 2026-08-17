@@ -147,14 +147,16 @@ router.get('/resolver', async (req, res) => {
 router.get('/planes', async (req, res) => {
   const meta = req.nexusMetadata || {};
   const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
+  const iplacaRaw = req.query.iplaca != null ? String(req.query.iplaca).trim().toUpperCase() : '';
+  const iplaca = iplacaRaw === 'B' || iplacaRaw === 'E' || iplacaRaw === 'N' ? iplacaRaw : undefined;
 
   const resolved = resolvePlanesParams(meta);
   console.log(
-    `[catalogo/planes] GET ctipo=${ctipo ?? 'null'} metadata.cproductor=${JSON.stringify(meta.cproductor ?? null)} resolved.cproductor=${resolved.cproductor} (${resolved.cproductorSource}) cramo=${resolved.cramo}`,
+    `[catalogo/planes] GET ctipo=${ctipo ?? 'null'} iplaca=${iplaca ?? 'null'} metadata.cproductor=${JSON.stringify(meta.cproductor ?? null)} resolved.cproductor=${resolved.cproductor} (${resolved.cproductorSource}) cramo=${resolved.cramo}`,
   );
 
   try {
-    const result = await fetchPlanesV2(meta, ctipo);
+    const result = await fetchPlanesV2(meta, ctipo, iplaca);
 
     res.json({
       success: true,

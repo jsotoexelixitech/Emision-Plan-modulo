@@ -505,11 +505,17 @@ export const catalogoApi = {
   /**
    * Planes RCV — La Mundial valrep/planes/v2 filtrados por cproductor del token SSO.
    * ctipo: 1=particular, 4=moto, 3=pick-up, etc.
+   * iplaca: N=nacional, E=extranjera, B=binacional (spBuscaPlan bnacional).
    */
-  planesRcv: (ctipo?: number) =>
-    api.get<{ success: boolean; planes: PlanRcv[] }>(
-      `/catalogo/planes${ctipo != null ? `?ctipo=${ctipo}` : ''}`,
-    ),
+  planesRcv: (ctipo?: number, iplaca?: 'N' | 'E' | 'B') => {
+    const qs = new URLSearchParams();
+    if (ctipo != null) qs.set('ctipo', String(ctipo));
+    if (iplaca) qs.set('iplaca', iplaca);
+    const query = qs.toString();
+    return api.get<{ success: boolean; planes: PlanRcv[] }>(
+      `/catalogo/planes${query ? `?${query}` : ''}`,
+    );
+  },
 };
 
 // ──────────────────────────────────────────────────────────────────────

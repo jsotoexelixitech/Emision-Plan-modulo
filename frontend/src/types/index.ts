@@ -158,7 +158,7 @@ export interface FuneralData {
 export interface VehicleData {
   placa: string;
   /** Tipo de placa: nacional (formato venezolano AAA000A/AAA000) o extranjera. */
-  tipoPlaca: 'nacional' | 'extranjera';
+  tipoPlaca: 'nacional' | 'extranjera' | 'binacional';
   marca: string;   // nombre descriptivo (ej. "TOYOTA") — para display
   modelo: string;  // nombre descriptivo (ej. "COROLLA") — para display
   año: string;

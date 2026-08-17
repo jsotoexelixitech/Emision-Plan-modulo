@@ -174,7 +174,21 @@ function resolveMsumaaseg(state, quoteMeta = {}) {
 }
 
 function resolveIplaca(v) {
-  return v?.tipoPlaca === 'extranjera' ? 'E' : 'N';
+  if (v?.tipoPlaca === 'binacional') return 'B';
+  if (v?.tipoPlaca === 'extranjera') return 'E';
+  return 'N';
+}
+
+/** Ramo RCV nacional=18; binacional=28 (misma regla que SysIP automobile_binac). */
+function resolveRcvCramo(v, metadata = {}) {
+  if (resolveIplaca(v) === 'B') {
+    return parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
+  }
+  if (metadata.cramo !== undefined && metadata.cramo !== null && String(metadata.cramo).trim() !== '') {
+    const n = parseInt(String(metadata.cramo), 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
 }
 
 // ---------- mappers principales ----------

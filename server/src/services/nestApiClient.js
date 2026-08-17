@@ -491,11 +491,20 @@ async function getValrepFrecuencias(cplan, cramo) {
       { cvalor: 'M', xdescripcion: 'Mensual' },
     ];
   }
-  return rawItems.map((f) => ({
+  const mapped = rawItems.map((f) => ({
     code: f.cvalor || f.ifrecuencia || f.code,
     label: f.xdescripcion || f.xfrecuencia || f.label || String(f.cvalor || f.ifrecuencia),
     ndias: f.ndias != null && !Number.isNaN(Number(f.ndias)) ? Number(f.ndias) : null,
   }));
+
+  // spBuscaFrecuenciaPlan puede devolver varias filas con el mismo cvalor (A/B/D…).
+  const seen = new Set();
+  return mapped.filter((item) => {
+    const code = String(item.code ?? '').trim();
+    if (!code || seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
 }
 
 /**
