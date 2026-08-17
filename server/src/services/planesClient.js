@@ -16,6 +16,8 @@ const { buildAuthHeaders } = require('./nestTokenService');
 const DEFAULT_PRODUCTOR = process.env.LAMUNDIAL_PRODUCTOR || '80080';
 const DEFAULT_CUSUARIO = process.env.LAMUNDIAL_CUSUARIO || '4';
 const DEFAULT_RAMO = parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
+/** SysIP `automobile_binac` / maplanes BINAC* asignados al productor en ramo 28. */
+const RAMO_BINACIONAL = parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
 const TIMEOUT = parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || 30_000;
 /** Máximo de caracteres del JSON crudo de La Mundial en logs (0 = sin truncar). */
 const LOG_BODY_MAX = parseInt(process.env.LAMUNDIAL_LOG_PLANES_MAX || '4000', 10);
@@ -147,12 +149,19 @@ function resolvePlanesParams(nexusMetadata = {}) {
  * Arma el body para valrep/planes/v2 según contrato La Mundial QA.
  * @param {Record<string, unknown>} nexusMetadata
  * @param {number|null|undefined} ctipoQuery — ?ctipo= del GET /catalogo/planes
+ * @param {'N'|'E'|'B'|null|undefined} iplacaQuery — ?iplaca= (B = binacional → bnacional en SP)
  */
-function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
-  const { cproductor, cusuario, cramo, ctipo: metaCtipo } = resolvePlanesParams(nexusMetadata);
+function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
+  const { cproductor, cusuario, cramo: metaCramo, ctipo: metaCtipo } = resolvePlanesParams(nexusMetadata);
   const ctipo = ctipoQuery != null && !Number.isNaN(ctipoQuery)
     ? ctipoQuery
     : metaCtipo;
+
+  const iplaca = iplacaQuery
+    || (nexusMetadata.iplaca != null ? String(nexusMetadata.iplaca).trim().toUpperCase() : '');
+
+  // BINAC/BINACA/BINACB viven en ramo 28 (RCG), no en 18 (Automóvil).
+  const cramo = iplaca === 'B' ? RAMO_BINACIONAL : metaCramo;
 
   const body = {
     centidad: 'P',
@@ -164,6 +173,10 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery) {
 
   if (ctipo != null && !Number.isNaN(ctipo)) {
     body.ctipo = ctipo;
+  }
+
+  if (iplaca === 'B' || iplaca === 'E' || iplaca === 'N') {
+    body.iplaca = iplaca;
   }
 
   return body;
@@ -316,9 +329,10 @@ async function getValrepAuthHeaders(baseUrl) {
  * Consulta planes vía API La Mundial valrep/planes/v2.
  * @param {Record<string, unknown>} nexusMetadata
  * @param {number|null|undefined} ctipoQuery
+ * @param {'N'|'E'|'B'|null|undefined} iplacaQuery
  */
-async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery) {
-  const body = buildPlanesV2Body(nexusMetadata, ctipoQuery);
+async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
+  const body = buildPlanesV2Body(nexusMetadata, ctipoQuery, iplacaQuery);
   const baseUrl = getValrepBaseUrl();
   const url = `${baseUrl}/api/v1/valrep/planes/v2`;
   const source = isInternalPlanesApi(baseUrl)

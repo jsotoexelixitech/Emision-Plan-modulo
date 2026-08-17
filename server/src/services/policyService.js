@@ -33,6 +33,8 @@ const {
   buildCalculatePlanCoberturasRequest,
   buildEmissionRequest,
   toLaMundialEmissionPayload,
+  resolveIplaca,
+  resolveRcvCramo,
 } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
@@ -139,7 +141,7 @@ async function resolveEmitOverrides(state, overrides = {}) {
   let ndias = overrides.ndias ?? state.rcv?.ndias;
   if ((ndias == null || ndias === '') && frecuencia && plan) {
     try {
-      const cramo = parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
+      const cramo = resolveRcvCramo(state.vehicle, state.metadataCanal || {});
       const items = await getValrepFrecuencias(plan, cramo);
       const code = String(frecuencia).trim().toUpperCase().charAt(0);
       const match = items.find(
@@ -228,7 +230,7 @@ async function quote(state, overrides = {}) {
       result = await getCotizacionFromSis2000({
         ...payload,
         cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
-        iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+        iplaca: resolveIplaca(enrichedState.vehicle),
       });
       metadata.quoteSource = 'sis2000';
     } else {
@@ -240,7 +242,7 @@ async function quote(state, overrides = {}) {
           fano: payload.fano,
           cplan: payload.cplan,
           ccategoria_uso: payload.ccategoria_uso,
-          iplaca: payload.iplaca || (enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N'),
+          iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
           ntoneladas: payload.ntoneladas,
           cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
           ifrecuencia: payload.ifrecuencia,
@@ -259,7 +261,7 @@ async function quote(state, overrides = {}) {
           result = await getCotizacionFromSis2000({
             ...payload,
             cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-            iplaca: enrichedState.vehicle?.tipoPlaca === 'extranjera' ? 'E' : 'N',
+            iplaca: resolveIplaca(enrichedState.vehicle),
           });
           metadata.quoteSource = 'sis2000_fallback';
         } else {

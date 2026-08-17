@@ -171,7 +171,21 @@ function resolveMsumaaseg(state, quoteMeta = {}) {
 }
 
 function resolveIplaca(v) {
-  return v?.tipoPlaca === 'extranjera' ? 'E' : 'N';
+  if (v?.tipoPlaca === 'binacional') return 'B';
+  if (v?.tipoPlaca === 'extranjera') return 'E';
+  return 'N';
+}
+
+/** Ramo RCV nacional=18; binacional=28 (misma regla que SysIP automobile_binac). */
+function resolveRcvCramo(v, metadata = {}) {
+  if (resolveIplaca(v) === 'B') {
+    return parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
+  }
+  if (metadata.cramo !== undefined && metadata.cramo !== null && String(metadata.cramo).trim() !== '') {
+    const n = parseInt(String(metadata.cramo), 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
 }
 
 // ---------- mappers principales ----------
@@ -236,7 +250,7 @@ function buildQuoteRequest(state, overrides = {}) {
       ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
         ? parseInt(v.ntoneladas, 10)
         : undefined,
-      cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      cramo: resolveRcvCramo(v),
       ifrecuencia: resolveRcvFrecuencia(state, overrides),
       ndias: resolveRcvNdias(state, overrides),
       sumaAsegurada: sumaAsegurada ?? undefined,
@@ -273,7 +287,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
   const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
   const cusuario = metadata.cusuario !== undefined ? metadata.cusuario : (process.env.LAMUNDIAL_CUSUARIO || 4);
-  const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
+  const cramo = resolveRcvCramo(v, metadata);
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
     : undefined;
@@ -577,6 +591,8 @@ module.exports = {
   buildCalculatePlanCoberturasRequest,
   buildEmissionRequest,
   toLaMundialEmissionPayload,
+  resolveIplaca,
+  resolveRcvCramo,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,
