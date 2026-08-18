@@ -18,12 +18,30 @@ export function countEmissionDocs(docs: EmissionPdfDocs): number {
   return collectEmissionUrls(docs).length;
 }
 
+function clickOpenUrl(url: string): boolean {
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return true;
+  } catch {
+    const w = window.open(url, '_blank', 'noopener,noreferrer');
+    return Boolean(w);
+  }
+}
+
 export function openEmissionPdfs(docs: EmissionPdfDocs): string[] {
   const urls = collectEmissionUrls(docs);
+  const opened: string[] = [];
   for (const url of urls) {
-    window.open(url, '_blank');
+    if (clickOpenUrl(url)) opened.push(url);
   }
-  return urls;
+  return opened;
 }
 
 export function emissionPdfHint(opened: string[]): string {
