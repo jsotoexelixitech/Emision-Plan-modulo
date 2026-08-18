@@ -39,9 +39,18 @@ async function axiosOpts(extra = {}) {
  * Cotiza vía POST /api/v1/valrep/cotizacion (sp_calculo_auto_nexus en Sis2000).
  * @param {object} payload - { cmarca, cmodelo, cversion, fano, cplan, ccategoria_uso, iplaca?, ntoneladas?, cramo? }
  */
+function formatNestApiErrorMessage(body, fallback) {
+  const raw = body?.message;
+  if (Array.isArray(raw)) return raw.join('; ');
+  if (typeof raw === 'string' && raw.trim()) return raw.trim();
+  return fallback;
+}
+
 async function getCotizacionViaNestApi(payload) {
   const url = `${getBaseUrl()}/api/v1/valrep/cotizacion`;
-  const response = await axios.post(url, payload, await axiosOpts());
+  const response = trackResponse(await axios.post(url, payload, await axiosOpts({
+    validateStatus: () => true,
+  })));
 
   if (response.status >= 200 && response.status < 300) {
     const data = response.data?.data ?? response.data?.result ?? response.data;
@@ -57,12 +66,13 @@ async function getCotizacionViaNestApi(payload) {
     return { mprima, mprimaext, ptasa, referenceSuma };
   }
 
+  const body = response.data ?? {};
   const err = new Error(
-    response.data?.message || `HTTP ${response.status} cotizando en nest-api`,
+    formatNestApiErrorMessage(body, `HTTP ${response.status} cotizando en nest-api`),
   );
   err.code = 'NEST_API_QUOTE_ERROR';
   err.httpStatus = response.status;
-  err.raw = response.data;
+  err.raw = body;
   throw err;
 }
 

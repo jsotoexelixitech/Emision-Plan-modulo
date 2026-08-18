@@ -253,7 +253,7 @@ function buildQuoteRequest(state, overrides = {}) {
       ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
         ? parseInt(v.ntoneladas, 10)
         : undefined,
-      cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      cramo: resolveRcvCramo(v, state.metadataCanal || {}),
       // Prima cotizada siempre anual; ifrecuencia solo define recibos en emisión.
       ifrecuencia: 'A',
       sumaAsegurada: sumaAsegurada ?? undefined,
@@ -292,7 +292,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const cusuario = resolveCusuarioCoberturas(metadata);
   const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
   const tasasMeta = quoteMeta.tasas || {};
-  const cramo = metadata.cramo !== undefined ? metadata.cramo : (process.env.LAMUNDIAL_RAMO || 18);
+  const cramo = resolveRcvCramo(v, metadata);
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
     : undefined;

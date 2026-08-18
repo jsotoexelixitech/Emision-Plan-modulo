@@ -665,6 +665,14 @@ function mapClientError(err, stage, extra = {}) {
     case 'LAMUNDIAL_SERVER_ERROR':
       httpStatus = 502;
       break;
+    case 'NEST_API_QUOTE_ERROR':
+    case 'NEST_API_QUOTE_ZERO':
+    case 'SYSIP_QUOTE_ERROR':
+    case 'SYSIP_QUOTE_ZERO':
+      httpStatus = err.httpStatus && err.httpStatus >= 400 && err.httpStatus < 500
+        ? err.httpStatus
+        : 400;
+      break;
   }
   return new PolicyError(code, err.message, httpStatus, {
     stage,
