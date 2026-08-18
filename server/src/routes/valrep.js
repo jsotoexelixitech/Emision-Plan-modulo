@@ -99,17 +99,25 @@ router.post('/validate-vehicle', async (req, res) => {
     });
     res.json(result);
   } catch (err) {
-    if (err.code === 'PLATE_ALREADY_INSURED') {
+    if (
+      err.code === 'PLATE_ALREADY_INSURED'
+      || err.code === 'SERIAL_ALREADY_INSURED'
+      || err.code === 'VEHICLE_ALREADY_INSURED'
+    ) {
       return res.status(400).json({
         success: false,
         code: err.code,
         message: err.message || 'Este vehículo ya cuenta con una póliza vigente.',
+        error: err.message || 'Este vehículo ya cuenta con una póliza vigente.',
       });
     }
     logError('validate-vehicle', err);
+    const msg = err.message || 'Error validando vehículo en nest-api';
     res.status(502).json({
       success: false,
-      error: err.message || 'Error validando vehículo en nest-api',
+      code: err.code || 'NEST_API_VALIDATE_ERROR',
+      message: msg,
+      error: msg,
     });
   }
 });
