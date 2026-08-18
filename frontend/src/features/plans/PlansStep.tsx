@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
-import { getProductConfig } from '../../lib/product';
+import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
 import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
@@ -109,7 +109,7 @@ export function PlansStep() {
     let cancelled = false;
     setFrecLoading(true);
     const cramo =
-      vehicle.tipoPlaca === 'binacional' ? 28 : product.cramo;
+      vehicle.tipoPlaca === 'binacional' ? RCV_RAMO_BINACIONAL : product.cramo;
     getFrecuenciasByPlan(planCode, cramo)
       .then((items) => {
         if (cancelled) return;

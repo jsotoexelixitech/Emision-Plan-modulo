@@ -34,7 +34,12 @@ function validateEmissionPayload(p) {
   // Identificadores (poliza/cnpoliza_rel no se envían; Sis2000 genera cnpoliza)
   if (!p.cramo) errors.push('cramo requerido');
   if (!p.plan || !String(p.plan).trim()) errors.push('plan requerido (vacío)');
-  if (!['A', 'S', 'C', 'T', 'M'].includes(p.frecuencia)) errors.push(`frecuencia invalida: ${p.frecuencia}`);
+  if (!['A', 'S', 'C', 'T', 'M', 'D', 'E'].includes(p.frecuencia)) {
+    errors.push(`frecuencia invalida: ${p.frecuencia}`);
+  }
+  if (p.frecuencia === 'D' && !(Number(p.ndias) > 0)) {
+    errors.push('ndias requerido para frecuencia D (binacional)');
+  }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fecha_emision || '')) errors.push('fecha_emision formato YYYY-MM-DD');
 
   // Tomador

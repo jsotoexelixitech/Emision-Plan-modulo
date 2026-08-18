@@ -179,7 +179,7 @@ function resolveIplaca(v) {
   return 'N';
 }
 
-/** Ramo RCV nacional=18; binacional=28 (misma regla que SysIP automobile_binac). */
+/** Ramo RCV nacional=18; binacional=28 en maplanes (LAMUNDIAL_RAMO_BINACIONAL). */
 function resolveRcvCramo(v, metadata = {}) {
   if (resolveIplaca(v) === 'B') {
     return parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
@@ -308,7 +308,11 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const frecuencia = resolveRcvFrecuencia(state, overrides);
   const ndias = resolveRcvNdias(state, overrides);
   const fecha_emision = overrides.fechaEmision || todayYmd();
-  const vigencia = resolveVigenciaAnual(fecha_emision);
+  const iplaca = resolveIplaca(v);
+  const vigencia =
+    (frecuencia === 'D' || iplaca === 'B') && ndias != null
+      ? resolveVigencia(fecha_emision, ndias)
+      : resolveVigenciaAnual(fecha_emision);
   const msumaaseg = resolveMsumaaseg(state, quoteMeta);
   const internalId = overrides.internalPolicyId || genInternalPolicyId();
   const rcv = state.rcv || {};
@@ -336,7 +340,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     fdesde: vigencia.fdesde,
     fhasta: vigencia.fhasta,
     msumaaseg,
-    iplaca: resolveIplaca(v),
+    iplaca,
 
     productor: productor != null ? String(productor) : undefined,
     cusuario,

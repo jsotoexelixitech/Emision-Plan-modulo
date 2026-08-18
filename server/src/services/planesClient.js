@@ -21,7 +21,7 @@ const DEFAULT_CUSUARIO_COBERTURAS =
   || process.env.LAMUNDIAL_CUSUARIO_COBERTURAS
   || '6';
 const DEFAULT_RAMO = parseInt(process.env.LAMUNDIAL_RAMO || '18', 10);
-/** SysIP `automobile_binac` / maplanes BINAC* asignados al productor en ramo 28. */
+/** Planes BINAC* en maplanes — ramo externo configurable (default 26). */
 const RAMO_BINACIONAL = parseInt(process.env.LAMUNDIAL_RAMO_BINACIONAL || '28', 10);
 const TIMEOUT = parseInt(process.env.LAMUNDIAL_TIMEOUT_MS, 10) || 30_000;
 /** Máximo de caracteres del JSON crudo de La Mundial en logs (0 = sin truncar). */
@@ -180,7 +180,7 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
   const iplaca = iplacaQuery
     || (nexusMetadata.iplaca != null ? String(nexusMetadata.iplaca).trim().toUpperCase() : '');
 
-  // BINAC/BINACA/BINACB viven en ramo 28 (RCG), no en 18 (Automóvil).
+  // BINAC/BINACA/BINACB: usar ramo 28 en maplanes (iplaca B); evitar fila duplicada cramo 18.
   const cramo = iplaca === 'B' ? RAMO_BINACIONAL : metaCramo;
 
   const body = {
