@@ -5,7 +5,8 @@ import {
   Loader2, AlertTriangle, BadgeCheck, CalendarClock,
 } from 'lucide-react';
 import type { Plan } from '../../types';
-import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
+import { type PlanRcv, catalogoApi, quotePolicy, clasificarDiligencia, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
+import { diligenciaLabel } from '../../lib/diligencia';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
@@ -39,7 +40,7 @@ function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
 export function PlansStep() {
   const {
     setCategory, selectedPlan, setSelectedPlan,
-    vehicle, quote, quoteState, rcv, setRcv,
+    vehicle, quote, quoteState, rcv, setRcv, tomador, diligencia, setDiligencia, setTomador,
   } = useWizardStore();
 
   const product = getProductConfig();
@@ -167,7 +168,7 @@ export function PlansStep() {
     snap.setQuoteState('loading');
 
     quotePolicy({
-      state: { vehicle, rcv, selectedPlan },
+      state: { vehicle, rcv, selectedPlan, tomador },
       plan: planCode,
     })
       .then((r) => {
@@ -187,6 +188,26 @@ export function PlansStep() {
           },
           quoteSig,
         );
+
+        clasificarDiligencia({
+          state: { tomador, selectedPlan, quote: { mprima: r.mprima, ptasa: r.ptasa } },
+          plan: planCode,
+          mprima: r.mprima,
+          ptasa: r.ptasa,
+        })
+          .then((d) => {
+            if (activeQuoteSigRef.current !== quoteSig) return;
+            setDiligencia({
+              itipoDiligencia: d.itipoDiligencia,
+              primaAnualBs: d.primaAnualBs,
+              umbralBs: d.umbralBs,
+              tcBcv: d.tcBcv,
+              clasificadoEn: 'emision',
+              camposObligatorios: ['direccion'],
+            });
+            setTomador({ itipoDiligencia: d.itipoDiligencia });
+          })
+          .catch(() => { /* clasificación best-effort */ });
 
         const metaFull = r.metadata as {
           tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number };
@@ -267,6 +288,16 @@ export function PlansStep() {
           <Shield size={11} />
           {frecuenciaLabel}
         </span>
+        {hasRealQuote && diligencia && (
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
+            diligencia.itipoDiligencia === 'S'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : 'bg-amber-50 border-amber-200 text-amber-800'
+          }`}>
+            <BadgeCheck size={11} />
+            {diligenciaLabel(diligencia.itipoDiligencia)}
+          </span>
+        )}
       </div>
 
       {/* Selectores */}

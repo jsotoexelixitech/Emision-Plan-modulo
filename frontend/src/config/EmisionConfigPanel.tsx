@@ -78,6 +78,7 @@ export function EmisionConfigPanel() {
   const [apiMap, setApiMap] = useState<ApiMapEntry[]>([]);
   const [permitirEstimado, setPermitirEstimado] = useState(true);
   const [inspeccionObligatoria, setInspeccionObligatoria] = useState(false);
+  const [diligenciaUmbral, setDiligenciaUmbral] = useState(300);
   const [diasCarencia, setDiasCarencia] = useState(0);
   const [edadMaxima, setEdadMaxima] = useState(70);
   const [healthQuestions, setHealthQuestions] = useState<HealthQuestionDraft[]>([]);
@@ -163,6 +164,8 @@ export function EmisionConfigPanel() {
     setApiMap((config.apiMap as ApiMapEntry[]) ?? []);
     setPermitirEstimado(config.permitirEstimado ?? true);
     setInspeccionObligatoria(config.inspeccionObligatoria ?? false);
+    const dil = config.diligencia as { umbralMultiplicador?: number } | undefined;
+    setDiligenciaUmbral(dil?.umbralMultiplicador ?? 300);
     setDiasCarencia(config.diasCarencia ?? 0);
     setEdadMaxima(config.edadMaxima ?? 70);
     if (!healthQuestionsDirty.current && producto === 'funerario') {
@@ -313,6 +316,16 @@ export function EmisionConfigPanel() {
             apiMap,
             permitirEstimado,
             inspeccionObligatoria,
+            ...(producto === 'rcv'
+              ? {
+                  diligencia: {
+                    umbralMultiplicador: diligenciaUmbral,
+                    fuenteTc: 'bcv',
+                    pjSiempreDdc: true,
+                    planesMasivos: ALL_PLAN_CODES,
+                  },
+                }
+              : {}),
             diasCarencia,
             edadMaxima,
             ...(cleanedQuestions && byCanalPayload
@@ -466,6 +479,23 @@ export function EmisionConfigPanel() {
                               <span className="text-xs text-slate-500">Exigir paso por el módulo de inspección si el riesgo lo amerita.</span>
                             </div>
                           </label>
+                          <hr className="border-slate-100" />
+                          <div className="p-2">
+                            <label className={lbl}>Umbral DDS (× TC BCV)</label>
+                            <input
+                              type="number"
+                              min={1}
+                              className={inp}
+                              value={diligenciaUmbral}
+                              onChange={(e) => {
+                                setDiligenciaUmbral(Number(e.target.value) || 300);
+                                setSaved(false);
+                              }}
+                            />
+                            <p className="text-xs text-slate-500 mt-1">
+                              Circular SAA-02-1079-2026 — prima anual ≤ umbral × tasa → diligencia simplificada (PN masivo).
+                            </p>
+                          </div>
                         </>
                       )}
 

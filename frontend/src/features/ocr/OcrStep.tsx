@@ -455,6 +455,7 @@ const DEMO_FILES: Record<DocType, { name: string; mimeType: string; url: string 
   licencia: { name: 'licencia-demo.svg', mimeType: 'image/svg+xml', url: '/samples/licencia-demo.svg' },
   certificado: { name: 'certificado-demo.svg', mimeType: 'image/svg+xml', url: '/samples/certificado-demo.svg' },
   rif: { name: 'rif-demo.svg', mimeType: 'image/svg+xml', url: '/samples/rif-demo.svg' },
+  pasaporte: { name: 'pasaporte-demo.svg', mimeType: 'image/svg+xml', url: '/samples/cedula-demo.svg' },
 };
 
 const DEMO_OCR: Record<DocType, Record<string, string>> = {
@@ -484,6 +485,7 @@ const DEMO_OCR: Record<DocType, Record<string, string>> = {
     rif: 'V-18456329-0',
     razonSocial: 'Maria Fernandez',
   },
+  pasaporte: {},
 };
 
 function makeDemoFile(type: DocType): DocumentFile {

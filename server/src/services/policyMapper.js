@@ -38,6 +38,34 @@ function cleanPhone(v) {
   return String(v).replace(/\D/g, '');
 }
 
+function parseOptionalCode(v) {
+  if (v == null || String(v).trim() === '') return null;
+  const n = parseInt(String(v).replace(/\D/g, ''), 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function buildExpedienteFromDocuments(documents) {
+  if (!documents || typeof documents !== 'object') return [];
+  const map = {
+    cedula: 'CEDULA',
+    pasaporte: 'PASAPORTE',
+    licencia: 'LICENCIA',
+    certificado: 'CERTIFICADO',
+    rif: 'RIF',
+  };
+  const out = [];
+  for (const [key, label] of Object.entries(map)) {
+    const doc = documents[key];
+    if (!doc?.file?.url) continue;
+    out.push({
+      cdocumento: label,
+      xruta: doc.file.url,
+      xhash_sha256: doc.hash || null,
+    });
+  }
+  return out;
+}
+
 /**
  * Canal alterno La Mundial (ccanalalt / cscanalalt): vacío/ausente → null;
  * valor numérico válido → entero positivo. La API no acepta 0 ni strings vacíos.
@@ -360,6 +388,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     estado_tomador: stateCodeTomador,
     ciudad_tomador: cityCodeTomador,
     direccion_tomador: cleanString(tomador.direccion),
+    cprofesion_tomador: parseOptionalCode(tomador.cprofesion),
+    cactividad_tomador: parseOptionalCode(tomador.cactividad),
+    itipo_diligencia: state.diligencia?.itipoDiligencia || tomador.itipoDiligencia || null,
 
     // Titular del vehiculo
     tipo_cedula_titular,
@@ -371,6 +402,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     estado_titular: stateCodeTitular,
     ciudad_titular: cityCodeTitular,
     direccion_titular: sameInsured ? cleanString(tomador.direccion) : cleanString(titular.direccion),
+    cprofesion_titular: sameInsured ? parseOptionalCode(tomador.cprofesion) : parseOptionalCode(titular.cprofesion),
+    cactividad_titular: sameInsured ? parseOptionalCode(tomador.cactividad) : parseOptionalCode(titular.cactividad),
     telefono_titular: sameInsured ? cleanPhone(tomador.telefono) : cleanPhone(titular.telefono),
     correo_titular: sameInsured ? cleanString(tomador.email) : cleanString(titular.email),
 
@@ -450,6 +483,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     dec_term_y_cod: '1',
     dec_diagnos_enferm: null,
     dec_descrip_enferm: null,
+    expediente: Array.isArray(state.expediente)
+      ? state.expediente
+      : buildExpedienteFromDocuments(state.documents),
   };
 
   return {
@@ -555,6 +591,13 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
   if (cober === 'PP' && p.tasa_pp != null && Number(p.tasa_pp) > 0) {
     body.tasaPp = Number(p.tasa_pp);
   }
+
+  if (p.itipo_diligencia) body.itipo_diligencia = p.itipo_diligencia;
+  if (p.cprofesion_tomador != null) body.cprofesion_tomador = p.cprofesion_tomador;
+  if (p.cactividad_tomador != null) body.cactividad_tomador = p.cactividad_tomador;
+  if (p.cprofesion_titular != null) body.cprofesion_titular = p.cprofesion_titular;
+  if (p.cactividad_titular != null) body.cactividad_titular = p.cactividad_titular;
+  if (Array.isArray(p.expediente) && p.expediente.length > 0) body.expediente = p.expediente;
 
   return body;
 }

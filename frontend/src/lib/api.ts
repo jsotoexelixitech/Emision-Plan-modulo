@@ -232,6 +232,26 @@ export async function quotePolicy(payload: QuotePolicyPayload): Promise<QuotePol
   return response.data;
 }
 
+export interface ClasificarDiligenciaResponse {
+  success: boolean;
+  itipoDiligencia: 'S' | 'C';
+  primaAnualBs: number;
+  umbralBs: number;
+  tcBcv: number;
+  motivo?: string;
+}
+
+export async function clasificarDiligencia(payload: {
+  state: unknown;
+  plan?: string;
+  mprima?: number;
+  ptasa?: number;
+  diligenciaConfig?: Record<string, unknown>;
+}): Promise<ClasificarDiligenciaResponse> {
+  const response = await api.post<ClasificarDiligenciaResponse>('/policies/clasificar-diligencia', payload);
+  return response.data;
+}
+
 // ──────────────────────────────────────────────────────────────────────
 //  Emisión genérica Exélixi (product-builder → nest-api product-emission)
 // ──────────────────────────────────────────────────────────────────────

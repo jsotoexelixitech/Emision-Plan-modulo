@@ -13,6 +13,7 @@
  */
 const express = require('express');
 const policyService = require('../services/policyService');
+const { clasificarDiligencia } = require('../services/diligenciaService');
 
 const router = express.Router();
 
@@ -119,6 +120,28 @@ router.post('/policies/quote', async (req, res) => {
     });
   } catch (err) {
     return _send(res, err, 'quote');
+  }
+});
+
+router.post('/policies/clasificar-diligencia', async (req, res) => {
+  try {
+    const { state, plan, mprima, ptasa, diligenciaConfig } = req.body || {};
+    const tomador = state?.tomador || {};
+    const planCode = plan || state?.selectedPlan?.cplan || '';
+    const prima = mprima ?? state?.quote?.mprima;
+    const tasa = ptasa ?? state?.quote?.ptasa;
+
+    const result = clasificarDiligencia({
+      tipoDoc: tomador.tipoDoc,
+      planCode,
+      mprima: prima,
+      ptasa: tasa,
+      diligenciaConfig,
+    });
+
+    return res.status(200).json({ success: true, ...result });
+  } catch (err) {
+    return _send(res, err, 'clasificar-diligencia');
   }
 });
 

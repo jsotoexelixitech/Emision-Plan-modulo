@@ -1,4 +1,6 @@
-export type DocType = 'cedula' | 'licencia' | 'certificado' | 'rif';
+export type DocType = 'cedula' | 'licencia' | 'certificado' | 'rif' | 'pasaporte';
+
+export type { DiligenciaState, TipoDiligencia } from '../lib/diligencia';
 
 /** Producto de seguro que se está suscribiendo en el flujo. */
 export type ProductId = 'rcv' | 'funerario';
@@ -62,6 +64,11 @@ export type TomadorData = {
   cestado?: number;
   /** Código numérico La Mundial de la ciudad (cciudad). Se obtiene del selector de catálogo. */
   cciudad?: number;
+  cprofesion?: number | string;
+  cactividad?: number | string;
+  xprofesion?: string;
+  xactividad?: string;
+  itipoDiligencia?: 'S' | 'C';
 };
 
 export type PersonData = {
@@ -266,4 +273,5 @@ export interface WizardState {
   quoteVehicleSignature: string | null;
   /** Datos dinámicos del canal (SSO Delegate) para emisión dinámica */
   metadataCanal: Record<string, any> | null;
+  diligencia: import('../lib/diligencia').DiligenciaState | null;
 }
