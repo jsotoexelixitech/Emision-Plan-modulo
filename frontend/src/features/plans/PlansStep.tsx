@@ -11,6 +11,7 @@ import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
 import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
+import { filterRcvOnlyCoberturas, isQaDeploy } from '../../lib/deploy-env';
 
 /** Beneficios estándar RCV conforme a la Ley — aplica a todos los planes */
 const RCV_BENEFITS = [
@@ -207,7 +208,7 @@ export function PlansStep() {
           useWizardStore.getState().setRcv(rcvPatch);
         }
         if (Array.isArray(metaFull?.coverageOptions) && metaFull.coverageOptions.length > 0) {
-          setQuoteCoverageOptions(metaFull.coverageOptions);
+          setQuoteCoverageOptions(filterRcvOnlyCoberturas(metaFull.coverageOptions));
         }
       })
       .catch((err) => {
@@ -225,10 +226,21 @@ export function PlansStep() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteSig]);
 
-  const coberturasAdicionales =
-    (selectedPlan?.coberturasAdicionales?.length
+  const coberturasAdicionales = filterRcvOnlyCoberturas(
+    selectedPlan?.coberturasAdicionales?.length
       ? selectedPlan.coberturasAdicionales
-      : quoteCoverageOptions);
+      : quoteCoverageOptions,
+  );
+
+  // QA: si había casco seleccionado, volver a RC puro
+  useEffect(() => {
+    if (!isQaDeploy()) return;
+    const code = selectedOptionalCober ? String(selectedOptionalCober).toUpperCase() : '';
+    if (code && ['CA', 'PT', 'PP'].includes(code)) {
+      setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOptionalCober]);
   const selectedCoberturaCode = selectedOptionalCober
     ? String(selectedOptionalCober).toUpperCase()
     : '';

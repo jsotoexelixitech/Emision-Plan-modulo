@@ -9,3 +9,8 @@ else
   export VITE_NEXUS_API_URL="${NEXUS_PUBLIC_ORIGIN:-https://cierrelmds.exelixitech.com}/nexus-api"
   echo "Nexus build: VITE_NEXUS_API_URL=${VITE_NEXUS_API_URL}"
 fi
+
+if echo "${VITE_NEXUS_API_URL:-}${NEXUS_PUBLIC_ORIGIN:-}" | grep -qi 'nexusqa'; then
+  export VITE_EXELIXI_QA=1
+  echo "Nexus build: VITE_EXELIXI_QA=1 (entorno QA)"
+fi
