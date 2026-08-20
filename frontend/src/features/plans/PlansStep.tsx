@@ -471,7 +471,7 @@ function PlanDetailCard({
             <div className="mt-3 flex flex-wrap gap-1.5">
               {hasRealQuote && !vehicleFallback && (
                 <span className="inline-flex items-center gap-1 text-[0.6rem] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md border border-emerald-100 uppercase tracking-wider">
-                  <BadgeCheck size={11} strokeWidth={2.4} />
+                  <Check size={11} strokeWidth={2.4} />
                   Tarifa La Mundial
                 </span>
               )}
