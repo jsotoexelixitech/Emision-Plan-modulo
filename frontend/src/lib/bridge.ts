@@ -227,6 +227,9 @@ function makeBridge(): BridgeAPI {
       sessionStorage.getItem(getModuleTokenKey()) ||
       getNexusTokenFromUrl();
     if (nexusToken) out.nexus_token = nexusToken;
+    // Solo OCR (order=1) persiste documents; otros módulos tienen slots idle que
+    // sobrescribirían el expediente procesado en la sesión del flujo.
+    if (order !== 1) delete out.documents;
     return out;
   };
 
