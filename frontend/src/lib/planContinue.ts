@@ -1,6 +1,12 @@
 import type { PolicyQuote, QuoteState } from '../types';
 import type { Plan } from '../types';
 import { toast } from '../store/toastStore';
+import {
+  DOC_LABELS,
+  validateDocumentsForDiligencia,
+  type DiligenciaState,
+} from './diligencia';
+import type { DocType } from '../types';
 
 /** Validación común antes de confirmar plan (RCV y funerario). */
 export function validatePlanReady(
@@ -26,4 +32,24 @@ export function validatePlanReady(
     return false;
   }
   return true;
+}
+
+/** Bloquea avance a Pagos si faltan documentos del perfil DDS/DDC (Circular SAA-02-1079). */
+export function validateRcvDocumentsBeforePagos(params: {
+  documents: Partial<Record<DocType, { status?: string }>>;
+  diligencia: DiligenciaState | null;
+  tomadorTipoDoc?: string;
+}): boolean {
+  const check = validateDocumentsForDiligencia(params);
+  if (check.ok) return true;
+
+  const lista = check.missing.map((d) => DOC_LABELS[d] ?? d).join(', ');
+  toast.warning(
+    'Documentos originales pendientes',
+    check.itipo === 'C'
+      ? `Para diligencia completa (DDC) procesa en OCR: ${lista}.`
+      : `Procesa en OCR: ${lista}.`,
+    6000,
+  );
+  return false;
 }

@@ -180,6 +180,68 @@ export function clasificarPostQuote(params: {
   return { itipoDiligencia: 'C', primaAnualBs, umbralBs, tcBcv };
 }
 
+export const DOC_LABELS: Record<DiligenciaDocType, string> = {
+  cedula: 'Cédula de Identidad',
+  pasaporte: 'Pasaporte',
+  licencia: 'Licencia de Conducir',
+  certificado: 'Certificado de Circulación',
+  rif: 'RIF',
+};
+
+/** Documentos originales RCV (DDC): cédula + licencia + certificado. */
+export const RCV_ORIGINAL_REQUIRED_DOCS: DiligenciaDocType[] = [
+  'cedula',
+  'licencia',
+  'certificado',
+];
+
+type DocSlot = { status?: string };
+
+/**
+ * Valida expediente OCR según perfil de diligencia.
+ * DDS: cédula obligatoria (pasaporte sustituye cédula si está procesado).
+ */
+export function getMissingRequiredDocuments(
+  documents: Partial<Record<DiligenciaDocType, DocSlot>>,
+  itipoDiligencia: TipoDiligencia,
+  explicitRequired?: DiligenciaDocType[],
+): DiligenciaDocType[] {
+  const required =
+    explicitRequired?.length
+      ? explicitRequired
+      : itipoDiligencia === 'S'
+        ? (['cedula'] as DiligenciaDocType[])
+        : RCV_ORIGINAL_REQUIRED_DOCS;
+
+  const missing: DiligenciaDocType[] = [];
+  for (const doc of required) {
+    if (doc === 'cedula' && itipoDiligencia === 'S') {
+      const cedulaOk = documents.cedula?.status === 'done';
+      const pasaporteOk = documents.pasaporte?.status === 'done';
+      if (!cedulaOk && !pasaporteOk) missing.push('cedula');
+      continue;
+    }
+    if (documents[doc]?.status !== 'done') missing.push(doc);
+  }
+  return missing;
+}
+
+export function validateDocumentsForDiligencia(params: {
+  documents: Partial<Record<DiligenciaDocType, DocSlot>>;
+  diligencia: DiligenciaState | null;
+  tomadorTipoDoc?: string;
+}): { ok: boolean; missing: DiligenciaDocType[]; itipo: TipoDiligencia } {
+  const itipo =
+    params.diligencia?.itipoDiligencia
+    ?? (isPersonaJuridica(params.tomadorTipoDoc) ? 'C' : 'S');
+  const missing = getMissingRequiredDocuments(
+    params.documents,
+    itipo,
+    params.diligencia?.documentosRequeridos,
+  );
+  return { ok: missing.length === 0, missing, itipo };
+}
+
 export function buildExpedienteFromDocuments(
   documents: Partial<Record<DiligenciaDocType, { file?: { url?: string }; hash?: string }>>,
 ): ExpedienteEntry[] {

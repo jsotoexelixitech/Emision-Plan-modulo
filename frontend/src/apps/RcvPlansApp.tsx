@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { PlansStep } from '../features/plans/PlansStep';
 import { useWizardStore } from '../store/wizardStore';
 import { toast } from '../store/toastStore';
-import { validatePlanReady } from '../lib/planContinue';
+import { validatePlanReady, validateRcvDocumentsBeforePagos } from '../lib/planContinue';
 import { isCotizadorFlow } from '../lib/cotizador-flow';
 import { EmissionPlanShell } from './EmissionPlanShell';
 
@@ -11,7 +11,10 @@ import { EmissionPlanShell } from './EmissionPlanShell';
  * Sin imports de funerario, cuestionario de salud ni API /funeral.
  */
 export default function RcvPlansApp() {
-  const { category, selectedPlan, quoteState, quote, goTo } = useWizardStore();
+  const {
+    category, selectedPlan, quoteState, quote, goTo,
+    documents, diligencia, tomador,
+  } = useWizardStore();
   const cotizador = isCotizadorFlow();
 
   useEffect(() => {
@@ -30,6 +33,14 @@ export default function RcvPlansApp() {
     }
 
     if (!validatePlanReady(category, selectedPlan, quoteState, quote)) return;
+
+    if (!validateRcvDocumentsBeforePagos({
+      documents,
+      diligencia,
+      tomadorTipoDoc: tomador.tipoDoc,
+    })) {
+      return;
+    }
 
     toast.success(
       '¡Plan seleccionado!',

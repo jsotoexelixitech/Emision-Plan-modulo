@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, clasificarDiligencia, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
-import { diligenciaLabel } from '../../lib/diligencia';
+import { diligenciaLabel, getRequiredDocs, RCV_ORIGINAL_REQUIRED_DOCS } from '../../lib/diligencia';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
@@ -199,6 +199,11 @@ export function PlansStep() {
             if (activeQuoteSigRef.current !== quoteSig) return;
             setDiligencia({
               itipoDiligencia: d.itipoDiligencia,
+              documentosRequeridos: getRequiredDocs(
+                null,
+                d.itipoDiligencia,
+                RCV_ORIGINAL_REQUIRED_DOCS,
+              ),
               primaAnualBs: d.primaAnualBs,
               umbralBs: d.umbralBs,
               tcBcv: d.tcBcv,
