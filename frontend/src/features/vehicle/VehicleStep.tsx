@@ -14,6 +14,11 @@ import {
 import { toast } from '../../store/toastStore';
 import { cn } from '../../lib/utils';
 import { catalogoApi, type InmaMarca, type InmaModelo, type InmaVersion, type CategoriaUso } from '../../lib/api';
+import {
+  normalizeVehicleSerial,
+  validateVehicleSerialMessage,
+  VEHICLE_SERIAL_MAX_LEN,
+} from '../../lib/vehicle-serial';
 import type { VehicleData } from '../../types';
 
 const COLOR_SWATCHES: Record<string, string> = {
@@ -375,11 +380,8 @@ export function VehicleStep() {
       e.color = 'El color no puede superar 15 caracteres';
     }
 
-    if (req(vehicle.serial)) {
-      e.serial = 'El serial del vehículo es obligatorio';
-    } else if (len(vehicle.serial) < 10) {
-      e.serial = 'El serial debe tener al menos 10 caracteres';
-    }
+    const serialErr = validateVehicleSerialMessage(vehicle.serial);
+    if (serialErr) e.serial = serialErr;
 
     if (hasDriver) {
       const nombre   = (conductor.nombre   ?? '').trim();
@@ -836,13 +838,13 @@ export function VehicleStep() {
           </Field>
 
           {/* Serial de carrocería (VIN) */}
-          <Field label="Serial de carrocería (VIN) *" error={errors.serial} hint="Entre 10 y 17 caracteres alfanuméricos del documento del vehículo">
+          <Field label="Serial de carrocería (VIN) *" error={errors.serial} hint="Como en la licencia de tránsito (máx. 18 caracteres)">
             <Input
               value={vehicle.serial}
-              onChange={(e) => setVehicle({ serial: e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 17) })}
-              placeholder="1HGBH41JXMN109186"
+              onChange={(e) => setVehicle({ serial: normalizeVehicleSerial(e.target.value) })}
+              placeholder="150895 o VIN completo"
               className="font-mono uppercase tracking-wider"
-              maxLength={17}
+              maxLength={VEHICLE_SERIAL_MAX_LEN}
             />
           </Field>
 
