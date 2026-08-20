@@ -416,59 +416,6 @@ export function PlansStep() {
         </div>
       </div>
 
-      {selectedPlan && coberturasAdicionales.length > 0 && (
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm">
-          <p className="text-[0.62rem] font-black text-slate-500 uppercase tracking-widest mb-3">
-            Incluir cobertura adicional
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {coberturasAdicionales.map((cober) => {
-              const code = cober.value.toUpperCase();
-              const selected = selectedCoberturaCode === code;
-              return (
-                <button
-                  key={cober.value}
-                  type="button"
-                  disabled={isLoadingQuote}
-                  onClick={() => {
-                    if (selected) {
-                      setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
-                      return;
-                    }
-                    setRcv({
-                      coberAdicional: code,
-                      coberAdicionales: [cober.value],
-                    });
-                  }}
-                  className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition-all ${
-                    selected
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-800 shadow-sm ring-2 ring-indigo-200/80'
-                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:border-indigo-300 hover:bg-indigo-50/50'
-                  } disabled:opacity-50`}
-                >
-                  {selected && <Check size={12} className="inline mr-1 -mt-px" />}
-                  {cober.text}
-                </button>
-              );
-            })}
-          </div>
-          {selectedCoberturaCode && (
-            <p className="mt-3 text-[0.7rem] font-semibold text-indigo-700">
-              Incluida:{' '}
-              {coberturasAdicionales.find((c) => c.value.toUpperCase() === selectedCoberturaCode)?.text
-                ?? selectedCoberturaCode}
-              {isLoadingQuote && (
-                <span className="ml-2 inline-flex items-center gap-1 text-slate-500">
-                  <Loader2 size={12} className="animate-spin" />
-                  Recalculando…
-                </span>
-              )}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Card de detalle del plan */}
       {selectedPlan ? (
         <PlanDetailCard
           plan={selectedPlan}
@@ -483,6 +430,15 @@ export function PlansStep() {
           vehicleFallback={quote?.vehicleFallback}
           quoteError={quoteState === 'error'}
           quote={quote}
+          coberturasAdicionales={coberturasAdicionales}
+          selectedCoberturaCode={selectedCoberturaCode}
+          onSelectCobertura={(code) => {
+            if (!code) {
+              setRcv({ coberAdicional: 'RC', coberAdicionales: [] });
+              return;
+            }
+            setRcv({ coberAdicional: code, coberAdicionales: [code] });
+          }}
         />
       ) : (
         <div className="text-center py-14 px-4 rounded-2xl border-2 border-dashed border-slate-200 bg-gradient-to-br from-slate-50/70 to-white">
@@ -507,6 +463,9 @@ function PlanDetailCard({
   isLoadingQuote, hasRealQuote, quoteVes, frecuenciaLabel, freqAmounts, ptasa,
   vehicleLabel, vehicleFallback, quoteError,
   quote,
+  coberturasAdicionales = [],
+  selectedCoberturaCode = '',
+  onSelectCobertura,
 }: {
   plan: Plan;
   displayPrice: number;
@@ -520,6 +479,9 @@ function PlanDetailCard({
   vehicleFallback?: boolean;
   quoteError: boolean;
   quote: import('../../types').PolicyQuote | null;
+  coberturasAdicionales?: { value: string; text: string }[];
+  selectedCoberturaCode?: string;
+  onSelectCobertura?: (code: string | null) => void;
 }) {
   return (
     <article className="relative rounded-2xl border-2 border-indigo-500/40 bg-gradient-to-br from-indigo-50/90 via-violet-50/40 to-white p-4 sm:p-6 shadow-[0_24px_48px_-12px_rgba(15,26,90,0.22)] animate-spring-in overflow-hidden">
@@ -631,6 +593,61 @@ function PlanDetailCard({
             </li>
           ))}
         </ul>
+
+        {coberturasAdicionales.length > 0 && onSelectCobertura && !isQaDeploy() && (
+          <details
+            className="mt-5 group rounded-xl border border-slate-200/80 bg-slate-50/50 open:bg-white open:shadow-sm transition-colors"
+            open={Boolean(selectedCoberturaCode)}
+          >
+            <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between gap-2 text-[0.68rem] font-bold text-slate-600 uppercase tracking-wide select-none [&::-webkit-details-marker]:hidden">
+              <span className="inline-flex items-center gap-1.5">
+                <Shield size={11} className="text-indigo-500" />
+                Coberturas opcionales
+                {selectedCoberturaCode && (
+                  <span className="normal-case text-indigo-700 font-semibold tracking-normal">
+                    ·{' '}
+                    {coberturasAdicionales.find((c) => c.value.toUpperCase() === selectedCoberturaCode)?.text
+                      ?? selectedCoberturaCode}
+                  </span>
+                )}
+              </span>
+              <ChevronDown size={14} className="text-slate-400 transition-transform group-open:rotate-180 shrink-0" />
+            </summary>
+            <div className="px-4 pb-4 pt-0 border-t border-slate-100">
+              <p className="text-[0.65rem] text-slate-500 mb-3 leading-relaxed">
+                Solo si necesitas casco adicional además del RCV base. Por defecto el plan incluye responsabilidad civil.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {coberturasAdicionales.map((cober) => {
+                  const code = cober.value.toUpperCase();
+                  const selected = selectedCoberturaCode === code;
+                  return (
+                    <button
+                      key={cober.value}
+                      type="button"
+                      disabled={isLoadingQuote}
+                      onClick={() => onSelectCobertura(selected ? null : code)}
+                      className={`px-3 py-1.5 rounded-full text-[0.68rem] font-bold border transition-all ${
+                        selected
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-800'
+                          : 'border-slate-200 bg-white text-slate-600 hover:border-indigo-300'
+                      } disabled:opacity-50`}
+                    >
+                      {selected && <Check size={11} className="inline mr-1 -mt-px" />}
+                      {cober.text}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedCoberturaCode && isLoadingQuote && (
+                <p className="mt-2 text-[0.65rem] text-slate-500 inline-flex items-center gap-1">
+                  <Loader2 size={11} className="animate-spin" />
+                  Recalculando prima…
+                </p>
+              )}
+            </div>
+          </details>
+        )}
 
         <div className="mt-5 pt-4 border-t border-indigo-100/80 flex items-center justify-between gap-2 flex-wrap">
           <div className="inline-flex items-center gap-1.5 text-[0.7rem] font-bold text-indigo-600">
