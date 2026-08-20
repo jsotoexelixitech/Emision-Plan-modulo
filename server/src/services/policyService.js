@@ -246,6 +246,7 @@ async function quote(state, overrides = {}) {
           ccategoria_uso: payload.ccategoria_uso,
           iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
           ntoneladas: payload.ntoneladas,
+          precargorcv: payload.precargorcv,
           cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
           ifrecuencia: payload.ifrecuencia,
           ndias: payload.ndias,

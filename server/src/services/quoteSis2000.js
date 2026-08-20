@@ -76,7 +76,7 @@ async function getCotizacionFromSis2000(input) {
   calcReq.input('uso', sql.Numeric(4), input.ccategoria_uso);
   calcReq.input('puestos', sql.Numeric(4), puestos);
   calcReq.input('toneladas', sql.Numeric(4), input.ntoneladas ?? 0);
-  calcReq.input('recargoRcv', sql.Numeric(6, 4), null);
+  calcReq.input('recargoRcv', sql.Numeric(6, 4), input.precargorcv ?? 0);
   calcReq.input('cramo', sql.Numeric(5), input.cramo ?? 18);
   calcReq.input('cusuario', sql.Numeric(20), cusuario);
   calcReq.input('coberAdicional', sql.VarChar(2), 'RC');

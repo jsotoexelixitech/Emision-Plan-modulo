@@ -44,6 +44,29 @@ function parseOptionalCode(v) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Categoría de uso Sis2000 “Más de 12 TM” — paridad SysIP vehicle-form. */
+const CCATEGORIA_TONELADAS = 11;
+const TONELADAS_MIN_LEGACY = 13;
+
+function resolveNtoneladasForSp(v = {}) {
+  const cc = (v.ccategoria_uso != null && v.ccategoria_uso !== '')
+    ? parseInt(v.ccategoria_uso, 10)
+    : resolveUsageCategory(v.uso);
+  if (cc !== CCATEGORIA_TONELADAS) return 0;
+  const raw = v.ntoneladas;
+  if (raw == null || raw === '' || Number.isNaN(Number(raw))) return TONELADAS_MIN_LEGACY;
+  const n = parseInt(String(raw), 10);
+  if (!Number.isFinite(n) || n < 12) return TONELADAS_MIN_LEGACY;
+  return n;
+}
+
+function resolvePrecargorcv(v = {}) {
+  const p = v.precargorcv;
+  if (p == null || p === '') return 0;
+  const n = Number(p);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 function buildExpedienteFromDocuments(documents) {
   if (!documents || typeof documents !== 'object') return [];
   const map = {
@@ -278,9 +301,8 @@ function buildQuoteRequest(state, overrides = {}) {
       cplan,
       ccategoria_uso,
       iplaca: resolveIplaca(v),
-      ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
-        ? parseInt(v.ntoneladas, 10)
-        : undefined,
+      ntoneladas: resolveNtoneladasForSp(v),
+      precargorcv: resolvePrecargorcv(v),
       cramo: resolveRcvCramo(v, state.metadataCanal || {}),
       // Prima cotizada siempre anual; ifrecuencia solo define recibos en emisión.
       ifrecuencia: 'A',
@@ -457,10 +479,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     ccategoria_uso: (v.ccategoria_uso != null && v.ccategoria_uso !== '')
       ? parseInt(v.ccategoria_uso, 10)
       : resolveUsageCategory(v.uso),
-    // ntoneladas: nullable, default 60. Se usa el valor del usuario si fue ingresado.
-    ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
-      ? parseInt(v.ntoneladas, 10)
-      : 60,
+    // ntoneladas / precargorcv — paridad SysIP (toneladas solo cat. 11; recargo siempre).
+    ntoneladas: resolveNtoneladasForSp(v),
+    precargorcv: resolvePrecargorcv(v),
 
     coberAdicional,
     ...(() => {
@@ -561,9 +582,9 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     xsermot: p.serial_motor || null,
     ccategoria_uso: p.ccategoria_uso,
     npuestos: p.npuestos ?? 5,
-    ntoneladas: p.ntoneladas ?? 60,
+    ntoneladas: p.ntoneladas ?? 0,
     iplaca: p.iplaca || 'N',
-    precargorcv: 0,
+    precargorcv: p.precargorcv ?? 0,
     cpersona_politica: parseInt(p.dec_persona_politica || '0', 10),
     cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
@@ -686,7 +707,7 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       sumaAsegBl: rcv.sumaAsegBl != null ? Number(rcv.sumaAsegBl) : 0,
       sumaAsegAd: rcv.sumaAsegAd != null ? Number(rcv.sumaAsegAd) : 0,
       recargo: 0,
-      recargoRcv: 0,
+      recargoRcv: payload.precargorcv ?? 0,
       cusuario: resolveCusuarioCoberturas(state.metadataCanal || {}),
     },
     metadata,

@@ -188,8 +188,14 @@ export interface VehicleData {
   ctipo?: number;
   /** Serial del motor — opcional, máx. 60 caracteres. Aparece en el documento del vehículo. */
   serialMotor?: string;
-  /** Peso del vehículo en toneladas (nullable; default 60 en backend si no se envía). */
+  /** Peso del vehículo en toneladas — solo categoría de uso 11 (>12 TM). */
   ntoneladas?: number;
+  /** Porcentaje recargo RCV (masustac.porcenta). 0 = No aplica. */
+  precargorcv?: number;
+  /** Código masustac.csustanc del recargo seleccionado (auditoría). */
+  csustanc_rcv?: string;
+  /** Etiqueta masustac.xsustanc del recargo seleccionado. */
+  xsustanc_rcv?: string;
 }
 
 export interface PolicyCoverageLine {

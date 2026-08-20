@@ -10,6 +10,7 @@ const {
   getInmaModelos,
   getInmaVersiones,
   getCategoriasUso,
+  getRecargosRcv,
 } = require('../services/nestApiClient');
 const { fetchPlanesV2, resolvePlanesParams } = require('../services/planesClient');
 
@@ -172,6 +173,16 @@ router.get('/planes', async (req, res) => {
       message: `No se pudieron obtener los planes vía nest-api: ${err.message}`,
       code: err.code || 'PLANES_API_ERROR',
     });
+  }
+});
+
+router.get('/recargos-rcv', async (_req, res) => {
+  try {
+    const recargos = await getRecargosRcv(18);
+    res.json({ success: true, data: recargos });
+  } catch (err) {
+    console.error('[catalogo/recargos-rcv]', err.message);
+    res.status(502).json({ success: false, message: err.message });
   }
 });
 
