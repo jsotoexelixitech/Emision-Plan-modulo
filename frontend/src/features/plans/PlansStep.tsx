@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useWizardStore } from '../../store/wizardStore';
 import {
   Check, Star, Shield, ChevronDown, ShieldCheck,
-  Loader2, AlertTriangle, BadgeCheck, CalendarClock,
+  Loader2, AlertTriangle, CalendarClock,
 } from 'lucide-react';
 import type { Plan } from '../../types';
-import { type PlanRcv, catalogoApi, quotePolicy, clasificarDiligencia, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
-import { diligenciaLabel, resolveRcvEmissionRequiredDocs } from '../../lib/diligencia';
+import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
@@ -40,7 +39,7 @@ function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
 export function PlansStep() {
   const {
     setCategory, selectedPlan, setSelectedPlan,
-    vehicle, quote, quoteState, rcv, setRcv, tomador, diligencia, setDiligencia, setTomador, documents,
+    vehicle, quote, quoteState, rcv, setRcv,
   } = useWizardStore();
 
   const product = getProductConfig();
@@ -118,12 +117,17 @@ export function PlansStep() {
         setApiFrecuencias(items);
         const current = items.find((i) => String(i.code) === rcv.frecuencia);
         if (!current && items.length > 0) {
-          setRcv({
-            frecuencia: String(items[0].code),
-            ndias: items[0].ndias ?? null,
-          });
+          const first = items[0];
+          const nextFreq = String(first.code);
+          const nextNdias = first.ndias ?? null;
+          if (rcv.frecuencia !== nextFreq || rcv.ndias !== nextNdias) {
+            setRcv({ frecuencia: nextFreq, ndias: nextNdias });
+          }
         } else if (current) {
-          setRcv({ ndias: current.ndias ?? null });
+          const nextNdias = current.ndias ?? null;
+          if (rcv.ndias !== nextNdias) {
+            setRcv({ ndias: nextNdias });
+          }
         }
       })
       .catch(() => {
@@ -134,7 +138,7 @@ export function PlansStep() {
       });
 
     return () => { cancelled = true; };
-  }, [selectedPlan?.cplan, product.cramo, vehicle.tipoPlaca, setRcv, rcv.frecuencia]);
+  }, [selectedPlan?.cplan, product.cramo, vehicle.tipoPlaca, setRcv, rcv.frecuencia, rcv.ndias]);
 
   // ── Cotización automática contra La Mundial ───────────────────────────────
   const hasVehicleData =
@@ -169,7 +173,7 @@ export function PlansStep() {
     snap.setQuoteState('loading');
 
     quotePolicy({
-      state: { vehicle, rcv, selectedPlan, tomador },
+      state: { vehicle, rcv, selectedPlan, tomador: useWizardStore.getState().tomador },
       plan: planCode,
     })
       .then((r) => {
@@ -190,31 +194,6 @@ export function PlansStep() {
           quoteSig,
         );
 
-        clasificarDiligencia({
-          state: { tomador, selectedPlan, quote: { mprima: r.mprima, ptasa: r.ptasa } },
-          plan: planCode,
-          mprima: r.mprima,
-          ptasa: r.ptasa,
-        })
-          .then((d) => {
-            if (activeQuoteSigRef.current !== quoteSig) return;
-            setDiligencia({
-              itipoDiligencia: d.itipoDiligencia,
-              documentosRequeridos: resolveRcvEmissionRequiredDocs({
-                itipoDiligencia: d.itipoDiligencia,
-                vehicle,
-                documents,
-              }),
-              primaAnualBs: d.primaAnualBs,
-              umbralBs: d.umbralBs,
-              tcBcv: d.tcBcv,
-              clasificadoEn: 'emision',
-              camposObligatorios: ['direccion'],
-            });
-            setTomador({ itipoDiligencia: d.itipoDiligencia });
-          })
-          .catch(() => { /* clasificación best-effort */ });
-
         const metaFull = r.metadata as {
           tasas?: { tasaCA?: number; tasaPT?: number; tasaPP?: number };
           coverageOptions?: { value: string; text: string }[];
@@ -232,7 +211,7 @@ export function PlansStep() {
           rcvPatch.tasaPP = metaFull.tasas.tasaPP;
         }
         if (Object.keys(rcvPatch).length > 0) {
-          useWizardStore.getState().setRcv(rcvPatch);
+          useWizardStore.getState().setRcv(rcvPatch, { keepQuote: true });
         }
         if (Array.isArray(metaFull?.coverageOptions) && metaFull.coverageOptions.length > 0) {
           setQuoteCoverageOptions(filterRcvOnlyCoberturas(metaFull.coverageOptions));
@@ -294,16 +273,6 @@ export function PlansStep() {
           <Shield size={11} />
           {frecuenciaLabel}
         </span>
-        {hasRealQuote && diligencia && (
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold ${
-            diligencia.itipoDiligencia === 'S'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-              : 'bg-amber-50 border-amber-200 text-amber-800'
-          }`}>
-            <BadgeCheck size={11} />
-            {diligenciaLabel(diligencia.itipoDiligencia)}
-          </span>
-        )}
       </div>
 
       {/* Selectores */}

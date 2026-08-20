@@ -98,7 +98,7 @@ interface WizardActions {
   setConductor: (data: Partial<PersonData>) => void;
   setVehicle: (data: Partial<VehicleData>) => void;
   setFuneral: (data: Partial<FuneralData>) => void;
-  setRcv: (data: Partial<RcvPlanData>) => void;
+  setRcv: (data: Partial<RcvPlanData>, options?: { keepQuote?: boolean }) => void;
   setCategory: (c: string) => void;
   setSelectedPlan: (plan: Plan | null) => void;
   setPaymentMethod: (m: PaymentMethod) => void;
@@ -213,12 +213,12 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
   setFuneral: (data) =>
     set((s) => ({ funeral: { ...s.funeral, ...data } })),
 
-  setRcv: (data) =>
+  setRcv: (data, options?: { keepQuote?: boolean }) =>
     set((s) => {
       const next = { ...s.rcv, ...data };
+      if (options?.keepQuote) return { rcv: next };
       const sigKeys: (keyof RcvPlanData)[] = [
         'frecuencia', 'ndias', 'coberAdicional', 'coberAdicionales',
-        'sumaAsegurada', 'tasaCA', 'tasaPT', 'tasaPP',
       ];
       const changed = sigKeys.some((k) => s.rcv[k] !== next[k]);
       if (changed && s.quote) {

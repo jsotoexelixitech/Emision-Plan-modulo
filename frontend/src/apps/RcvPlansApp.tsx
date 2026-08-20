@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { PlansStep } from '../features/plans/PlansStep';
 import { useWizardStore } from '../store/wizardStore';
 import { toast } from '../store/toastStore';
-import { validatePlanReady, validateRcvDocumentsBeforePagos } from '../lib/planContinue';
+import { validatePlanReady } from '../lib/planContinue';
 import { isCotizadorFlow } from '../lib/cotizador-flow';
 import { EmissionPlanShell } from './EmissionPlanShell';
 
@@ -13,7 +13,6 @@ import { EmissionPlanShell } from './EmissionPlanShell';
 export default function RcvPlansApp() {
   const {
     category, selectedPlan, quoteState, quote, goTo,
-    documents, diligencia, tomador, vehicle,
   } = useWizardStore();
   const cotizador = isCotizadorFlow();
 
@@ -33,15 +32,6 @@ export default function RcvPlansApp() {
     }
 
     if (!validatePlanReady(category, selectedPlan, quoteState, quote)) return;
-
-    if (!validateRcvDocumentsBeforePagos({
-      documents,
-      diligencia,
-      tomadorTipoDoc: tomador.tipoDoc,
-      vehicle,
-    })) {
-      return;
-    }
 
     toast.success(
       '¡Plan seleccionado!',
