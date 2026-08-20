@@ -151,8 +151,9 @@ export function PlansStep() {
   const coberSig = selectedOptionalCober
     ? String(selectedOptionalCober).toUpperCase()
     : 'RC';
+  const frecSig = `${rcv.frecuencia ?? 'A'}|${rcv.ndias ?? ''}`;
   const quoteSig = sig && planCode
-    ? `${sig}|${planCode}|${coberSig}`
+    ? `${sig}|${planCode}|${coberSig}|${frecSig}`
     : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.

@@ -214,7 +214,24 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
     set((s) => ({ funeral: { ...s.funeral, ...data } })),
 
   setRcv: (data) =>
-    set((s) => ({ rcv: { ...s.rcv, ...data } })),
+    set((s) => {
+      const next = { ...s.rcv, ...data };
+      const sigKeys: (keyof RcvPlanData)[] = [
+        'frecuencia', 'ndias', 'coberAdicional', 'coberAdicionales',
+        'sumaAsegurada', 'tasaCA', 'tasaPT', 'tasaPP',
+      ];
+      const changed = sigKeys.some((k) => s.rcv[k] !== next[k]);
+      if (changed && s.quote) {
+        return {
+          rcv: next,
+          quote: null,
+          quoteState: 'idle',
+          quoteError: null,
+          quoteVehicleSignature: null,
+        };
+      }
+      return { rcv: next };
+    }),
 
   setCategory: (category) => set({ category, selectedPlan: null }),
 

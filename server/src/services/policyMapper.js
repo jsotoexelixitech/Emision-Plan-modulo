@@ -304,8 +304,9 @@ function buildQuoteRequest(state, overrides = {}) {
       ntoneladas: resolveNtoneladasForSp(v),
       precargorcv: resolvePrecargorcv(v),
       cramo: resolveRcvCramo(v, state.metadataCanal || {}),
-      // Prima cotizada siempre anual; ifrecuencia solo define recibos en emisión.
-      ifrecuencia: 'A',
+      // Paridad SysIP searchPrice: ifrecuencia + ndias definen vigencia en sp_calculo_auto_nexus.
+      ifrecuencia: resolveRcvFrecuencia(state, overrides),
+      ndias: resolveRcvNdias(state, overrides),
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -673,7 +674,8 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
   if (!payload?.cplan) {
     return { payload: null, metadata: { error: 'MISSING_PLAN' } };
   }
-  const { fdesde, fhasta } = resolveVigenciaAnual(todayYmd());
+  const ndiasQuote = payload.ndias ?? resolveRcvNdias(state, overrides);
+  const { fdesde, fhasta } = resolveVigencia(todayYmd(), ndiasQuote);
   const rcv = state.rcv || {};
   const selected = resolveSelectedCoberturas(rcv, overrides);
   const coberAdicional = resolvePrimaryCoberAdicional(selected);
@@ -698,7 +700,7 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       iplaca: payload.iplaca,
       toneladas: payload.ntoneladas,
       cramo: payload.cramo,
-      ifrecuencia: 'A',
+      ifrecuencia: payload.ifrecuencia ?? resolveRcvFrecuencia(state, overrides),
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
       coberAdicional,
       tasaCa: tasasForCober.tasaCa,

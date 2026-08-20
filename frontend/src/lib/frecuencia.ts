@@ -1,8 +1,9 @@
 /**
  * Frecuencia de pago La Mundial (ifrecuencia).
  *
- * Cotización: prima ANUAL en mprimaext / mprima (no cambia con ifrecuencia).
- * Emisión: se envía prima anual + ifrecuencia (Sis2000 genera los recibos).
+ * Cotización nacional: prima anual en mprimaext (ifrecuencia solo divide cuotas en UI).
+ * Binacional con ndias: la API recotiza con vigencia corta (paridad SysIP selectFrecuencia → searchPrice).
+ * Emisión: prima cotizada + ifrecuencia (Sis2000 genera los recibos).
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
 import type { PolicyQuote } from '../types';

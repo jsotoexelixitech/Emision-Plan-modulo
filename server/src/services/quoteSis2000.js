@@ -18,7 +18,7 @@ function resolveCusuario() {
 /**
  * @param {{ cmarca:string, cmodelo:string, cversion:string, fano:number,
  *   cplan:string, ccategoria_uso:number, ntoneladas?:number, cramo?:number, iplaca?:string,
- *   ifrecuencia?:string }} input
+ *   ifrecuencia?:string, ndias?:number|null, precargorcv?:number }} input
  * @returns {Promise<{ mprima:number, mprimaext:number, ptasa:number }>}
  */
 async function getCotizacionFromSis2000(input) {
@@ -49,8 +49,16 @@ async function getCotizacionFromSis2000(input) {
   const mvalor = Number(vinmaResult.recordset[0]?.mvalor) || null;
 
   const fdesde = new Date();
-  const fhasta = new Date();
-  fhasta.setFullYear(fhasta.getFullYear() + 1);
+  fdesde.setHours(12, 0, 0, 0);
+  const fhasta = new Date(fdesde);
+  const ndias = input.ndias != null ? Number(input.ndias) : null;
+  if (ndias != null && !Number.isNaN(ndias) && ndias > 0) {
+    fhasta.setDate(fhasta.getDate() + ndias);
+  } else if (ndias != null && !Number.isNaN(ndias) && ndias < 0) {
+    fhasta.setDate(fhasta.getDate() + Math.abs(ndias));
+  } else {
+    fhasta.setFullYear(fhasta.getFullYear() + 1);
+  }
 
   const ifrecuencia =
     String(input.ifrecuencia ?? 'A').trim().toUpperCase().charAt(0) || 'A';
