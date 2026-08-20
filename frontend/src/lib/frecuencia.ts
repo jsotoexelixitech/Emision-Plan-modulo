@@ -16,6 +16,8 @@ const CUOTAS_BY_FREC: Record<string, number> = {
   C: 3,
   M: 12,
   E: 1,
+  D: 1,
+  B: 1,
 };
 
 export function normalizeFrecuenciaCode(code?: string | null): string {
