@@ -1,4 +1,4 @@
-import type { PolicyQuote, QuoteState } from '../types';
+import type { PolicyQuote, QuoteState, VehicleData } from '../types';
 import type { Plan } from '../types';
 import { toast } from '../store/toastStore';
 import {
@@ -36,9 +36,10 @@ export function validatePlanReady(
 
 /** Bloquea avance a Pagos si faltan documentos del perfil DDS/DDC (Circular SAA-02-1079). */
 export function validateRcvDocumentsBeforePagos(params: {
-  documents: Partial<Record<DocType, { status?: string }>>;
+  documents: Partial<Record<DocType, { status?: string; ocr?: unknown }>>;
   diligencia: DiligenciaState | null;
   tomadorTipoDoc?: string;
+  vehicle?: Pick<VehicleData, 'tipoPlaca'>;
 }): boolean {
   const check = validateDocumentsForDiligencia(params);
   if (check.ok) return true;

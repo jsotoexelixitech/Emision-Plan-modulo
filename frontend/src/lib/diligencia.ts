@@ -1,5 +1,8 @@
 /** Circular SAA-02-1079-2026 — utilidades DDS/DDC compartidas en módulos Exélixi. */
 
+import { adjustDocsForBinacionalCarnet } from './ocr-binacional';
+import type { DocType, DocumentState, VehicleData } from '../types';
+
 export type TipoDiligencia = 'S' | 'C';
 
 export type DiligenciaDocType = 'cedula' | 'licencia' | 'certificado' | 'rif' | 'pasaporte';
@@ -195,7 +198,57 @@ export const RCV_ORIGINAL_REQUIRED_DOCS: DiligenciaDocType[] = [
   'certificado',
 ];
 
-type DocSlot = { status?: string };
+type DocSlot = { status?: string; ocr?: unknown };
+
+function pasaporteSustituyeCedula(
+  itipoDiligencia: TipoDiligencia,
+  tipoPlaca?: VehicleData['tipoPlaca'],
+  tomadorTipoDoc?: string,
+): boolean {
+  if (itipoDiligencia === 'S') return true;
+  if (tipoPlaca === 'extranjera') return true;
+  const t = String(tomadorTipoDoc ?? '').trim().toUpperCase();
+  return t === 'E' || t === 'P';
+}
+
+/**
+ * Recaudos exigidos al continuar desde Plan (post-cotización).
+ * Binacional: solo certificado (como OCR). Extranjero: pasaporte sustituye cédula.
+ */
+export function resolveRcvEmissionRequiredDocs(params: {
+  itipoDiligencia: TipoDiligencia;
+  vehicle?: Pick<VehicleData, 'tipoPlaca'>;
+  documents: Partial<Record<DiligenciaDocType, DocSlot>>;
+  ocrConfig?: Record<string, unknown> | null;
+}): DiligenciaDocType[] {
+  const base = getRequiredDocs(
+    params.ocrConfig,
+    params.itipoDiligencia,
+    params.itipoDiligencia === 'C' ? RCV_ORIGINAL_REQUIRED_DOCS : ['cedula'],
+  );
+
+  if (params.itipoDiligencia !== 'C') return base;
+
+  const carnetBinacionalMode = params.vehicle?.tipoPlaca === 'binacional';
+
+  const docsRecord = {
+    cedula: (params.documents.cedula ?? { status: 'idle', progress: 0 }) as DocumentState,
+    licencia: (params.documents.licencia ?? { status: 'idle', progress: 0 }) as DocumentState,
+    certificado: (params.documents.certificado ?? { status: 'idle', progress: 0 }) as DocumentState,
+    rif: (params.documents.rif ?? { status: 'idle', progress: 0 }) as DocumentState,
+    pasaporte: (params.documents.pasaporte ?? { status: 'idle', progress: 0 }) as DocumentState,
+  };
+
+  const { requiredDocs } = adjustDocsForBinacionalCarnet(
+    base as DocType[],
+    ['rif', 'pasaporte'] as DocType[],
+    docsRecord,
+    true,
+    carnetBinacionalMode,
+  );
+
+  return requiredDocs as DiligenciaDocType[];
+}
 
 /**
  * Valida expediente OCR según perfil de diligencia.
@@ -205,6 +258,8 @@ export function getMissingRequiredDocuments(
   documents: Partial<Record<DiligenciaDocType, DocSlot>>,
   itipoDiligencia: TipoDiligencia,
   explicitRequired?: DiligenciaDocType[],
+  tipoPlaca?: VehicleData['tipoPlaca'],
+  tomadorTipoDoc?: string,
 ): DiligenciaDocType[] {
   const required =
     explicitRequired?.length
@@ -215,7 +270,7 @@ export function getMissingRequiredDocuments(
 
   const missing: DiligenciaDocType[] = [];
   for (const doc of required) {
-    if (doc === 'cedula' && itipoDiligencia === 'S') {
+    if (doc === 'cedula' && pasaporteSustituyeCedula(itipoDiligencia, tipoPlaca, tomadorTipoDoc)) {
       const cedulaOk = documents.cedula?.status === 'done';
       const pasaporteOk = documents.pasaporte?.status === 'done';
       if (!cedulaOk && !pasaporteOk) missing.push('cedula');
@@ -230,14 +285,24 @@ export function validateDocumentsForDiligencia(params: {
   documents: Partial<Record<DiligenciaDocType, DocSlot>>;
   diligencia: DiligenciaState | null;
   tomadorTipoDoc?: string;
+  vehicle?: Pick<VehicleData, 'tipoPlaca'>;
+  ocrConfig?: Record<string, unknown> | null;
 }): { ok: boolean; missing: DiligenciaDocType[]; itipo: TipoDiligencia } {
   const itipo =
     params.diligencia?.itipoDiligencia
     ?? (isPersonaJuridica(params.tomadorTipoDoc) ? 'C' : 'S');
+  const required = resolveRcvEmissionRequiredDocs({
+    itipoDiligencia: itipo,
+    vehicle: params.vehicle,
+    documents: params.documents,
+    ocrConfig: params.ocrConfig,
+  });
   const missing = getMissingRequiredDocuments(
     params.documents,
     itipo,
-    params.diligencia?.documentosRequeridos,
+    required,
+    params.vehicle?.tipoPlaca,
+    params.tomadorTipoDoc,
   );
   return { ok: missing.length === 0, missing, itipo };
 }

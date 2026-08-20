@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, clasificarDiligencia, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
-import { diligenciaLabel, getRequiredDocs, RCV_ORIGINAL_REQUIRED_DOCS } from '../../lib/diligencia';
+import { diligenciaLabel, resolveRcvEmissionRequiredDocs } from '../../lib/diligencia';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
@@ -40,7 +40,7 @@ function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
 export function PlansStep() {
   const {
     setCategory, selectedPlan, setSelectedPlan,
-    vehicle, quote, quoteState, rcv, setRcv, tomador, diligencia, setDiligencia, setTomador,
+    vehicle, quote, quoteState, rcv, setRcv, tomador, diligencia, setDiligencia, setTomador, documents,
   } = useWizardStore();
 
   const product = getProductConfig();
@@ -199,11 +199,11 @@ export function PlansStep() {
             if (activeQuoteSigRef.current !== quoteSig) return;
             setDiligencia({
               itipoDiligencia: d.itipoDiligencia,
-              documentosRequeridos: getRequiredDocs(
-                null,
-                d.itipoDiligencia,
-                RCV_ORIGINAL_REQUIRED_DOCS,
-              ),
+              documentosRequeridos: resolveRcvEmissionRequiredDocs({
+                itipoDiligencia: d.itipoDiligencia,
+                vehicle,
+                documents,
+              }),
               primaAnualBs: d.primaAnualBs,
               umbralBs: d.umbralBs,
               tcBcv: d.tcBcv,

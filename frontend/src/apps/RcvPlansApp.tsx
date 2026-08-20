@@ -13,7 +13,7 @@ import { EmissionPlanShell } from './EmissionPlanShell';
 export default function RcvPlansApp() {
   const {
     category, selectedPlan, quoteState, quote, goTo,
-    documents, diligencia, tomador,
+    documents, diligencia, tomador, vehicle,
   } = useWizardStore();
   const cotizador = isCotizadorFlow();
 
@@ -38,6 +38,7 @@ export default function RcvPlansApp() {
       documents,
       diligencia,
       tomadorTipoDoc: tomador.tipoDoc,
+      vehicle,
     })) {
       return;
     }
