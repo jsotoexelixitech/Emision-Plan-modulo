@@ -724,6 +724,7 @@ module.exports = {
   resolveSelectedCoberturas,
   resolvePrimaryCoberAdicional,
   resolveTasasForCober,
+  resolveIplaca,
   // Helpers expuestos para tests:
   _internal: {
     onlyDigits,

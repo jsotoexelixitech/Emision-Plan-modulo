@@ -37,6 +37,7 @@ const {
   toLaMundialEmissionPayload,
   resolveSelectedCoberturas,
   resolvePrimaryCoberAdicional,
+  resolveIplaca,
 } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
@@ -231,8 +232,8 @@ async function quote(state, overrides = {}) {
     if (quoteSource === 'sis2000') {
       result = await getCotizacionFromSis2000({
         ...payload,
-        cramo: parseInt(process.env.LAMUNDIAL_RAMO, 10),
-        iplaca: resolveIplaca(enrichedState.vehicle),
+        cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+        iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
       });
       metadata.quoteSource = 'sis2000';
     } else {
@@ -263,8 +264,8 @@ async function quote(state, overrides = {}) {
           console.warn(`[Policy][quote] nest-api falló (${nestApiErr.message}), reintentando SQL local`);
           result = await getCotizacionFromSis2000({
             ...payload,
-            cramo: parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-            iplaca: resolveIplaca(enrichedState.vehicle),
+            cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+            iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
           });
           metadata.quoteSource = 'sis2000_fallback';
         } else {
