@@ -14,7 +14,6 @@
  *      el log permite al operador escalar a La Mundial con la placa).
  */
 const axios = require('axios');
-const { getCotizacionFromSis2000 } = require('./quoteSis2000');
 const {
   getCotizacionViaNestApi,
   calculatePlanCoberturasViaNestApi,
@@ -225,60 +224,39 @@ async function quote(state, overrides = {}) {
 
   const quoteSourceRaw = (process.env.QUOTE_SOURCE || 'nest-api').toLowerCase();
   const quoteSource = quoteSourceRaw === 'sysip' ? 'nest-api' : quoteSourceRaw;
-  console.log(`[Policy][quote] source=${quoteSource} payload:`, JSON.stringify(payload));
+  if (quoteSource === 'sis2000') {
+    throw new PolicyError(
+      'QUOTE_SOURCE_DEPRECATED',
+      'QUOTE_SOURCE=sis2000 ya no está soportado. Cotiza solo vía nest-api (POST /api/v1/valrep/cotizacion).',
+      500,
+      { stage: 'quote' },
+    );
+  }
+  console.log(`[Policy][quote] source=nest-api payload:`, JSON.stringify(payload));
 
   try {
-    let result;
-    if (quoteSource === 'sis2000') {
-      result = await getCotizacionFromSis2000({
-        ...payload,
-        cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-        iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
-      });
-      metadata.quoteSource = 'sis2000';
-    } else {
-      try {
-        result = await getCotizacionViaNestApi({
-          cmarca: payload.cmarca,
-          cmodelo: payload.cmodelo,
-          cversion: payload.cversion,
-          fano: payload.fano,
-          cplan: payload.cplan,
-          ccategoria_uso: payload.ccategoria_uso,
-          iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
-          ntoneladas: payload.ntoneladas,
-          precargorcv: payload.precargorcv,
-          cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-          ifrecuencia: payload.ifrecuencia,
-          ndias: payload.ndias,
-          sumaAsegurada: payload.sumaAsegurada,
-        });
-        metadata.quoteSource = 'nest-api';
-      } catch (nestApiErr) {
-        const isNestQuoteErr =
-          nestApiErr.code === 'NEST_API_QUOTE_ERROR' ||
-          nestApiErr.code === 'NEST_API_QUOTE_ZERO' ||
-          nestApiErr.code === 'SYSIP_QUOTE_ERROR' ||
-          nestApiErr.code === 'SYSIP_QUOTE_ZERO';
-        if (process.env.SIS2000_SERVER && isNestQuoteErr) {
-          console.warn(`[Policy][quote] nest-api falló (${nestApiErr.message}), reintentando SQL local`);
-          result = await getCotizacionFromSis2000({
-            ...payload,
-            cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
-            iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
-          });
-          metadata.quoteSource = 'sis2000_fallback';
-        } else {
-          throw nestApiErr;
-        }
-      }
-    }
+    const result = await getCotizacionViaNestApi({
+      cmarca: payload.cmarca,
+      cmodelo: payload.cmodelo,
+      cversion: payload.cversion,
+      fano: payload.fano,
+      cplan: payload.cplan,
+      ccategoria_uso: payload.ccategoria_uso,
+      iplaca: payload.iplaca || resolveIplaca(enrichedState.vehicle),
+      ntoneladas: payload.ntoneladas,
+      precargorcv: payload.precargorcv,
+      cramo: payload.cramo || parseInt(process.env.LAMUNDIAL_RAMO || '18', 10),
+      ifrecuencia: payload.ifrecuencia,
+      ndias: payload.ndias,
+      sumaAsegurada: payload.sumaAsegurada,
+    });
+    metadata.quoteSource = 'nest-api';
     let coberturas;
     let breakdown;
     const selectedCoberturas = resolveSelectedCoberturas(enrichedState.rcv, overrides);
     const primaryCober = resolvePrimaryCoberAdicional(selectedCoberturas);
     const coverageEnabled = process.env.COVERAGE_BREAKDOWN_ENABLED !== 'false';
-    if (coverageEnabled && metadata.quoteSource !== 'sis2000' && metadata.quoteSource !== 'sis2000_fallback') {
+    if (coverageEnabled) {
       try {
         const { payload: covPayload } = buildCalculatePlanCoberturasRequest(
           enrichedState,
@@ -371,9 +349,6 @@ async function quote(state, overrides = {}) {
       },
     };
   } catch (err) {
-    if (err.code === 'SIS2000_QUOTE_ZERO' || err.code === 'SIS2000_QUOTE_ERROR') {
-      throw new PolicyError(err.code, err.message, 400, { stage: 'quote' });
-    }
     if (
       err.code === 'NEST_API_QUOTE_ZERO' ||
       err.code === 'NEST_API_QUOTE_ERROR' ||
