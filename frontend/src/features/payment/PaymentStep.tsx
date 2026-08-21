@@ -9,7 +9,7 @@ import {
   CheckCircle2, XCircle, RefreshCw, Send, ClipboardCheck,
 } from 'lucide-react';
 import { formatUsdShort } from '../../lib/money';
-import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode } from '../../lib/frecuencia';
+import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode, resolveRcvQuoteBasis } from '../../lib/frecuencia';
 import { getProductConfig } from '../../lib/product';
 import {
   verifyMobilePayment,
@@ -69,9 +69,10 @@ type OtpStep = 'form' | 'requesting' | 'awaiting_otp' | 'confirming' | 'done' | 
 const TODAY_ISO = new Date().toISOString().split('T')[0];
 
 export function PaymentStep() {
-  const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState, rcv, funeral } = useWizardStore();
+  const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState, rcv, funeral, vehicle } = useWizardStore();
   const product = getProductConfig();
   const frecuenciaCode = resolveWizardFrecuenciaCode(product.hasVehicle, rcv.frecuencia, funeral.frecuencia);
+  const quoteBasis = resolveRcvQuoteBasis(vehicle?.tipoPlaca, rcv.frecuencia);
 
   // ── Campos compartidos ────────────────────────────────────────────────
   const [bankCode,    setBankCode]    = useState('');
@@ -124,11 +125,11 @@ export function PaymentStep() {
   // Monto del 1er recibo (visual + pago móvil/OTP). Emisión usa prima anual completa.
   useEffect(() => {
     if (quoteState !== 'ready' || !quote) return;
-    const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, { quoteBasis: 'annual-total' });
+    const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, { quoteBasis });
     const vesStr = amounts.installmentVes.toFixed(2);
     setMontoM(vesStr);
     setOtpAmount(vesStr);
-  }, [quoteState, quote, frecuenciaCode]);
+  }, [quoteState, quote, frecuenciaCode, quoteBasis]);
 
   // Countdown para reenvío de OTP
   useEffect(() => {
@@ -152,7 +153,7 @@ export function PaymentStep() {
   const isQuoteError   = quoteState === 'error';
 
   const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, frecuenciaCode, {
-    quoteBasis: 'annual-total',
+    quoteBasis,
   });
   /** Solo visual / 1er recibo: prima anual ÷ cuotas (emisión sigue con prima anual). */
   const payUsd = hasRealQuote ? freqAmounts.installmentUsd : (selectedPlan?.priceNum ?? 0) * 12;

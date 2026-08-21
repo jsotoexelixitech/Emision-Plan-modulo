@@ -9,7 +9,7 @@ import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type Cata
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature } from '../../lib/money';
-import { resolveFrecuenciaAmounts } from '../../lib/frecuencia';
+import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 import { filterRcvOnlyCoberturas, isQaDeploy } from '../../lib/deploy-env';
 
@@ -155,9 +155,10 @@ export function PlansStep() {
   const coberSig = selectedOptionalCober
     ? String(selectedOptionalCober).toUpperCase()
     : 'RC';
-  const frecSig = `${rcv.frecuencia ?? 'A'}|${rcv.ndias ?? ''}`;
+  const includeFrecInQuote = rcvQuoteIncludesFrecuenciaSig(vehicle.tipoPlaca, rcv.frecuencia);
+  const frecSig = includeFrecInQuote ? `${rcv.frecuencia ?? 'A'}|${rcv.ndias ?? ''}` : '';
   const quoteSig = sig && planCode
-    ? `${sig}|${planCode}|${coberSig}|${frecSig}`
+    ? `${sig}|${planCode}|${coberSig}${includeFrecInQuote ? `|${frecSig}` : ''}`
     : '';
 
   // Ref para rastrear el sig activo y descartar respuestas obsoletas.
@@ -256,12 +257,18 @@ export function PlansStep() {
   const frecuenciaLabel =
     apiFrecuencias.find((f) => String(f.code) === rcv.frecuencia)?.label
     ?? 'Anual';
+  const quoteBasis = resolveRcvQuoteBasis(vehicle.tipoPlaca, rcv.frecuencia);
   const freqAmounts = resolveFrecuenciaAmounts(hasRealQuote ? quote : null, rcv.frecuencia, {
     frecuenciaLabel,
-    quoteBasis: 'annual-total',
+    quoteBasis,
   });
-  const annualUsd = hasRealQuote ? freqAmounts.annualUsd : 0;
-  const displayPrice = annualUsd;
+  const displayPrice = hasRealQuote
+    ? (freqAmounts.cuotas > 1 ? freqAmounts.installmentUsd : freqAmounts.annualUsd)
+    : 0;
+  const displayVes = hasRealQuote
+    ? (freqAmounts.cuotas > 1 ? freqAmounts.installmentVes : freqAmounts.annualVes)
+    : 0;
+  const displayPeriod = freqAmounts.cuotas > 1 ? freqAmounts.periodSuffix : '/ año';
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -390,9 +397,10 @@ export function PlansStep() {
         <PlanDetailCard
           plan={selectedPlan}
           displayPrice={displayPrice}
+          displayPeriod={displayPeriod}
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
-          quoteVes={hasRealQuote ? freqAmounts.annualVes : 0}
+          quoteVes={displayVes}
           frecuenciaLabel={frecuenciaLabel}
           freqAmounts={freqAmounts}
           ptasa={quote?.ptasa}
@@ -429,7 +437,7 @@ export function PlansStep() {
 }
 
 function PlanDetailCard({
-  plan, displayPrice,
+  plan, displayPrice, displayPeriod,
   isLoadingQuote, hasRealQuote, quoteVes, frecuenciaLabel, freqAmounts, ptasa,
   vehicleLabel, vehicleFallback, quoteError,
   quote,
@@ -439,6 +447,7 @@ function PlanDetailCard({
 }: {
   plan: Plan;
   displayPrice: number;
+  displayPeriod: string;
   isLoadingQuote: boolean;
   hasRealQuote: boolean;
   quoteVes: number;
@@ -513,9 +522,9 @@ function PlanDetailCard({
                     />
                   </span>
                 )}
-                <span className="text-[0.7rem] text-slate-500 font-semibold pb-1.5 sm:hidden">/ año</span>
+                <span className="text-[0.7rem] text-slate-500 font-semibold pb-1.5 sm:hidden">{displayPeriod}</span>
               </div>
-              <p className="hidden sm:block text-[0.7rem] text-slate-500 font-semibold mt-1">/ año</p>
+              <p className="hidden sm:block text-[0.7rem] text-slate-500 font-semibold mt-1">{displayPeriod}</p>
 
               {hasRealQuote && quoteVes > 0 && (
                 <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1.5 tabular-nums">
@@ -705,13 +714,16 @@ function PrimaCard({
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-lg font-display font-black text-white/60 leading-none pb-1">$</span>
             <span className="font-display font-black text-white text-[2.35rem] sm:text-[2.6rem] leading-none tabular-nums tracking-tight">
-              {freqAmounts.annualUsd.toFixed(2)}
+              {(freqAmounts.cuotas > 1 ? freqAmounts.installmentUsd : freqAmounts.annualUsd).toFixed(2)}
             </span>
-            <span className="text-sm text-white/70 font-semibold pb-1 ml-1">USD / año</span>
+            <span className="text-sm text-white/70 font-semibold pb-1 ml-1">
+              USD {freqAmounts.cuotas > 1 ? freqAmounts.periodSuffix : '/ año'}
+            </span>
           </div>
 
           <p className="text-sm font-bold text-indigo-200 tabular-nums mb-4">
-            ≈ Bs {fmt(freqAmounts.annualVes)} / año
+            ≈ Bs {fmt(freqAmounts.cuotas > 1 ? freqAmounts.installmentVes : freqAmounts.annualVes)}
+            {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ' / año'}
           </p>
 
           <div className="space-y-2 text-sm">
@@ -730,8 +742,8 @@ function PrimaCard({
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-white/15">
-                  <span className="text-white/75">{freqAmounts.cuotas} recibos al año</span>
-                  <span className="text-white/80 tabular-nums">{freqAmounts.paySummary}</span>
+                  <span className="text-white/75">Prima anual total</span>
+                  <span className="font-bold text-white tabular-nums">${freqAmounts.annualUsd.toFixed(2)}</span>
                 </div>
               </>
             ) : (

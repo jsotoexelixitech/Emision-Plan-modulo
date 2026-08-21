@@ -133,3 +133,29 @@ export function resolveWizardFrecuenciaCode(
 ): string {
   return normalizeFrecuenciaCode(hasVehicle ? rcvFrecuencia : funeralFrecuencia);
 }
+
+/** Binacional o frecuencia D: el SP cotiza el periodo (ndias), no la prima anual. */
+export function rcvQuoteUsesPeriodPremium(
+  tipoPlaca?: string | null,
+  frecuenciaCode?: string | null,
+): boolean {
+  if (tipoPlaca === 'binacional') return true;
+  return normalizeFrecuenciaCode(frecuenciaCode) === 'D';
+}
+
+export function resolveRcvQuoteBasis(
+  tipoPlaca?: string | null,
+  frecuenciaCode?: string | null,
+): 'annual-total' | 'per-installment' {
+  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode)
+    ? 'per-installment'
+    : 'annual-total';
+}
+
+/** Solo recotizar al cambiar frecuencia cuando la vigencia del SP cambia. */
+export function rcvQuoteIncludesFrecuenciaSig(
+  tipoPlaca?: string | null,
+  frecuenciaCode?: string | null,
+): boolean {
+  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode);
+}

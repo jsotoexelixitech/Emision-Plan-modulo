@@ -192,6 +192,14 @@ function resolveRcvNdias(state, overrides = {}) {
   return null;
 }
 
+/** RCV nacional: cotizar siempre anual (ifrecuencia A). Binacional/D: vigencia corta en SP. */
+function quoteUsesPeriodPremium(state, overrides = {}) {
+  const v = state.vehicle || {};
+  const iplaca = resolveIplaca(v);
+  const freq = resolveRcvFrecuencia(state, overrides);
+  return iplaca === 'B' || freq === 'D';
+}
+
 /** Vigencia fdesde/fhasta; ndias null = anual (+1 año). */
 function resolveVigencia(femisionYmd, ndias) {
   const fdesde = femisionYmd || todayYmd();
@@ -291,6 +299,7 @@ function buildQuoteRequest(state, overrides = {}) {
     ''
   ).trim();
   const sumaAsegurada = resolveMsumaaseg(state, state.quoteMeta || {});
+  const periodQuote = quoteUsesPeriodPremium(state, overrides);
 
   return {
     payload: {
@@ -304,9 +313,10 @@ function buildQuoteRequest(state, overrides = {}) {
       ntoneladas: resolveNtoneladasForSp(v),
       precargorcv: resolvePrecargorcv(v),
       cramo: resolveRcvCramo(v, state.metadataCanal || {}),
-      // Paridad SysIP searchPrice: ifrecuencia + ndias definen vigencia en sp_calculo_auto_nexus.
-      ifrecuencia: resolveRcvFrecuencia(state, overrides),
-      ndias: resolveRcvNdias(state, overrides),
+      // Nacional: prima anual (A); frecuencia solo define recibos en UI/emisión.
+      // Binacional/D: ifrecuencia + ndias definen vigencia en sp_calculo_auto_nexus.
+      ifrecuencia: periodQuote ? resolveRcvFrecuencia(state, overrides) : 'A',
+      ndias: periodQuote ? resolveRcvNdias(state, overrides) : null,
       sumaAsegurada: sumaAsegurada ?? undefined,
     },
     metadata: {
@@ -674,7 +684,10 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
   if (!payload?.cplan) {
     return { payload: null, metadata: { error: 'MISSING_PLAN' } };
   }
-  const ndiasQuote = payload.ndias ?? resolveRcvNdias(state, overrides);
+  const periodQuote = quoteUsesPeriodPremium(state, overrides);
+  const ndiasQuote = periodQuote
+    ? (payload.ndias ?? resolveRcvNdias(state, overrides))
+    : null;
   const { fdesde, fhasta } = resolveVigencia(todayYmd(), ndiasQuote);
   const rcv = state.rcv || {};
   const selected = resolveSelectedCoberturas(rcv, overrides);
@@ -700,7 +713,9 @@ function buildCalculatePlanCoberturasRequest(state, overrides = {}, quoteMeta = 
       iplaca: payload.iplaca,
       toneladas: payload.ntoneladas,
       cramo: payload.cramo,
-      ifrecuencia: payload.ifrecuencia ?? resolveRcvFrecuencia(state, overrides),
+      ifrecuencia: periodQuote
+        ? (payload.ifrecuencia ?? resolveRcvFrecuencia(state, overrides))
+        : 'A',
       suma: suma != null && Number(suma) > 0 ? Number(suma) : undefined,
       coberAdicional,
       tasaCa: tasasForCober.tasaCa,
