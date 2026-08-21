@@ -262,13 +262,9 @@ export function PlansStep() {
     frecuenciaLabel,
     quoteBasis,
   });
-  const displayPrice = hasRealQuote
-    ? (freqAmounts.cuotas > 1 ? freqAmounts.installmentUsd : freqAmounts.annualUsd)
-    : 0;
-  const displayVes = hasRealQuote
-    ? (freqAmounts.cuotas > 1 ? freqAmounts.installmentVes : freqAmounts.annualVes)
-    : 0;
-  const displayPeriod = freqAmounts.cuotas > 1 ? freqAmounts.periodSuffix : '/ año';
+  /** Prima anual fija (cotización); la frecuencia solo divide recibos abajo. */
+  const displayPrice = hasRealQuote ? freqAmounts.annualUsd : 0;
+  const displayVes = hasRealQuote ? freqAmounts.annualVes : 0;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -397,7 +393,6 @@ export function PlansStep() {
         <PlanDetailCard
           plan={selectedPlan}
           displayPrice={displayPrice}
-          displayPeriod={displayPeriod}
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
           quoteVes={displayVes}
@@ -437,7 +432,7 @@ export function PlansStep() {
 }
 
 function PlanDetailCard({
-  plan, displayPrice, displayPeriod,
+  plan, displayPrice,
   isLoadingQuote, hasRealQuote, quoteVes, frecuenciaLabel, freqAmounts, ptasa,
   vehicleLabel, vehicleFallback, quoteError,
   quote,
@@ -447,7 +442,6 @@ function PlanDetailCard({
 }: {
   plan: Plan;
   displayPrice: number;
-  displayPeriod: string;
   isLoadingQuote: boolean;
   hasRealQuote: boolean;
   quoteVes: number;
@@ -522,9 +516,9 @@ function PlanDetailCard({
                     />
                   </span>
                 )}
-                <span className="text-[0.7rem] text-slate-500 font-semibold pb-1.5 sm:hidden">{displayPeriod}</span>
+                <span className="text-[0.7rem] text-slate-500 font-semibold pb-1.5 sm:hidden">/ año</span>
               </div>
-              <p className="hidden sm:block text-[0.7rem] text-slate-500 font-semibold mt-1">{displayPeriod}</p>
+              <p className="hidden sm:block text-[0.7rem] text-slate-500 font-semibold mt-1">/ año</p>
 
               {hasRealQuote && quoteVes > 0 && (
                 <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1.5 tabular-nums">
@@ -714,16 +708,13 @@ function PrimaCard({
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-lg font-display font-black text-white/60 leading-none pb-1">$</span>
             <span className="font-display font-black text-white text-[2.35rem] sm:text-[2.6rem] leading-none tabular-nums tracking-tight">
-              {(freqAmounts.cuotas > 1 ? freqAmounts.installmentUsd : freqAmounts.annualUsd).toFixed(2)}
+              {freqAmounts.annualUsd.toFixed(2)}
             </span>
-            <span className="text-sm text-white/70 font-semibold pb-1 ml-1">
-              USD {freqAmounts.cuotas > 1 ? freqAmounts.periodSuffix : '/ año'}
-            </span>
+            <span className="text-sm text-white/70 font-semibold pb-1 ml-1">USD / año</span>
           </div>
 
           <p className="text-sm font-bold text-indigo-200 tabular-nums mb-4">
-            ≈ Bs {fmt(freqAmounts.cuotas > 1 ? freqAmounts.installmentVes : freqAmounts.annualVes)}
-            {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ' / año'}
+            ≈ Bs {fmt(freqAmounts.annualVes)} / año
           </p>
 
           <div className="space-y-2 text-sm">
@@ -742,8 +733,8 @@ function PrimaCard({
                   </span>
                 </div>
                 <div className="flex items-center justify-between pt-2 border-t border-white/15">
-                  <span className="text-white/75">Prima anual total</span>
-                  <span className="font-bold text-white tabular-nums">${freqAmounts.annualUsd.toFixed(2)}</span>
+                  <span className="text-white/75">{freqAmounts.cuotas} recibos al año</span>
+                  <span className="text-white/80 tabular-nums">{freqAmounts.paySummary}</span>
                 </div>
               </>
             ) : (
