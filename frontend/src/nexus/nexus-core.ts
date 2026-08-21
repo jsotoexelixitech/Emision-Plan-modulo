@@ -33,6 +33,28 @@ function useModuleProxyBuild(): boolean {
   return flag === '1' || flag === 'true';
 }
 
+function resolveSameOriginNexusApi(
+  trimmed: string,
+  moduleOnHttps: string | null,
+): string | null {
+  if (typeof window === 'undefined' || window.location.protocol !== 'https:') {
+    return null;
+  }
+  let configuredHost = '';
+  try {
+    if (trimmed && !INTERNAL_HTTP_RE.test(trimmed)) {
+      configuredHost = new URL(trimmed).hostname;
+    }
+  } catch {
+    /* ignore */
+  }
+  const pageHost = window.location.hostname;
+  if (!configuredHost || configuredHost !== pageHost) {
+    return moduleOnHttps ?? `${window.location.origin}/nexus-api`;
+  }
+  return null;
+}
+
 export function resolveNexusApiUrl(configured?: string): string {
   const moduleOnHttps = resolveModuleNexusApiOnHttps();
   if (moduleOnHttps && useModuleProxyBuild()) {
@@ -40,13 +62,13 @@ export function resolveNexusApiUrl(configured?: string): string {
   }
 
   const trimmed = configured?.trim().replace(/\/$/, '') ?? '';
-  const pageIsHttps =
-    typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const sameOrigin = resolveSameOriginNexusApi(trimmed, moduleOnHttps);
+  if (sameOrigin) return sameOrigin;
 
   if (trimmed && !INTERNAL_HTTP_RE.test(trimmed)) {
     return trimmed;
   }
-  if (pageIsHttps && typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
     return moduleOnHttps ?? `${window.location.origin}/nexus-api`;
   }
   if (trimmed) return trimmed;
