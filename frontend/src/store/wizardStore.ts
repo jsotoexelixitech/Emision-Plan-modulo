@@ -217,8 +217,9 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
     set((s) => {
       const next = { ...s.rcv, ...data };
       if (options?.keepQuote) return { rcv: next };
+      // frecuencia/ndias no invalidan quote en RCV nacional (prima anual fija).
       const sigKeys: (keyof RcvPlanData)[] = [
-        'frecuencia', 'ndias', 'coberAdicional', 'coberAdicionales',
+        'coberAdicional', 'coberAdicionales',
       ];
       const changed = sigKeys.some((k) => s.rcv[k] !== next[k]);
       if (changed && s.quote) {
