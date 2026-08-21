@@ -455,11 +455,22 @@ async function getRecargosRcv(cramo = 18) {
 
 // ── Valrep (estados, ciudades, listas, frecuencias) ─────────────────────────
 
+function isGeoCatalogPlaceholder(label) {
+  const t = String(label ?? '').trim().toUpperCase();
+  return t === 'TODO' || t === 'TODOS' || t === 'TODAS';
+}
+
+function filterGeoCatalog(items) {
+  return (items ?? []).filter((it) => !isGeoCatalogPlaceholder(it.label));
+}
+
 /** @returns {Promise<Array<{ code: number|string, label: string }>>} */
 async function getValrepStates() {
   const { data } = await axios.get(`${getBaseUrl()}/api/v1/valrep/states`, await axiosOpts());
   const states = data?.data?.states ?? [];
-  return states.map((s) => ({ code: s.cestado, label: String(s.xdescripcion_l ?? '').trim() }));
+  return filterGeoCatalog(
+    states.map((s) => ({ code: s.cestado, label: String(s.xdescripcion_l ?? '').trim() })),
+  );
 }
 
 /** @param {number|null|undefined} cestado */
@@ -469,7 +480,9 @@ async function getValrepCities(cestado) {
     : `${getBaseUrl()}/api/v1/valrep/cities`;
   const { data } = await axios.get(url, await axiosOpts());
   const cities = data?.data?.cities ?? [];
-  return cities.map((c) => ({ code: c.cciudad, label: String(c.xdescripcion_l ?? '').trim() }));
+  return filterGeoCatalog(
+    cities.map((c) => ({ code: c.cciudad, label: String(c.xdescripcion_l ?? '').trim() })),
+  );
 }
 
 /** @returns {Promise<Array<{ code: string, label: string }>>} */
