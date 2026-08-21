@@ -14,6 +14,10 @@ export interface HealthQuestionDraft {
   plans: string[];
   showIf?: { field: string; equals: boolean | string };
   options?: { value: string; label: string }[];
+  scoreIfTrue?: number;
+  scoreIfFalse?: number;
+  scoreIfFilled?: number;
+  optionScores?: Record<string, number>;
 }
 
 export type PlanOption = { code: string; label: string };
@@ -410,6 +414,62 @@ export function FuneralHealthQuestionsEditor({
                       placeholder="Texto secundario bajo la pregunta"
                     />
                   </div>
+
+                  {(q.type === 'boolean' || q.type === 'text') && (
+                    <div className="grid grid-cols-2 gap-2 rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5">
+                      <p className="col-span-2 text-[10px] font-black uppercase tracking-wider text-indigo-600">
+                        Scoring (puntos de riesgo)
+                      </p>
+                      {q.type === 'boolean' && (
+                        <>
+                          <div>
+                            <label className={lbl}>Si responde Sí</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className={inp}
+                              value={q.scoreIfTrue ?? ''}
+                              onChange={(e) =>
+                                update(idx, {
+                                  scoreIfTrue: e.target.value === '' ? undefined : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                          <div>
+                            <label className={lbl}>Si responde No</label>
+                            <input
+                              type="number"
+                              min={0}
+                              className={inp}
+                              value={q.scoreIfFalse ?? ''}
+                              onChange={(e) =>
+                                update(idx, {
+                                  scoreIfFalse: e.target.value === '' ? undefined : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                      {q.type === 'text' && (
+                        <div className="col-span-2">
+                          <label className={lbl}>Si tiene texto</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className={inp}
+                            value={q.scoreIfFilled ?? ''}
+                            onChange={(e) =>
+                              update(idx, {
+                                scoreIfFilled: e.target.value === '' ? undefined : Number(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {q.type === 'select' && (
                     <div>

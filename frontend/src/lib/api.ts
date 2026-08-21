@@ -660,3 +660,38 @@ export interface SaveHealthAnswersPayload {
 export async function saveFuneralHealthAnswers(payload: SaveHealthAnswersPayload): Promise<void> {
   await api.post('/funeral/health-answers', payload);
 }
+
+export interface FuneralSubmissionResult {
+  id: string;
+  estado: string;
+  scoreTotal: number;
+}
+
+export interface SubmitFuneralReviewPayload {
+  sessionId: string;
+  cplan: string;
+  cramo?: number;
+  tomador: Record<string, unknown>;
+  asegurado?: Record<string, unknown>;
+  sameInsured?: boolean;
+  hasBeneficiary?: boolean;
+  beneficiario?: Record<string, unknown>;
+  funeral?: Record<string, unknown>;
+  selectedPlan: Record<string, unknown>;
+  quote?: Record<string, unknown> | null;
+  quoteState?: string;
+  healthAnswers: Record<string, unknown>;
+  documents?: Record<string, unknown>;
+  metadataCanal?: Record<string, unknown> | null;
+}
+
+export async function submitFuneralPolicyReview(
+  payload: SubmitFuneralReviewPayload,
+): Promise<{ submission: FuneralSubmissionResult; scoring: { total: number } }> {
+  const { data } = await api.post<{
+    success: boolean;
+    submission: FuneralSubmissionResult;
+    scoring: { total: number };
+  }>('/funeral/submissions', payload);
+  return { submission: data.submission, scoring: data.scoring };
+}

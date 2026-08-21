@@ -58,6 +58,13 @@ const TIER = {
  * @property {string[]} plans
  * @property {{ field: string, equals: boolean | string }} [showIf]
  * @property {{ value: string, label: string }[]} [options]
+ * @property {number} [scoreIfTrue]
+ * @property {number} [scoreIfFalse]
+ * @property {number} [scoreIfFilled]
+ * @property {Record<string, number>} [optionScores]
+ * @property {boolean} [blockIfTrue]
+ * @property {boolean} [blockIfFalse]
+ * @property {string} [blockReason]
  */
 
 /** @type {HealthQuestion[]} */
@@ -70,6 +77,7 @@ const CATALOG = [
     description: 'Incluye cigarrillos, tabaco, puros o vapeo.',
     required: true,
     plans: TIER.TODOS,
+    scoreIfTrue: 15,
   },
   {
     id: 'diagnosticoEnfermedad',
@@ -78,6 +86,7 @@ const CATALOG = [
     description: 'Cáncer, diabetes, hipertensión, cardiopatías, VIH, etc.',
     required: true,
     plans: TIER.TODOS,
+    scoreIfTrue: 40,
   },
   {
     id: 'descripcionEnfermedad',
@@ -87,6 +96,7 @@ const CATALOG = [
     required: true,
     plans: TIER.TODOS,
     showIf: { field: 'diagnosticoEnfermedad', equals: true },
+    scoreIfFilled: 5,
   },
   {
     id: 'aceptaTerminos',
@@ -95,6 +105,9 @@ const CATALOG = [
     description: 'Declaro que la información suministrada es verídica y acepto las condiciones de la póliza.',
     required: true,
     plans: TIER.TODOS,
+    scoreIfFalse: 100,
+    blockIfFalse: true,
+    blockReason: 'Debe aceptar los términos y condiciones.',
   },
 
   // ── Intermedio en adelante (2.500$ – 7.500$): cplan 5, 6, 7, 8, 9 ───────
@@ -105,6 +118,7 @@ const CATALOG = [
     description: 'Más de 2 copas por semana de forma regular.',
     required: true,
     plans: [...TIER.INTERMEDIO, ...TIER.ALTO],
+    scoreIfTrue: 10,
   },
   {
     id: 'hospitalizacionReciente',
@@ -112,6 +126,7 @@ const CATALOG = [
     label: '¿Ha sido hospitalizado en los últimos 24 meses?',
     required: true,
     plans: [...TIER.INTERMEDIO, ...TIER.ALTO],
+    scoreIfTrue: 25,
   },
   {
     id: 'motivoHospitalizacion',
@@ -120,6 +135,7 @@ const CATALOG = [
     required: true,
     plans: [...TIER.INTERMEDIO, ...TIER.ALTO],
     showIf: { field: 'hospitalizacionReciente', equals: true },
+    scoreIfFilled: 5,
   },
 
   // ── Alto (4.000$ – 7.500$): cplan 7, 8, 9 ───────────────────────────────
@@ -130,6 +146,7 @@ const CATALOG = [
     description: 'Medicamentos prescritos de forma continua.',
     required: true,
     plans: TIER.ALTO,
+    scoreIfTrue: 20,
   },
   {
     id: 'detalleMedicacion',
@@ -138,6 +155,7 @@ const CATALOG = [
     required: true,
     plans: TIER.ALTO,
     showIf: { field: 'medicacionCronica', equals: true },
+    scoreIfFilled: 5,
   },
 
   // ── Solo plan máximo 7.500$ (cplan 9) ───────────────────────────────────
@@ -148,6 +166,7 @@ const CATALOG = [
     description: 'Paracaidismo, montañismo, buceo, carreras, etc.',
     required: true,
     plans: [PLAN.P7500],
+    scoreIfTrue: 30,
   },
 ];
 

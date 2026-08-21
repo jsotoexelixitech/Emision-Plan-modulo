@@ -21,6 +21,7 @@ const valrepRoutes   = require('./routes/valrep');
 const catalogoRoutes = require('./routes/catalogo');
 const personasRoutes = require('./routes/personas');
 const funeralHealthRoutes = require('./routes/funeralHealth');
+const funeralSubmissionRoutes = require('./routes/funeralSubmission');
 const nexusAuth      = require('./middleware/nexusAuth');
 
 const app = express();
@@ -60,6 +61,7 @@ app.use('/api/catalogo', nexusAuth, catalogoRoutes);
 app.use('/api/personas', nexusAuth, personasRoutes);
 // Cuestionario de salud funerario (preguntas Exélixi + persistencia local)
 app.use('/api/funeral', nexusAuth, funeralHealthRoutes);
+app.use('/api/funeral', nexusAuth, funeralSubmissionRoutes);
 // Emisión genérica Exélixi (product-builder → nest-api product-emission)
 app.use('/api/exelixi', nexusAuth, exelixiRoutes);
 // Cotizaciones y emisiones La Mundial

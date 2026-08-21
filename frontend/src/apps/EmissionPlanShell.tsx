@@ -14,6 +14,7 @@ interface Props {
   eyebrow?: string;
   title?: string;
   continuarLabel?: string;
+  hideContinuar?: boolean;
 }
 
 /** Shell visual compartido del paso 4 — sin lógica de producto. */
@@ -25,6 +26,7 @@ export function EmissionPlanShell({
   eyebrow,
   title,
   continuarLabel = 'Confirmar plan',
+  hideContinuar = false,
 }: Props) {
   void _helpSubject;
   return (
@@ -63,20 +65,24 @@ export function EmissionPlanShell({
                 <ShieldCheck size={13} className="text-emerald-500" />
                 <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
               </div>
-              <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
-                {continuarLabel}
-                <ChevronRight size={15} />
-              </Button>
+              {!hideContinuar && (
+                <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
+                  {continuarLabel}
+                  <ChevronRight size={15} />
+                </Button>
+              )}
             </div>
           </section>
         </div>
       </main>
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
-        <Button variant="primary" className="w-full" onClick={onContinuar}>
-          {continuarLabel}
-        </Button>
-      </div>
+      {!hideContinuar && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+          <Button variant="primary" className="w-full" onClick={onContinuar}>
+            {continuarLabel}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
