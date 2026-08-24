@@ -120,18 +120,31 @@ function resolveCproductor(raw) {
 }
 
 /**
- * cusuario con permiso fn_validateCoberAccess para listar/aplicar CA/PT/PP.
+ * Usuario Sis2000 — prioridad SSO / env / default.
+ * 1. metadata.cusuario_planes (override explícito)
+ * 2. metadata.cusuario (sso-delegate / JWT Nexus)
+ * 3. variables de entorno
+ * 4. fallback numérico
  * @param {Record<string, unknown>} [nexusMetadata]
+ * @param {string|number} [fallbackDefault]
  * @returns {number}
  */
-function resolveCusuarioCoberturas(nexusMetadata = {}) {
+function resolveCusuarioFromMetadata(nexusMetadata = {}, fallbackDefault = DEFAULT_CUSUARIO_COBERTURAS) {
   const raw =
     nexusMetadata.cusuario_planes
+    ?? nexusMetadata.cusuario
     ?? process.env.LAMUNDIAL_CUSUARIO_PLANES
     ?? process.env.LAMUNDIAL_CUSUARIO_COBERTURAS
-    ?? DEFAULT_CUSUARIO_COBERTURAS;
+    ?? process.env.LAMUNDIAL_CUSUARIO
+    ?? fallbackDefault;
   const n = parseInt(String(raw), 10);
-  return Number.isFinite(n) && n > 0 ? n : 6;
+  const fb = parseInt(String(fallbackDefault), 10);
+  return Number.isFinite(n) && n > 0 ? n : (Number.isFinite(fb) && fb > 0 ? fb : 6);
+}
+
+/** cusuario con permiso fn_validateCoberAccess para listar/aplicar CA/PT/PP. */
+function resolveCusuarioCoberturas(nexusMetadata = {}) {
+  return resolveCusuarioFromMetadata(nexusMetadata, DEFAULT_CUSUARIO_COBERTURAS);
 }
 
 /**
@@ -147,10 +160,7 @@ function resolvePlanesParams(nexusMetadata = {}) {
 
   const { cproductor, source: cproductorSource } = resolveCproductor(rawProductor);
 
-  const cusuarioRaw = nexusMetadata.cusuario ?? DEFAULT_CUSUARIO;
-  const cusuario = /^\d+$/.test(String(cusuarioRaw))
-    ? parseInt(String(cusuarioRaw), 10)
-    : String(cusuarioRaw);
+  const cusuario = resolveCusuarioFromMetadata(nexusMetadata, DEFAULT_CUSUARIO);
 
   const cramo = parseInt(
     nexusMetadata.cramo != null ? String(nexusMetadata.cramo) : String(DEFAULT_RAMO),
@@ -406,6 +416,7 @@ async function fetchPlanesV2(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
 
 module.exports = {
   resolveCproductor,
+  resolveCusuarioFromMetadata,
   resolveCusuarioCoberturas,
   resolvePlanesParams,
   buildPlanesV2Body,

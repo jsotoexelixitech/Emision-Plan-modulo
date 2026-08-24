@@ -6,13 +6,18 @@ const { getSis2000Pool, sql } = require('./sis2000Pool');
 const SP_CALCULO_AUTO_NEXUS =
   process.env.MSSQL_SP_CALCULO_AUTO_NEXUS?.trim() || 'sp_calculo_auto_nexus';
 
-function resolveCusuario() {
+function resolveCusuario(input) {
+  if (input?.cusuario != null && String(input.cusuario).trim() !== '') {
+    const n = parseInt(String(input.cusuario), 10);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
   const raw =
     process.env.LAMUNDIAL_CUSUARIO_PLANES ||
+    process.env.LAMUNDIAL_CUSUARIO_COBERTURAS ||
     process.env.LAMUNDIAL_CUSUARIO ||
     '6';
   const n = parseInt(String(raw).trim(), 10);
-  return Number.isFinite(n) ? n : 6;
+  return Number.isFinite(n) && n > 0 ? n : 6;
 }
 
 /**
@@ -62,7 +67,7 @@ async function getCotizacionFromSis2000(input) {
 
   const ifrecuencia =
     String(input.ifrecuencia ?? 'A').trim().toUpperCase().charAt(0) || 'A';
-  const cusuario = resolveCusuario();
+  const cusuario = resolveCusuario(input);
 
   const calcReq = pool.request();
   calcReq.input('cmarca', sql.NVarChar(4), String(input.cmarca).trim());

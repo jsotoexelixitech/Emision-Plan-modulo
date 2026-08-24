@@ -17,6 +17,18 @@ const { clasificarDiligencia } = require('../services/diligenciaService');
 
 const router = express.Router();
 
+/** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal. */
+function withNexusMetadata(state, nexusMetadata) {
+  if (!state || typeof state !== 'object') return state;
+  if (!nexusMetadata || typeof nexusMetadata !== 'object' || !Object.keys(nexusMetadata).length) {
+    return state;
+  }
+  return {
+    ...state,
+    metadataCanal: { ...(state.metadataCanal || {}), ...nexusMetadata },
+  };
+}
+
 /**
  * @openapi
  * /api/policies/quote:
@@ -109,7 +121,7 @@ router.post('/policies/quote', async (req, res) => {
     if (!state || !state.vehicle) {
       return res.status(400).json({ success: false, code: 'MISSING_STATE', message: 'state.vehicle requerido.' });
     }
-    const result = await policyService.quote(state, { plan });
+    const result = await policyService.quote(withNexusMetadata(state, req.nexusMetadata), { plan });
     return res.status(200).json({
       success: true,
       mprima: result.mprima,
@@ -166,16 +178,9 @@ router.post('/policies/emit', async (req, res) => {
       });
     }
 
-    console.log('[routes/emision.js] req.nexusMetadata:', JSON.stringify(req.nexusMetadata));
-    console.log('[routes/emision.js] state.metadataCanal (antes):', JSON.stringify(state.metadataCanal));
+    const mergedState = withNexusMetadata(state, req.nexusMetadata);
 
-    if (req.nexusMetadata && Object.keys(req.nexusMetadata).length > 0) {
-      state.metadataCanal = { ...state.metadataCanal, ...req.nexusMetadata };
-    }
-
-    console.log('[routes/emision.js] state.metadataCanal (después):', JSON.stringify(state.metadataCanal));
-
-    const result = await policyService.quoteAndEmit(state, {
+    const result = await policyService.quoteAndEmit(mergedState, {
       plan,
       frecuencia: frecuencia || state?.rcv?.frecuencia,
       ndias: ndias ?? state?.rcv?.ndias,

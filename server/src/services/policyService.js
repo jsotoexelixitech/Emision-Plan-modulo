@@ -40,6 +40,7 @@ const {
 } = require('./policyMapper');
 const { resolveCategoriaUsoFromVinma, resolveUsageCategory } = require('./catalogs');
 const { validateEmissionPayload } = require('./policyValidator');
+const { resolveCusuarioCoberturas } = require('./planesClient');
 
 /** URL del PDF conductor accesible desde el navegador del cliente (HTTPS público). */
 function mapConductorPdfPublicUrl(url) {
@@ -235,6 +236,7 @@ async function quote(state, overrides = {}) {
   console.log(`[Policy][quote] source=nest-api payload:`, JSON.stringify(payload));
 
   try {
+    const cusuario = resolveCusuarioCoberturas(enrichedState.metadataCanal || {});
     const result = await getCotizacionViaNestApi({
       cmarca: payload.cmarca,
       cmodelo: payload.cmodelo,
@@ -249,6 +251,7 @@ async function quote(state, overrides = {}) {
       ifrecuencia: payload.ifrecuencia,
       ndias: payload.ndias,
       sumaAsegurada: payload.sumaAsegurada,
+      cusuario,
     });
     metadata.quoteSource = 'nest-api';
     let coberturas;
