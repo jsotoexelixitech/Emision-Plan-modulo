@@ -1,11 +1,18 @@
 import { useEffect } from 'react';
 import { useWizardStore } from '../store/wizardStore';
+import { applyMetadataFromNexusToken } from '../lib/nexus-token-client';
 
-/** Intercepta session_token SSO y limpia la URL. Compartido RCV / funerario. */
+const STORAGE_KEY = 'nexus_access_token_emision';
+
+/** Sincroniza metadata SSO del JWT (nexus_token) y legacy session_token. */
 export function useSessionTokenDelegation() {
   const setMetadataCanal = useWizardStore((s) => s.setMetadataCanal);
 
   useEffect(() => {
+    applyMetadataFromNexusToken(STORAGE_KEY, (metadata) => {
+      setMetadataCanal(metadata);
+    });
+
     const searchParams = new URLSearchParams(window.location.search);
     const token = searchParams.get('session_token');
 

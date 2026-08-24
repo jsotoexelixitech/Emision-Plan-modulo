@@ -90,11 +90,6 @@ export interface NexusVerifyResult {
 }
 
 export async function verifyNexusAccess(nexusApiUrl: string): Promise<NexusVerifyResult> {
-  const tokenFromUrl = new URLSearchParams(window.location.search).get('nexus_token');
-  if (tokenFromUrl && !getNexusToken(STORAGE_KEY)) {
-    persistNexusToken(STORAGE_KEY, tokenFromUrl);
-  }
-
   const token = getNexusToken(STORAGE_KEY);
 
   if (!token) {

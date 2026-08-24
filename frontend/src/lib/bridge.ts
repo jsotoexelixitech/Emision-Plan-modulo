@@ -19,6 +19,10 @@
 
 import { useWizardStore } from '../store/wizardStore';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
+import {
+  adoptNexusTokenFromUrl,
+  getNexusTokenFromUrl,
+} from './nexus-token-client';
 import { canNavigateToStep, getDefaultRequiredDocs } from './wizard-navigation';
 import { getProductConfig } from './product';
 import { BUILDER_PRODUCT_STORAGE_KEY, isExelixiCatalogFlow, ensureExelixiFlowQueryParam } from './exelixi-catalog';
@@ -96,12 +100,6 @@ const QUERY_KEY   = 'sid';
 function getSidFromUrl(): string | null {
   try {
     return new URL(window.location.href).searchParams.get(QUERY_KEY);
-  } catch { return null; }
-}
-
-function getNexusTokenFromUrl(): string | null {
-  try {
-    return new URL(window.location.href).searchParams.get('nexus_token');
   } catch { return null; }
 }
 
@@ -404,6 +402,8 @@ function makeBridge(): BridgeAPI {
 
 async function init() {
   let bridge = makeBridge();
+
+  adoptNexusTokenFromUrl(getModuleTokenKey());
 
   // Si no hay sid pero hay nexus_token, intentar auto-arranque del flujo
   if (!bridge.active && typeof window !== 'undefined') {
