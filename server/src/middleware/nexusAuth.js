@@ -95,13 +95,14 @@ async function nexusAuth(req, res, next) {
   // -----------------------------------
 
   if (!ENABLED) {
-    // Modo permissive: intenta decodificar sin verificar para tracking
+    // Modo permissive: intenta decodificar sin verificar para tracking + metadata SSO
     if (token) {
       try {
         const decoded = jwt.decode(token);
         if (decoded && typeof decoded === 'object') {
           req.empresa = { id: decoded.empresaId };
           req.submoduloId = decoded.submoduloId;
+          req.nexusMetadata = decoded.metadata || {};
         }
       } catch { /* ignore */ }
     }
