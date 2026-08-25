@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { truncateQuoteAmount } from '../../lib/money';
+
 interface AnimatedCounterProps {
   value: number;
   duration?: number;
@@ -50,15 +52,11 @@ export function AnimatedCounter({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration]);
 
-  const formatted = maximumFractionDigits != null
-    ? display.toLocaleString('es-VE', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits,
-      })
-    : display.toLocaleString('es-VE', {
-        minimumFractionDigits: decimals,
-        maximumFractionDigits: decimals,
-      });
+  const fractionDigits = maximumFractionDigits ?? decimals;
+  const formatted = truncateQuoteAmount(display, fractionDigits).toLocaleString('es-VE', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
 
   return (
     <span className={className}>

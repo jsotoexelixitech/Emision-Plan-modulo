@@ -8,7 +8,7 @@
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
 import type { PolicyQuote } from '../types';
-import { formatQuoteUsdMoney } from './money';
+import { computeQuoteVes, formatQuoteUsdMoney } from './money';
 
 /** Cuotas por vigencia anual — paridad adrecibos / sp_genera_coberturas_recibos_auto_rcv_nexus */
 const CUOTAS_BY_FREC: Record<string, number> = {
@@ -84,12 +84,6 @@ export interface FrecuenciaAmounts {
   paySummary: string;
 }
 
-/** Bs a partir de USD y tasa BCV de la cotización. */
-function vesFromUsd(usd: number, ptasa: number): number {
-  if (!Number.isFinite(usd) || !Number.isFinite(ptasa) || ptasa <= 0) return 0;
-  return usd * ptasa;
-}
-
 function divideByCuotas(amount: number, cuotas: number): number {
   return cuotas > 0 ? amount / cuotas : amount;
 }
@@ -117,15 +111,15 @@ export function resolveFrecuenciaAmounts(
 
   if (basis === 'per-installment') {
     installmentUsd = rawUsd;
-    installmentVes = ptasa > 0 ? vesFromUsd(rawUsd, ptasa) : rawVes;
+    installmentVes = ptasa > 0 ? computeQuoteVes(rawUsd, ptasa) : rawVes;
     annualUsd = rawUsd * cuotas;
-    annualVes = ptasa > 0 ? vesFromUsd(annualUsd, ptasa) : rawVes * cuotas;
+    annualVes = ptasa > 0 ? computeQuoteVes(annualUsd, ptasa) : rawVes * cuotas;
   } else {
     annualUsd = rawUsd;
-    annualVes = rawVes > 0 ? rawVes : vesFromUsd(rawUsd, ptasa);
+    annualVes = ptasa > 0 ? computeQuoteVes(rawUsd, ptasa) : rawVes;
     installmentUsd = divideByCuotas(rawUsd, cuotas);
     installmentVes = ptasa > 0
-      ? vesFromUsd(installmentUsd, ptasa)
+      ? computeQuoteVes(installmentUsd, ptasa)
       : divideByCuotas(rawVes, cuotas);
   }
 

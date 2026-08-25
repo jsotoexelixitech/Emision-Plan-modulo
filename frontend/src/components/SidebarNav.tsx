@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
-import { formatQuoteUsdMoney, formatQuoteVesLabel } from '../lib/money';
+import { formatQuoteUsdMoney, formatQuoteVesLabel, vesAnnual } from '../lib/money';
 import { publicAsset } from '../lib/app-base';
 
 export function SidebarNav() {
@@ -39,7 +39,7 @@ export function SidebarNav() {
   })();
 
   const bsDisplay = hasRealQuote && quote
-    ? `${formatQuoteVesLabel(quote.mprima)} / año`
+    ? `${formatQuoteVesLabel(vesAnnual(quote))} / año`
     : null;
   const methodLabels: Record<string, string> = {
     card: 'Tarjeta',
