@@ -64,10 +64,69 @@ export function getFrecuenciaPaySummary(
   return defaults[c] ?? `Pagas en ${cuotas} cuota${cuotas === 1 ? '' : 's'}`;
 }
 
-/** Texto aclaratorio: la API cotiza anual; la cuota es división en UI. */
-export function getFrecuenciaQuoteNote(amounts: FrecuenciaAmounts): string | null {
+/** Texto aclaratorio según tipo de cotización. */
+export function getFrecuenciaQuoteNote(
+  amounts: FrecuenciaAmounts,
+  quoteBasis: 'annual-total' | 'per-installment' = 'annual-total',
+): string | null {
+  if (quoteBasis === 'per-installment') {
+    if (amounts.installmentUsd <= 0) return null;
+    return `Prima cotizada ${formatQuoteUsdMoney(amounts.installmentUsd)}${amounts.periodSuffix}`;
+  }
   if (amounts.cuotas <= 1 || amounts.annualUsd <= 0) return null;
   return `Prima anual cotizada ${formatQuoteUsdMoney(amounts.annualUsd)} ÷ ${amounts.cuotas} cuotas`;
+}
+
+/** Montos coherentes para hero (planes/pagos) y 1er recibo. */
+export function resolveQuoteDisplayAmounts(
+  amounts: FrecuenciaAmounts,
+  quoteBasis: 'annual-total' | 'per-installment' = 'annual-total',
+): {
+  heroUsd: number;
+  heroVes: number;
+  heroUsdSuffix: string;
+  heroVesSuffix: string;
+  paymentUsd: number;
+  paymentVes: number;
+  totalLabel: string;
+} {
+  const periodQuote = quoteBasis === 'per-installment';
+  const multiReceipt = amounts.cuotas > 1;
+
+  if (periodQuote && !multiReceipt) {
+    const suffix = amounts.periodSuffix || '';
+    return {
+      heroUsd: amounts.installmentUsd,
+      heroVes: amounts.installmentVes,
+      heroUsdSuffix: suffix,
+      heroVesSuffix: suffix,
+      paymentUsd: amounts.installmentUsd,
+      paymentVes: amounts.installmentVes,
+      totalLabel: `Total a pagar${suffix ? ` (${suffix.trim()})` : ''}`,
+    };
+  }
+
+  if (multiReceipt) {
+    return {
+      heroUsd: amounts.annualUsd,
+      heroVes: amounts.annualVes,
+      heroUsdSuffix: '/ año',
+      heroVesSuffix: '/ año',
+      paymentUsd: amounts.installmentUsd,
+      paymentVes: amounts.installmentVes,
+      totalLabel: 'Total a pagar (1er recibo)',
+    };
+  }
+
+  return {
+    heroUsd: amounts.annualUsd,
+    heroVes: amounts.annualVes,
+    heroUsdSuffix: '/ año',
+    heroVesSuffix: '/ año',
+    paymentUsd: amounts.installmentUsd,
+    paymentVes: amounts.installmentVes,
+    totalLabel: 'Total a pagar (prima anual)',
+  };
 }
 
 export interface FrecuenciaAmounts {
@@ -160,16 +219,18 @@ export function resolveWizardFrecuenciaCode(
 export function rcvQuoteUsesPeriodPremium(
   tipoPlaca?: string | null,
   frecuenciaCode?: string | null,
+  tipoCarnet?: string | null,
 ): boolean {
-  if (tipoPlaca === 'binacional') return true;
+  if (tipoPlaca === 'binacional' || tipoCarnet === 'binacional') return true;
   return normalizeFrecuenciaCode(frecuenciaCode) === 'D';
 }
 
 export function resolveRcvQuoteBasis(
   tipoPlaca?: string | null,
   frecuenciaCode?: string | null,
+  tipoCarnet?: string | null,
 ): 'annual-total' | 'per-installment' {
-  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode)
+  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode, tipoCarnet)
     ? 'per-installment'
     : 'annual-total';
 }
@@ -178,6 +239,7 @@ export function resolveRcvQuoteBasis(
 export function rcvQuoteIncludesFrecuenciaSig(
   tipoPlaca?: string | null,
   frecuenciaCode?: string | null,
+  tipoCarnet?: string | null,
 ): boolean {
-  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode);
+  return rcvQuoteUsesPeriodPremium(tipoPlaca, frecuenciaCode, tipoCarnet);
 }

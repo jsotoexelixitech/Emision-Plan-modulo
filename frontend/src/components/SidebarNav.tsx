@@ -5,10 +5,15 @@ import {
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
 import { formatQuoteUsdMoney, formatQuoteVesLabel, vesAnnual } from '../lib/money';
+import {
+  resolveFrecuenciaAmounts,
+  resolveRcvQuoteBasis,
+  resolveQuoteDisplayAmounts,
+} from '../lib/frecuencia';
 import { publicAsset } from '../lib/app-base';
 
 export function SidebarNav() {
-  const { step, tomador, vehicle, funeral, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
+  const { step, tomador, vehicle, rcv, funeral, selectedPlan, paymentMethod, quote, quoteState } = useWizardStore();
 
   const product = getProductConfig();
 
@@ -32,15 +37,29 @@ export function SidebarNav() {
 
   const precioDisplay = (() => {
     if (isQuoteLoading) return null;
+    if (hasRealQuote && quote && product.hasVehicle) {
+      const quoteBasis = resolveRcvQuoteBasis(vehicle.tipoPlaca, rcv.frecuencia, vehicle.tipoCarnet);
+      const freqAmounts = resolveFrecuenciaAmounts(quote, rcv.frecuencia, { quoteBasis });
+      const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
+      return `${formatQuoteUsdMoney(displayAmounts.heroUsd)} ${displayAmounts.heroUsdSuffix}`;
+    }
     if (hasRealQuote && quote) {
       return `${formatQuoteUsdMoney(quote.mprimaext)} / año`;
     }
     return selectedPlan?.price ?? null;
   })();
 
-  const bsDisplay = hasRealQuote && quote
-    ? `${formatQuoteVesLabel(vesAnnual(quote))} / año`
-    : null;
+  const bsDisplay = (() => {
+    if (!hasRealQuote || !quote) return null;
+    if (product.hasVehicle) {
+      const quoteBasis = resolveRcvQuoteBasis(vehicle.tipoPlaca, rcv.frecuencia, vehicle.tipoCarnet);
+      const freqAmounts = resolveFrecuenciaAmounts(quote, rcv.frecuencia, { quoteBasis });
+      const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
+      if (displayAmounts.heroVes <= 0) return null;
+      return `${formatQuoteVesLabel(displayAmounts.heroVes)} ${displayAmounts.heroVesSuffix}`;
+    }
+    return `${formatQuoteVesLabel(vesAnnual(quote))} / año`;
+  })();
   const methodLabels: Record<string, string> = {
     card: 'Tarjeta',
     transfer: 'Transferencia',

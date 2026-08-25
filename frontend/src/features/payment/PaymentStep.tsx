@@ -72,7 +72,7 @@ export function PaymentStep() {
   const { paymentMethod, setPaymentMethod, selectedPlan, quote, quoteState, rcv, funeral, vehicle } = useWizardStore();
   const product = getProductConfig();
   const frecuenciaCode = resolveWizardFrecuenciaCode(product.hasVehicle, rcv.frecuencia, funeral.frecuencia);
-  const quoteBasis = resolveRcvQuoteBasis(vehicle?.tipoPlaca, rcv.frecuencia);
+  const quoteBasis = resolveRcvQuoteBasis(vehicle?.tipoPlaca, rcv.frecuencia, vehicle?.tipoCarnet);
 
   // ── Campos compartidos ────────────────────────────────────────────────
   const [bankCode,    setBankCode]    = useState('');
