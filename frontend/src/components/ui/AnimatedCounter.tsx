@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import { truncateQuoteAmount } from '../../lib/money';
+import { roundQuoteAmount } from '../../lib/money';
 
 interface AnimatedCounterProps {
   value: number;
@@ -53,7 +53,7 @@ export function AnimatedCounter({
   }, [value, duration]);
 
   const fractionDigits = maximumFractionDigits ?? decimals;
-  const formatted = truncateQuoteAmount(display, fractionDigits).toLocaleString('es-VE', {
+  const formatted = roundQuoteAmount(display, fractionDigits).toLocaleString('es-VE', {
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
