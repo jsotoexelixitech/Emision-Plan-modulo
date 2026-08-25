@@ -7,6 +7,7 @@
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
 import type { PolicyQuote } from '../types';
+import { formatQuoteUsdMoney } from './money';
 
 /** Cuotas por vigencia anual — paridad adrecibos / sp_genera_coberturas_recibos_auto_rcv_nexus */
 const CUOTAS_BY_FREC: Record<string, number> = {
@@ -65,7 +66,7 @@ export function getFrecuenciaPaySummary(
 /** Texto aclaratorio: la API cotiza anual; la cuota es división en UI. */
 export function getFrecuenciaQuoteNote(amounts: FrecuenciaAmounts): string | null {
   if (amounts.cuotas <= 1 || amounts.annualUsd <= 0) return null;
-  return `Prima anual cotizada $${amounts.annualUsd.toFixed(2)} ÷ ${amounts.cuotas} cuotas`;
+  return `Prima anual cotizada ${formatQuoteUsdMoney(amounts.annualUsd)} ÷ ${amounts.cuotas} cuotas`;
 }
 
 export interface FrecuenciaAmounts {

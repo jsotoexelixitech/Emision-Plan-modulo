@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useWizardStore } from '../store/wizardStore';
 import { getProductConfig } from '../lib/product';
+import { formatQuoteUsdMoney, formatQuoteVesLabel } from '../lib/money';
 import { publicAsset } from '../lib/app-base';
 
 export function SidebarNav() {
@@ -32,13 +33,13 @@ export function SidebarNav() {
   const precioDisplay = (() => {
     if (isQuoteLoading) return null;
     if (hasRealQuote && quote) {
-      return `$${quote.mprimaext.toFixed(2)} / año`;
+      return `${formatQuoteUsdMoney(quote.mprimaext)} / año`;
     }
     return selectedPlan?.price ?? null;
   })();
 
   const bsDisplay = hasRealQuote && quote
-    ? `Bs ${quote.mprima.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / año`
+    ? `${formatQuoteVesLabel(quote.mprima)} / año`
     : null;
   const methodLabels: Record<string, string> = {
     card: 'Tarjeta',

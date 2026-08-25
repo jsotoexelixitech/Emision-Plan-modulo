@@ -6,6 +6,8 @@ interface AnimatedCounterProps {
   prefix?: string;
   suffix?: string;
   decimals?: number;
+  /** Si se define, muestra hasta N decimales sin forzar mínimo (cotización RCV exacta). */
+  maximumFractionDigits?: number;
   className?: string;
 }
 
@@ -19,6 +21,7 @@ export function AnimatedCounter({
   prefix = '',
   suffix = '',
   decimals = 0,
+  maximumFractionDigits,
   className,
 }: AnimatedCounterProps) {
   const [display, setDisplay] = useState(value);
@@ -47,10 +50,15 @@ export function AnimatedCounter({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration]);
 
-  const formatted = display.toLocaleString('es-VE', {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
+  const formatted = maximumFractionDigits != null
+    ? display.toLocaleString('es-VE', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits,
+      })
+    : display.toLocaleString('es-VE', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
 
   return (
     <span className={className}>

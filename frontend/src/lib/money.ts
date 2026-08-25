@@ -22,6 +22,48 @@ const VES = new Intl.NumberFormat('es-VE', {
   maximumFractionDigits: 2,
 });
 
+/** Decimales máximos al mostrar cotización RCV (paridad API — sin redondear de más). */
+const QUOTE_USD_MAX = 6;
+const QUOTE_VES_MAX = 10;
+const QUOTE_TASA_MAX = 4;
+
+function formatQuoteDecimal(n: number, locale: string, maxFrac: number): string {
+  if (!Number.isFinite(n)) return '0';
+  return n.toLocaleString(locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFrac,
+  });
+}
+
+/** USD cotización RCV tal cual viene de mprimaext (ej. 222.795). */
+export function formatQuoteUsd(n: number): string {
+  return formatQuoteDecimal(n, 'en-US', QUOTE_USD_MAX);
+}
+
+export function formatQuoteUsdMoney(n: number): string {
+  return `$${formatQuoteUsd(n)}`;
+}
+
+/** Bs cotización RCV tal cual viene de mprima. */
+export function formatQuoteVes(n: number): string {
+  return formatQuoteDecimal(n, 'es-VE', QUOTE_VES_MAX);
+}
+
+export function formatQuoteVesLabel(n: number): string {
+  return `Bs ${formatQuoteVes(n)}`;
+}
+
+export function formatQuoteTasa(n: number): string {
+  return `${formatQuoteDecimal(n, 'es-VE', QUOTE_TASA_MAX)} Bs/$`;
+}
+
+/** Monto exacto para pago móvil / OTP (sin toFixed(2)). */
+export function formatQuoteVesPaymentInput(n: number): string {
+  if (!Number.isFinite(n)) return '';
+  const s = n.toFixed(QUOTE_VES_MAX);
+  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
 export type Billing = 'monthly' | 'annual';
 
 export function usdAnnual(quote: PolicyQuote | null): number {

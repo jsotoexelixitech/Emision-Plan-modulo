@@ -8,7 +8,7 @@ import {
   Check, Receipt, Sparkles, Loader2, BadgeCheck, AlertTriangle,
   CheckCircle2, XCircle, RefreshCw, Send, ClipboardCheck,
 } from 'lucide-react';
-import { formatUsdShort } from '../../lib/money';
+import { formatQuoteUsdMoney, formatQuoteVesLabel, formatQuoteVesPaymentInput, formatQuoteTasa } from '../../lib/money';
 import { resolveFrecuenciaAmounts, resolveWizardFrecuenciaCode, resolveRcvQuoteBasis } from '../../lib/frecuencia';
 import { getProductConfig } from '../../lib/product';
 import {
@@ -126,7 +126,7 @@ export function PaymentStep() {
   useEffect(() => {
     if (quoteState !== 'ready' || !quote) return;
     const amounts = resolveFrecuenciaAmounts(quote, frecuenciaCode, { quoteBasis });
-    const vesStr = amounts.installmentVes.toFixed(2);
+    const vesStr = formatQuoteVesPaymentInput(amounts.installmentVes);
     setMontoM(vesStr);
     setOtpAmount(vesStr);
   }, [quoteState, quote, frecuenciaCode, quoteBasis]);
@@ -335,25 +335,25 @@ export function PaymentStep() {
               </span>
             ) : (
               <span className="text-3xl sm:text-4xl font-display font-black gradient-text-indigo leading-none tabular-nums">
-                {formatUsdShort(payUsd)}
+                {formatQuoteUsdMoney(payUsd)}
               </span>
             )}
             <span className="text-xs text-slate-500 font-semibold pb-1">{freqAmounts.periodSuffix}</span>
           </div>
           {hasRealQuote && payVes > 0 && (
             <p className="text-sm font-display font-black text-indigo-700 mt-1 tabular-nums">
-              Bs {payVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {formatQuoteVesLabel(payVes)}
               {freqAmounts.cuotas > 1 ? ` ${freqAmounts.periodSuffix}` : ''}
             </p>
           )}
           {hasRealQuote && freqAmounts.cuotas > 1 && (
             <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
-              Total anual: ${freqAmounts.annualUsd.toFixed(2)}
+              Total anual: {formatQuoteUsdMoney(freqAmounts.annualUsd)}
             </p>
           )}
           {hasRealQuote && quote?.ptasa && quote.ptasa > 0 && (
             <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
-              Tasa BCV: {quote.ptasa.toFixed(4)}
+              Tasa BCV: {formatQuoteTasa(quote.ptasa)}
             </p>
           )}
         </div>

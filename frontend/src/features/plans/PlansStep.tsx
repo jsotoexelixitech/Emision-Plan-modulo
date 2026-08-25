@@ -8,7 +8,7 @@ import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
-import { vehicleSignature } from '../../lib/money';
+import { vehicleSignature, formatQuoteUsd, formatQuoteUsdMoney, formatQuoteVes, formatQuoteVesLabel, formatQuoteTasa } from '../../lib/money';
 import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 import { filterRcvOnlyCoberturas, isQaDeploy } from '../../lib/deploy-env';
@@ -512,7 +512,7 @@ function PlanDetailCard({
                     <AnimatedCounter
                       value={displayPrice}
                       duration={500}
-                      decimals={hasRealQuote ? 2 : 0}
+                      maximumFractionDigits={6}
                     />
                   </span>
                 )}
@@ -522,16 +522,12 @@ function PlanDetailCard({
 
               {hasRealQuote && quoteVes > 0 && (
                 <p className="text-[0.65rem] font-bold text-indigo-700/80 mt-1.5 tabular-nums">
-                  ≈ Bs{' '}
-                  {quoteVes.toLocaleString('es-VE', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
+                  ≈ {formatQuoteVesLabel(quoteVes)}
                 </p>
               )}
               {hasRealQuote && ptasa && ptasa > 0 && (
                 <p className="text-[0.6rem] text-slate-500 mt-0.5 tabular-nums">
-                  Tasa de cambio: {ptasa.toFixed(2)} Bs/$
+                  Tasa de cambio: {formatQuoteTasa(ptasa)}
                 </p>
               )}
             </div>
@@ -684,7 +680,7 @@ function PrimaCard({
     );
   }
 
-  const fmt = (n: number) => n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const fmt = formatQuoteVes;
 
   return (
     <div className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 p-5 sm:p-6 shadow-[0_22px_42px_-14px_rgba(9,17,51,0.65)] ring-1 ring-white/15">
@@ -708,7 +704,7 @@ function PrimaCard({
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-lg font-display font-black text-white/60 leading-none pb-1">$</span>
             <span className="font-display font-black text-white text-[2.35rem] sm:text-[2.6rem] leading-none tabular-nums tracking-tight">
-              {freqAmounts.annualUsd.toFixed(2)}
+              {formatQuoteUsd(freqAmounts.annualUsd)}
             </span>
             <span className="text-sm text-white/70 font-semibold pb-1 ml-1">USD / año</span>
           </div>
@@ -723,7 +719,7 @@ function PrimaCard({
                 <div className="flex items-center justify-between">
                   <span className="text-white/75">1er recibo ({frecuenciaLabel})</span>
                   <span className="font-bold text-white tabular-nums">
-                    ${freqAmounts.installmentUsd.toFixed(2)}
+                    {formatQuoteUsdMoney(freqAmounts.installmentUsd)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -740,13 +736,13 @@ function PrimaCard({
             ) : (
               <div className="flex items-center justify-between">
                 <span className="text-white/75">Pago único anual</span>
-                <span className="font-bold text-white tabular-nums">${freqAmounts.annualUsd.toFixed(2)}</span>
+                <span className="font-bold text-white tabular-nums">{formatQuoteUsdMoney(freqAmounts.annualUsd)}</span>
               </div>
             )}
             {quote.ptasa > 0 && (
               <div className="flex items-center justify-between pt-2 border-t border-white/15">
                 <span className="text-white/65">Tasa de cambio</span>
-                <span className="text-white/90 tabular-nums font-semibold">{quote.ptasa.toFixed(2)} Bs/$</span>
+                <span className="text-white/90 tabular-nums font-semibold">{formatQuoteTasa(quote.ptasa)}</span>
               </div>
             )}
           </div>
@@ -768,7 +764,7 @@ function PrimaCard({
                   c.sumaAsegurada != null && c.sumaAsegurada > 0
                     ? `$${c.sumaAsegurada.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
                     : '—';
-                const primaLabel = `$${c.prima.toFixed(2)}`;
+                const primaLabel = formatQuoteUsdMoney(c.prima);
 
                 return (
                   <div
