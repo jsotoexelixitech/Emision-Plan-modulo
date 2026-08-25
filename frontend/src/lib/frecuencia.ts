@@ -2,13 +2,13 @@
  * Frecuencia de pago La Mundial (ifrecuencia).
  *
  * Cotización nacional: mprimaext anual; el código divide USD por cuotas.
- * Bs del recibo = cuota USD × ptasa (no mprima÷cuotas).
+ * Bs del recibo = ROUND((cuota USD × ptasa), 2) — paridad Sis2000.
  * Binacional con ndias: la API recotiza con vigencia corta (paridad SysIP selectFrecuencia → searchPrice).
  * Emisión: prima cotizada + ifrecuencia (Sis2000 genera los recibos).
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
 import type { PolicyQuote } from '../types';
-import { computeQuoteVes, formatQuoteUsdMoney } from './money';
+import { computeQuoteVes, formatQuoteUsdMoney, roundQuoteAmount } from './money';
 
 /** Cuotas por vigencia anual — paridad adrecibos / sp_genera_coberturas_recibos_auto_rcv_nexus */
 const CUOTAS_BY_FREC: Record<string, number> = {
@@ -88,6 +88,11 @@ function divideByCuotas(amount: number, cuotas: number): number {
   return cuotas > 0 ? amount / cuotas : amount;
 }
 
+/** ROUND((mprimaext/cuotas)×ptasa, 2) o ROUND(mprimaext×ptasa, 2) si ya es cuota. */
+function roundInstallmentVes(ves: number): number {
+  return roundQuoteAmount(ves, 2);
+}
+
 /**
  * @param quoteBasis
  *   - `annual-total`: mprimaext es prima anual (RCV auto vía spCalculoAuto).
@@ -111,16 +116,20 @@ export function resolveFrecuenciaAmounts(
 
   if (basis === 'per-installment') {
     installmentUsd = rawUsd;
-    installmentVes = ptasa > 0 ? computeQuoteVes(rawUsd, ptasa) : rawVes;
+    installmentVes = roundInstallmentVes(
+      ptasa > 0 ? computeQuoteVes(rawUsd, ptasa) : rawVes,
+    );
     annualUsd = rawUsd * cuotas;
     annualVes = ptasa > 0 ? computeQuoteVes(annualUsd, ptasa) : rawVes * cuotas;
   } else {
     annualUsd = rawUsd;
     annualVes = ptasa > 0 ? computeQuoteVes(rawUsd, ptasa) : rawVes;
     installmentUsd = divideByCuotas(rawUsd, cuotas);
-    installmentVes = ptasa > 0
-      ? computeQuoteVes(installmentUsd, ptasa)
-      : divideByCuotas(rawVes, cuotas);
+    installmentVes = roundInstallmentVes(
+      ptasa > 0
+        ? computeQuoteVes(installmentUsd, ptasa)
+        : divideByCuotas(rawVes, cuotas),
+    );
   }
 
   return {

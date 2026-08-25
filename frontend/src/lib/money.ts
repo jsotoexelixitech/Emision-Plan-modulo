@@ -6,8 +6,8 @@
  *   - mprimaext -> en USD
  *   - ptasa     -> tasa Bs/USD usada en la cotizacion
  *
- * Regla RCV: calcular con todos los decimales (ej. 222.795 × 785.0693);
- * mostrar solo 2 decimales truncados con coma (locale es-VE).
+ * Regla RCV cuota por frecuencia: ROUND((mprimaext/cuotas)×ptasa, 2).
+ * Prima anual en pantalla: 2 decimales truncados (locale es-VE).
  */
 import type { PolicyQuote } from '../types';
 
@@ -27,15 +27,22 @@ const VES = new Intl.NumberFormat(LOCALE, {
 /** Decimales visibles en pantalla (truncar, no redondear). */
 const QUOTE_DISPLAY = 2;
 const QUOTE_TASA_DISPLAY = 4;
-/** Monto a pagar en Bs — 2 decimales truncados (estándar pago móvil). */
+/** Monto del recibo / pago móvil — 2 decimales redondeados (paridad Sis2000). */
 const QUOTE_VES_PAYMENT = 2;
 
-/** Trunca hacia cero; evita redondeo tipo 222.795 → 222.80. */
+/** Trunca hacia cero (solo display prima anual). */
 export function truncateQuoteAmount(n: number, decimals: number): number {
   if (!Number.isFinite(n)) return 0;
   const factor = 10 ** decimals;
   const adj = n >= 0 ? 1e-9 : -1e-9;
   return Math.trunc((n + adj) * factor) / factor;
+}
+
+/** Redondeo aritmético — ROUND(x, n) paridad La Mundial / Sis2000. */
+export function roundQuoteAmount(n: number, decimals: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const factor = 10 ** decimals;
+  return Math.round((n + Number.EPSILON) * factor) / factor;
 }
 
 /** Bs = USD × tasa BCV (precisión completa, sin truncar). */
@@ -94,11 +101,11 @@ export function formatQuoteTasaValue(n: number): string {
   });
 }
 
-/** Monto del recibo para pago móvil / OTP (2 decimales truncados, punto para input). */
+/** Monto del recibo para pago móvil / OTP (2 decimales redondeados, punto para input). */
 export function formatQuoteVesPaymentInput(n: number): string {
   if (!Number.isFinite(n)) return '';
-  const truncated = truncateQuoteAmount(n, QUOTE_VES_PAYMENT);
-  return truncated.toFixed(QUOTE_VES_PAYMENT);
+  const rounded = roundQuoteAmount(n, QUOTE_VES_PAYMENT);
+  return rounded.toFixed(QUOTE_VES_PAYMENT);
 }
 
 export type Billing = 'monthly' | 'annual';
