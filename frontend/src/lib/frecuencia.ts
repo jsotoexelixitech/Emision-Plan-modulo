@@ -3,7 +3,8 @@
  *
  * Cotización nacional: mprimaext anual; el código divide USD por cuotas.
  * Bs del recibo = ROUND((ROUND(mprimaext,2)/cuotas)×ptasa, 2) — paridad Sis2000.
- * Binacional con ndias: la API recotiza con vigencia corta (paridad SysIP selectFrecuencia → searchPrice).
+ * Binacional A/M/T/S: igual que nacional — prima anual en API, UI divide cuotas.
+ * Solo D/B (Hasta 3 días): la API recotiza con vigencia corta (ndias).
  * Emisión: prima cotizada + ifrecuencia (Sis2000 genera los recibos).
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
  */
@@ -215,14 +216,14 @@ export function resolveWizardFrecuenciaCode(
   return normalizeFrecuenciaCode(hasVehicle ? rcvFrecuencia : funeralFrecuencia);
 }
 
-/** Binacional o frecuencia D: el SP cotiza el periodo (ndias), no la prima anual. */
+/** Vigencia corta (D/B): el SP cotiza el periodo (ndias), no la prima anual. Binacional A/M/T/S: anual como RCV nacional. */
 export function rcvQuoteUsesPeriodPremium(
-  tipoPlaca?: string | null,
+  _tipoPlaca?: string | null,
   frecuenciaCode?: string | null,
-  tipoCarnet?: string | null,
+  _tipoCarnet?: string | null,
 ): boolean {
-  if (tipoPlaca === 'binacional' || tipoCarnet === 'binacional') return true;
-  return normalizeFrecuenciaCode(frecuenciaCode) === 'D';
+  const freq = normalizeFrecuenciaCode(frecuenciaCode);
+  return freq === 'D' || freq === 'B';
 }
 
 export function resolveRcvQuoteBasis(

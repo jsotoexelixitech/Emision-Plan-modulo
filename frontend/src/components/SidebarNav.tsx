@@ -8,7 +8,6 @@ import { formatQuoteUsdMoney, formatQuoteVesLabel, vesAnnual } from '../lib/mone
 import {
   resolveFrecuenciaAmounts,
   resolveRcvQuoteBasis,
-  resolveQuoteDisplayAmounts,
 } from '../lib/frecuencia';
 import { publicAsset } from '../lib/app-base';
 
@@ -40,8 +39,10 @@ export function SidebarNav() {
     if (hasRealQuote && quote && product.hasVehicle) {
       const quoteBasis = resolveRcvQuoteBasis(vehicle.tipoPlaca, rcv.frecuencia, vehicle.tipoCarnet);
       const freqAmounts = resolveFrecuenciaAmounts(quote, rcv.frecuencia, { quoteBasis });
-      const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
-      return `${formatQuoteUsdMoney(displayAmounts.heroUsd)} ${displayAmounts.heroUsdSuffix}`;
+      const isShortPeriodQuote = quoteBasis === 'per-installment';
+      const usd = isShortPeriodQuote ? freqAmounts.installmentUsd : freqAmounts.annualUsd;
+      const suffix = isShortPeriodQuote ? (freqAmounts.periodSuffix || '/ cuota') : '/ año';
+      return `${formatQuoteUsdMoney(usd)} ${suffix}`;
     }
     if (hasRealQuote && quote) {
       return `${formatQuoteUsdMoney(quote.mprimaext)} / año`;
@@ -54,9 +55,11 @@ export function SidebarNav() {
     if (product.hasVehicle) {
       const quoteBasis = resolveRcvQuoteBasis(vehicle.tipoPlaca, rcv.frecuencia, vehicle.tipoCarnet);
       const freqAmounts = resolveFrecuenciaAmounts(quote, rcv.frecuencia, { quoteBasis });
-      const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
-      if (displayAmounts.heroVes <= 0) return null;
-      return `${formatQuoteVesLabel(displayAmounts.heroVes)} ${displayAmounts.heroVesSuffix}`;
+      const isShortPeriodQuote = quoteBasis === 'per-installment';
+      const ves = isShortPeriodQuote ? freqAmounts.installmentVes : freqAmounts.annualVes;
+      if (ves <= 0) return null;
+      const suffix = isShortPeriodQuote ? (freqAmounts.periodSuffix || '/ cuota') : '/ año';
+      return `${formatQuoteVesLabel(ves)} ${suffix}`;
     }
     return `${formatQuoteVesLabel(vesAnnual(quote))} / año`;
   })();

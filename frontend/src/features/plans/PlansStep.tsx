@@ -9,7 +9,7 @@ import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type Cata
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature, formatQuoteUsd, formatQuoteUsdMoney, formatQuoteVes, formatQuoteVesLabel, formatQuoteTasa } from '../../lib/money';
-import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig, resolveQuoteDisplayAmounts } from '../../lib/frecuencia';
+import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig } from '../../lib/frecuencia';
 import { toast } from '../../store/toastStore';
 import { filterRcvOnlyCoberturas, isQaDeploy } from '../../lib/deploy-env';
 
@@ -266,9 +266,16 @@ export function PlansStep() {
     frecuenciaLabel,
     quoteBasis,
   });
-  const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
-  const displayPrice = hasRealQuote ? displayAmounts.heroUsd : 0;
-  const displayVes = hasRealQuote ? displayAmounts.heroVes : 0;
+  const isShortPeriodQuote = quoteBasis === 'per-installment';
+  /** Prima anual fija al cambiar frecuencia (A/M/T/S); solo D/B muestran prima del periodo. */
+  const displayPrice = hasRealQuote
+    ? (isShortPeriodQuote ? freqAmounts.installmentUsd : freqAmounts.annualUsd)
+    : 0;
+  const displayVes = hasRealQuote
+    ? (isShortPeriodQuote ? freqAmounts.installmentVes : freqAmounts.annualVes)
+    : 0;
+  const priceSuffix = isShortPeriodQuote ? (freqAmounts.periodSuffix || '/ cuota') : '/ año';
+  const vesSuffix = priceSuffix;
 
   return (
     <div className="animate-fade-in space-y-6">
@@ -397,8 +404,8 @@ export function PlansStep() {
         <PlanDetailCard
           plan={selectedPlan}
           displayPrice={displayPrice}
-          priceSuffix={displayAmounts.heroUsdSuffix}
-          vesSuffix={displayAmounts.heroVesSuffix}
+          priceSuffix={priceSuffix}
+          vesSuffix={vesSuffix}
           isLoadingQuote={isLoadingQuote}
           hasRealQuote={hasRealQuote}
           quoteVes={displayVes}
@@ -694,8 +701,7 @@ function PrimaCard({
   }
 
   const fmt = formatQuoteVes;
-  const displayAmounts = resolveQuoteDisplayAmounts(freqAmounts, quoteBasis);
-  const periodQuote = quoteBasis === 'per-installment' && freqAmounts.cuotas <= 1;
+  const isShortPeriodQuote = quoteBasis === 'per-installment';
 
   return (
     <div className="w-full relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-indigo-950 to-violet-950 p-5 sm:p-6 shadow-[0_22px_42px_-14px_rgba(9,17,51,0.65)] ring-1 ring-white/15">
@@ -719,16 +725,16 @@ function PrimaCard({
           <div className="flex items-baseline gap-1 mb-1">
             <span className="text-lg font-display font-black text-white/60 leading-none pb-1">$</span>
             <span className="font-display font-black text-white text-[2.35rem] sm:text-[2.6rem] leading-none tabular-nums tracking-tight">
-              {formatQuoteUsd(displayAmounts.heroUsd)}
+              {formatQuoteUsd(isShortPeriodQuote ? freqAmounts.installmentUsd : freqAmounts.annualUsd)}
             </span>
             <span className="text-sm text-white/70 font-semibold pb-1 ml-1">
-              USD{displayAmounts.heroUsdSuffix ? ` ${displayAmounts.heroUsdSuffix.trim()}` : ''}
+              USD {isShortPeriodQuote ? freqAmounts.periodSuffix : '/ año'}
             </span>
           </div>
 
           <p className="text-sm font-bold text-indigo-200 tabular-nums mb-4">
-            ≈ Bs {fmt(displayAmounts.heroVes)}
-            {displayAmounts.heroVesSuffix ? ` ${displayAmounts.heroVesSuffix.trim()}` : ''}
+            ≈ Bs {fmt(isShortPeriodQuote ? freqAmounts.installmentVes : freqAmounts.annualVes)}
+            {isShortPeriodQuote ? ` ${freqAmounts.periodSuffix}` : ' / año'}
           </p>
 
           <div className="space-y-2 text-sm">
@@ -753,8 +759,10 @@ function PrimaCard({
               </>
             ) : (
               <div className="flex items-center justify-between">
-                <span className="text-white/75">{periodQuote ? `Pago ${frecuenciaLabel.toLowerCase()}` : 'Pago único anual'}</span>
-                <span className="font-bold text-white tabular-nums">{formatQuoteUsdMoney(displayAmounts.paymentUsd)}</span>
+                <span className="text-white/75">{isShortPeriodQuote ? `Pago ${frecuenciaLabel.toLowerCase()}` : 'Pago único anual'}</span>
+                <span className="font-bold text-white tabular-nums">
+                  {formatQuoteUsdMoney(isShortPeriodQuote ? freqAmounts.installmentUsd : freqAmounts.annualUsd)}
+                </span>
               </div>
             )}
             {quote.ptasa > 0 && (

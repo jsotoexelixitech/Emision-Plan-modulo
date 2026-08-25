@@ -192,12 +192,10 @@ function resolveRcvNdias(state, overrides = {}) {
   return null;
 }
 
-/** RCV nacional: cotizar siempre anual (ifrecuencia A). Binacional/D: vigencia corta en SP. */
+/** RCV nacional y binacional A/M/T/S: cotizar anual (ifrecuencia A). Solo D/B: vigencia corta en SP. */
 function quoteUsesPeriodPremium(state, overrides = {}) {
-  const v = state.vehicle || {};
-  const iplaca = resolveIplaca(v);
   const freq = resolveRcvFrecuencia(state, overrides);
-  return iplaca === 'B' || freq === 'D';
+  return freq === 'D' || freq === 'B';
 }
 
 /** Vigencia fdesde/fhasta; ndias null = anual (+1 año). */
