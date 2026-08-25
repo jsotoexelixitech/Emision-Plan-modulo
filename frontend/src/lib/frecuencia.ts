@@ -1,7 +1,8 @@
 /**
  * Frecuencia de pago La Mundial (ifrecuencia).
  *
- * Cotización nacional: prima anual en mprimaext (ifrecuencia solo divide cuotas en UI).
+ * Cotización nacional: mprimaext anual; el código divide USD por cuotas.
+ * Bs del recibo = cuota USD × ptasa (no mprima÷cuotas).
  * Binacional con ndias: la API recotiza con vigencia corta (paridad SysIP selectFrecuencia → searchPrice).
  * Emisión: prima cotizada + ifrecuencia (Sis2000 genera los recibos).
  * UI: solo PaymentStep usa esta utilidad para mostrar el monto del 1er recibo.
@@ -83,6 +84,16 @@ export interface FrecuenciaAmounts {
   paySummary: string;
 }
 
+/** Bs a partir de USD y tasa BCV de la cotización. */
+function vesFromUsd(usd: number, ptasa: number): number {
+  if (!Number.isFinite(usd) || !Number.isFinite(ptasa) || ptasa <= 0) return 0;
+  return usd * ptasa;
+}
+
+function divideByCuotas(amount: number, cuotas: number): number {
+  return cuotas > 0 ? amount / cuotas : amount;
+}
+
 /**
  * @param quoteBasis
  *   - `annual-total`: mprimaext es prima anual (RCV auto vía spCalculoAuto).
@@ -97,6 +108,7 @@ export function resolveFrecuenciaAmounts(
   const basis = options?.quoteBasis ?? 'annual-total';
   const rawUsd = quote?.mprimaext ?? 0;
   const rawVes = quote?.mprima ?? 0;
+  const ptasa = quote?.ptasa ?? 0;
 
   let annualUsd: number;
   let annualVes: number;
@@ -105,14 +117,16 @@ export function resolveFrecuenciaAmounts(
 
   if (basis === 'per-installment') {
     installmentUsd = rawUsd;
-    installmentVes = rawVes;
+    installmentVes = ptasa > 0 ? vesFromUsd(rawUsd, ptasa) : rawVes;
     annualUsd = rawUsd * cuotas;
-    annualVes = rawVes * cuotas;
+    annualVes = ptasa > 0 ? vesFromUsd(annualUsd, ptasa) : rawVes * cuotas;
   } else {
     annualUsd = rawUsd;
-    annualVes = rawVes;
-    installmentUsd = cuotas > 0 ? rawUsd / cuotas : rawUsd;
-    installmentVes = cuotas > 0 ? rawVes / cuotas : rawVes;
+    annualVes = rawVes > 0 ? rawVes : vesFromUsd(rawUsd, ptasa);
+    installmentUsd = divideByCuotas(rawUsd, cuotas);
+    installmentVes = ptasa > 0
+      ? vesFromUsd(installmentUsd, ptasa)
+      : divideByCuotas(rawVes, cuotas);
   }
 
   return {
