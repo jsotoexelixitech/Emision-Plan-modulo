@@ -22,31 +22,41 @@ const VES = new Intl.NumberFormat('es-VE', {
   maximumFractionDigits: 2,
 });
 
-/** Decimales máximos al mostrar cotización RCV (paridad API — sin redondear de más). */
-const QUOTE_USD_MAX = 6;
-const QUOTE_VES_MAX = 10;
-const QUOTE_TASA_MAX = 4;
+/** Decimales visibles en pantalla (truncar, no redondear). Cálculos internos sin tocar. */
+const QUOTE_USD_DISPLAY = 3;
+const QUOTE_VES_DISPLAY = 2;
+const QUOTE_TASA_DISPLAY = 4;
+/** Monto a pagar en Bs — 2 decimales truncados (estándar pago móvil). */
+const QUOTE_VES_PAYMENT = 2;
 
-function formatQuoteDecimal(n: number, locale: string, maxFrac: number): string {
-  if (!Number.isFinite(n)) return '0';
-  return n.toLocaleString(locale, {
+/** Trunca hacia cero; evita redondeo tipo 222.795 → 222.80. */
+export function truncateQuoteAmount(n: number, decimals: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const factor = 10 ** decimals;
+  const adj = n >= 0 ? 1e-9 : -1e-9;
+  return Math.trunc((n + adj) * factor) / factor;
+}
+
+function formatQuoteDecimal(n: number, locale: string, displayDecimals: number): string {
+  const truncated = truncateQuoteAmount(n, displayDecimals);
+  return truncated.toLocaleString(locale, {
     minimumFractionDigits: 0,
-    maximumFractionDigits: maxFrac,
+    maximumFractionDigits: displayDecimals,
   });
 }
 
-/** USD cotización RCV tal cual viene de mprimaext (ej. 222.795). */
+/** USD cotización RCV (ej. 222.795, cuota 55.698). */
 export function formatQuoteUsd(n: number): string {
-  return formatQuoteDecimal(n, 'en-US', QUOTE_USD_MAX);
+  return formatQuoteDecimal(n, 'en-US', QUOTE_USD_DISPLAY);
 }
 
 export function formatQuoteUsdMoney(n: number): string {
   return `$${formatQuoteUsd(n)}`;
 }
 
-/** Bs cotización RCV tal cual viene de mprima. */
+/** Bs cotización RCV — hasta 2 decimales visibles (ej. 174.909,51). */
 export function formatQuoteVes(n: number): string {
-  return formatQuoteDecimal(n, 'es-VE', QUOTE_VES_MAX);
+  return formatQuoteDecimal(n, 'es-VE', QUOTE_VES_DISPLAY);
 }
 
 export function formatQuoteVesLabel(n: number): string {
@@ -54,14 +64,18 @@ export function formatQuoteVesLabel(n: number): string {
 }
 
 export function formatQuoteTasa(n: number): string {
-  return `${formatQuoteDecimal(n, 'es-VE', QUOTE_TASA_MAX)} Bs/$`;
+  return `${formatQuoteDecimal(n, 'es-VE', QUOTE_TASA_DISPLAY)} Bs/$`;
 }
 
-/** Monto exacto para pago móvil / OTP (sin toFixed(2)). */
+/** Monto del recibo para pago móvil / OTP (2 decimales truncados). */
 export function formatQuoteVesPaymentInput(n: number): string {
   if (!Number.isFinite(n)) return '';
-  const s = n.toFixed(QUOTE_VES_MAX);
-  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+  const truncated = truncateQuoteAmount(n, QUOTE_VES_PAYMENT);
+  return truncated.toLocaleString('en-US', {
+    minimumFractionDigits: QUOTE_VES_PAYMENT,
+    maximumFractionDigits: QUOTE_VES_PAYMENT,
+    useGrouping: false,
+  });
 }
 
 export type Billing = 'monthly' | 'annual';

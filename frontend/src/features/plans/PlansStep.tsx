@@ -512,7 +512,7 @@ function PlanDetailCard({
                     <AnimatedCounter
                       value={displayPrice}
                       duration={500}
-                      maximumFractionDigits={6}
+                      maximumFractionDigits={3}
                     />
                   </span>
                 )}
