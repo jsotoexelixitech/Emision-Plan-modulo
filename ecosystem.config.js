@@ -21,6 +21,15 @@ module.exports = {
       env_production: {
         NODE_ENV: 'production',
         PORT: 4004,
+        NEST_PUBLIC_API_ORIGIN: 'https://cierrelmds.exelixitech.com',
+        NEST_PUBLIC_API_PREFIX: '/nest-api-docs',
+      },
+      /** srv001qa (121) — PDF conductor debe apuntar a nexusqa, no cierrelmds */
+      env_qa: {
+        NODE_ENV: 'production',
+        PORT: 4004,
+        NEST_PUBLIC_API_ORIGIN: 'https://nexusqa.exelixitech.com',
+        NEST_PUBLIC_API_PREFIX: '/nest-api-docs',
       },
       out_file:   path.join(ROOT, 'logs', 'emision-api.out.log'),
       error_file: path.join(ROOT, 'logs', 'emision-api.err.log'),

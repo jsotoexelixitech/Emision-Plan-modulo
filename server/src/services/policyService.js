@@ -43,8 +43,21 @@ const { validateEmissionPayload } = require('./policyValidator');
 const { resolveCusuarioCoberturas } = require('./planesClient');
 
 /** URL del PDF conductor accesible desde el navegador del cliente (HTTPS público). */
+function isLocalNestDocumentUrl(url) {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return host === 'localhost' || host === '127.0.0.1' || host === '::1';
+  } catch {
+    return true;
+  }
+}
+
 function mapConductorPdfPublicUrl(url) {
   if (!url) return url;
+  // nest-api ya devuelve URL pública (PUBLIC_API_ORIGIN por entorno QA/dev); no pisar con .env de otro servidor.
+  if (!isLocalNestDocumentUrl(url)) {
+    return url;
+  }
   const publicOrigin = String(
     process.env.NEST_PUBLIC_API_ORIGIN || process.env.PUBLIC_API_ORIGIN || '',
   ).trim().replace(/\/$/, '');
