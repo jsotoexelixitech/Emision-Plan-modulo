@@ -333,22 +333,47 @@ function mapValidatePlateError(message) {
 function extractValidateAutoResponse(body, httpStatus = 200) {
   const result = body?.result ?? {};
   const failed = httpStatus >= 400 || body?.status === false || result?.status === false;
+  const rawMessage = result?.message ?? body?.message;
+  const message = Array.isArray(rawMessage)
+    ? rawMessage.join('; ')
+    : typeof rawMessage === 'string'
+      ? rawMessage
+      : undefined;
+  const rawError = result?.error ?? body?.error;
+  const error = Array.isArray(rawError)
+    ? rawError.join('; ')
+    : typeof rawError === 'string' && rawError !== 'Bad Request'
+      ? rawError
+      : message;
   return {
     failed,
-    message: result?.message || body?.message,
-    error: result?.error || body?.error,
-    code: result?.code,
+    message,
+    error,
+    code: result?.code ?? body?.code,
   };
 }
 
+function mapValidateFormatError(message) {
+  const lower = String(message || '').toLowerCase();
+  if (lower.includes('placa')) return 'INVALID_PLACA_FORMAT';
+  if (lower.includes('serial')) return 'INVALID_SERIAL_FORMAT';
+  return null;
+}
+
 function toClientValidateCode(code, fallbackMessage) {
-  const resolved = code || mapValidatePlateError(fallbackMessage);
+  const resolved =
+    code ||
+    mapValidateFormatError(fallbackMessage) ||
+    mapValidatePlateError(fallbackMessage);
   if (
     resolved === 'PLATE_ALREADY_INSURED' ||
     resolved === 'SERIAL_ALREADY_INSURED' ||
     resolved === 'VEHICLE_ALREADY_INSURED'
   ) {
     return 'PLATE_ALREADY_INSURED';
+  }
+  if (resolved === 'INVALID_PLACA_FORMAT' || resolved === 'INVALID_SERIAL_FORMAT') {
+    return resolved;
   }
   return resolved;
 }
@@ -382,9 +407,14 @@ async function validateEmissionAutoViaNestApi(params) {
     };
   }
 
-  const errorMessage = Array.isArray(parsed.error) ? parsed.error[0] : String(parsed.error || `HTTP ${response.status}`);
+  const errorMessage = Array.isArray(parsed.error)
+    ? parsed.error[0]
+    : String(parsed.error || parsed.message || `HTTP ${response.status}`);
   const err = new Error(errorMessage);
-  err.code = toClientValidateCode(parsed.code, errorMessage);
+  err.code = toClientValidateCode(
+    parsed.code || mapValidateFormatError(errorMessage),
+    errorMessage,
+  );
   throw err;
 }
 
