@@ -29,17 +29,24 @@ export function looksLikePlacaExtranjeraGenerica(placa?: string | null): boolean
 type CertHint = { tipoPlaca?: string; placa?: string };
 
 /**
- * Bloquea selector en Extranjera cuando OCR o la placa indican emisión extranjera.
- * Colombia (SLP935) no fuerza extranjera — ahí el usuario elige binacional.
+ * OCR indica placa extranjera (no venezolana). Solo datos del certificado OCR.
+ * Colombia (SLP935) no cuenta como extranjera — ahí el usuario elige binacional.
  */
+export function ocrIndicaPlacaExtranjera(cert?: CertHint | null): boolean {
+  if (!cert) return false;
+  const ocrTipo = String(cert.tipoPlaca ?? '').toLowerCase().trim();
+  if (ocrTipo === 'extranjera') return true;
+  const p = normalizePlaca(cert.placa);
+  if (!p || looksLikeVePlacaNacional(p) || looksLikeCoPlaca(p)) return false;
+  return looksLikePlacaExtranjeraGenerica(p);
+}
+
+/** @deprecated Usar ocrIndicaPlacaExtranjera */
 export function shouldLockTipoPlacaExtranjera(
-  placa?: string | null,
+  _placa?: string | null,
   cert?: CertHint | null,
 ): boolean {
-  const ocrTipo = String(cert?.tipoPlaca ?? '').toLowerCase().trim();
-  if (ocrTipo === 'extranjera') return true;
-  const p = normalizePlaca(placa || cert?.placa);
-  return looksLikePlacaExtranjeraGenerica(p);
+  return ocrIndicaPlacaExtranjera(cert);
 }
 
 export function placaPlaceholder(tipoPlaca: string): string {
