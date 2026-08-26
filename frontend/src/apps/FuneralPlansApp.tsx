@@ -42,7 +42,7 @@ function mapHealthToFuneral(answers: Record<string, unknown>) {
 
 /**
  * Paso 4 — Funerario únicamente.
- * Cuestionario de salud → solicitud pending (revisión técnica) — no avanza a Pagos directo.
+ * Cuestionario de salud → confirmación al cliente (correo con link de pago) — no avanza a Pagos directo.
  */
 export default function FuneralPlansApp() {
   const {
@@ -164,9 +164,8 @@ export default function FuneralPlansApp() {
 
       {pendingSubmission && (
         <FuneralSubmissionPending
-          submissionId={pendingSubmission.id}
-          scoreTotal={pendingSubmission.scoreTotal}
           tomadorEmail={tomador.email}
+          planName={selectedPlan?.name}
         />
       )}
     </>
