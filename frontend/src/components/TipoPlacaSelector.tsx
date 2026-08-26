@@ -22,9 +22,9 @@ const ALL_OPTIONS: {
   desc: string;
   Icon: typeof Flag;
 }[] = [
-  { id: 'nacional', label: 'Nacional', desc: 'Placa venezolana · RCV normal', Icon: Flag },
-  { id: 'extranjera', label: 'Extranjera', desc: 'Placa no venezolana (según OCR)', Icon: Globe2 },
-  { id: 'binacional', label: 'Binacional', desc: 'Viaje a Colombia', Icon: MapPin },
+  { id: 'nacional', label: 'Nacional', desc: 'Placa venezolana · circulación en el país', Icon: Flag },
+  { id: 'extranjera', label: 'Extranjera', desc: 'Vehículo extranjero que ingresa (según OCR)', Icon: Globe2 },
+  { id: 'binacional', label: 'Binacional', desc: 'Salida del vehículo venezolano fuera del país', Icon: MapPin },
 ];
 
 export function TipoPlacaSelector({
@@ -60,7 +60,8 @@ export function TipoPlacaSelector({
             Tipo de emisión RCV
           </p>
           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-            Elige cómo emitir. <strong>Extranjera</strong> solo se habilita si el OCR detectó placa no venezolana.
+            Elige cómo emitir: <strong>Binacional</strong> si el vehículo venezolano sale del país;
+            <strong> Extranjera</strong> solo si el OCR detectó placa extranjera.
           </p>
         </div>
 
