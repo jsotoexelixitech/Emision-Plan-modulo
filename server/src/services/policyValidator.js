@@ -42,9 +42,9 @@ function validateEmissionPayload(p) {
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fecha_emision || '')) errors.push('fecha_emision formato YYYY-MM-DD');
 
-  // Tomador
+  // Tomador — cédula/RIF: 1–8 dígitos (alineado con formulario Exélixi)
   if (!/^[VEJ]$/.test(p.tipo_cedula_tomador || '')) errors.push('tipo_cedula_tomador invalido (V|E|J)');
-  if (!/^\d{6,10}$/.test(p.rif_tomador || '')) errors.push('rif_tomador invalido (solo digitos, 6-10)');
+  if (!/^\d{1,8}$/.test(p.rif_tomador || '')) errors.push('rif_tomador invalido (solo digitos, 1-8)');
   if (!p.nombre_tomador?.trim()) errors.push('nombre_tomador requerido');
   if (!p.apellido_tomador?.trim()) errors.push('apellido_tomador requerido');
   if (!/^[+]?\d{8,15}$/.test(String(p.telefono_tomador || '').replace(/\s+/g, ''))) {
@@ -60,7 +60,7 @@ function validateEmissionPayload(p) {
 
   // Titular (si distinto al tomador, mismas reglas basicas)
   if (!/^[VEJ]$/.test(p.tipo_cedula_titular || '')) errors.push('tipo_cedula_titular invalido (V|E|J)');
-  if (!/^\d{6,10}$/.test(p.rif_titular || '')) errors.push('rif_titular invalido');
+  if (!/^\d{1,8}$/.test(p.rif_titular || '')) errors.push('rif_titular invalido (solo digitos, 1-8)');
   if (!p.nombre_titular?.trim()) errors.push('nombre_titular requerido');
   if (!p.apellido_titular?.trim()) errors.push('apellido_titular requerido');
 
