@@ -10,7 +10,7 @@ export function looksLikeVePlacaNacional(placa?: string | null): boolean {
   return /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(p) || /^[A-Z]{2}\d{5}$/.test(p);
 }
 
-/** Formato Colombia (ej. SLP935, WON028) — flujo binacional, no extranjera genérica. */
+/** Formato Colombia (ej. SLD29E, SLP935) — placa extranjera en RCV Venezuela. */
 export function looksLikeCoPlaca(placa?: string | null): boolean {
   const p = normalizePlaca(placa);
   if (!p) return false;
@@ -26,18 +26,21 @@ export function looksLikePlacaExtranjeraGenerica(placa?: string | null): boolean
   return /[A-Z]/.test(p) && /\d/.test(p);
 }
 
-type CertHint = { tipoPlaca?: string; placa?: string };
+type CertHint = { tipoPlaca?: string; tipoCarnet?: string; placa?: string };
 
 /**
- * OCR indica placa extranjera (no venezolana). Solo datos del certificado OCR.
- * Colombia (SLP935) no cuenta como extranjera — ahí el usuario elige binacional.
+ * OCR indica placa extranjera. Incluye documentos/placas colombianas (extranjero).
+ * Binacional (VE hacia CO) no aplica aquí — usa tipoPlaca binacional explícito.
  */
 export function ocrIndicaPlacaExtranjera(cert?: CertHint | null): boolean {
   if (!cert) return false;
   const ocrTipo = String(cert.tipoPlaca ?? '').toLowerCase().trim();
   if (ocrTipo === 'extranjera') return true;
+  const tipoCarnet = String(cert.tipoCarnet ?? '').toLowerCase().trim();
+  if (tipoCarnet === 'extranjero') return true;
   const p = normalizePlaca(cert.placa);
-  if (!p || looksLikeVePlacaNacional(p) || looksLikeCoPlaca(p)) return false;
+  if (looksLikeCoPlaca(p)) return true;
+  if (!p || looksLikeVePlacaNacional(p)) return false;
   return looksLikePlacaExtranjeraGenerica(p);
 }
 
@@ -51,7 +54,7 @@ export function shouldLockTipoPlacaExtranjera(
 
 export function placaPlaceholder(tipoPlaca: string): string {
   if (tipoPlaca === 'binacional') return 'SLP935';
-  if (tipoPlaca === 'extranjera') return 'ABC-1234';
+  if (tipoPlaca === 'extranjera') return 'SLD29E';
   return 'AE123KT';
 }
 
