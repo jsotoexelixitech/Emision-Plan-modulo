@@ -185,8 +185,18 @@ export class PolicyEmitError extends Error {
 }
 
 export async function emitPolicy(payload: EmitPolicyPayload): Promise<EmitPolicyResponse> {
+  const cleanPayload = JSON.parse(JSON.stringify(payload));
+  if (cleanPayload.state) {
+    const s = cleanPayload.state;
+    if (s.hasBeneficiary === false) delete s.beneficiario;
+    if (s.differentPayer === false) delete s.pagador;
+    if (s.hasDriver === false) delete s.conductor;
+    // Si el asegurado es el mismo tomador, no enviamos el objeto asegurado vacío
+    if (s.sameInsured === true && !s.titularFromCarnet) delete s.asegurado;
+  }
+
   try {
-    const response = await api.post<EmitPolicyResponse>('/policies/emit', payload);
+    const response = await api.post<EmitPolicyResponse>('/policies/emit', cleanPayload);
     return response.data;
   } catch (err) {
     const axErr = err as AxiosError<{
