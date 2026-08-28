@@ -57,6 +57,10 @@ type Submission = {
   paymentUrl?: string | null;
   paymentSid?: string | null;
   paymentExpiresAt?: string | null;
+  cnpoliza?: string | null;
+  cnrecibo?: string | null;
+  urlpoliza?: string | null;
+  emittedAt?: string | null;
   rejectReason?: string | null;
   reviewedBy?: string | null;
   reviewedAt?: string | null;
@@ -101,7 +105,7 @@ function personLabel(p?: Record<string, unknown>): string {
   return name || doc || '—';
 }
 
-type DocLink = { key: string; label: string; url: string; kind: 'policy' | 'annex' | 'payment' | 'upload' };
+type DocLink = { key: string; label: string; url: string; kind: 'policy' | 'annex' | 'upload' };
 
 const OCR_DOC_LABELS: Record<string, string> = {
   cedula: 'Cédula escaneada',
@@ -131,44 +135,55 @@ function strUrl(v: unknown): string | undefined {
   return t || undefined;
 }
 
-function collectSubmissionDocLinks(sub: Submission): DocLink[] {
+function isPolicyPdfUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  if (lower.includes('/pagos/') || lower.includes('wizardstep=5')) return false;
+  return true;
+}
+
+function collectPolicyDocLinks(sub: Submission): DocLink[] {
   const items: DocLink[] = [];
   const emission = sub.snapshot?.emission;
 
   const push = (key: string, label: string, url: unknown, kind: DocLink['kind']) => {
     const resolved = strUrl(url);
-    if (resolved) items.push({ key, label, url: resolveDocUrl(resolved), kind });
+    if (!resolved || !isPolicyPdfUrl(resolved)) return;
+    items.push({ key, label, url: resolveDocUrl(resolved), kind });
   };
 
-  push('poliza', 'Cuadro de póliza', emission?.urlpoliza, 'policy');
+  push('poliza', 'Cuadro de póliza (PDF)', sub.urlpoliza ?? emission?.urlpoliza, 'policy');
   push('ingreso', 'Ingreso de caja', emission?.url_ingreso_caja, 'annex');
   push('conductor', 'Anexo conductor habitual', emission?.url_conductor_habitual, 'annex');
   push('arys', 'Club Arys', emission?.url_club_arys, 'annex');
 
-  if (sub.paymentUrl && sub.estado !== 'paid') {
-    push('pago', 'Link de pago al cliente', sub.paymentUrl, 'payment');
-  }
+  return items;
+}
 
+function collectUploadDocLinks(sub: Submission): DocLink[] {
+  const items: DocLink[] = [];
   const docs = sub.snapshot?.documents;
-  if (docs && typeof docs === 'object') {
-    for (const [docKey, docVal] of Object.entries(docs)) {
-      const fileUrl = docVal?.file?.url;
-      if (fileUrl) {
-        items.push({
-          key: `upload-${docKey}`,
-          label: OCR_DOC_LABELS[docKey] ?? `Documento ${docKey}`,
-          url: resolveDocUrl(fileUrl),
-          kind: 'upload',
-        });
-      }
+  if (!docs || typeof docs !== 'object') return items;
+
+  for (const [docKey, docVal] of Object.entries(docs)) {
+    const fileUrl = docVal?.file?.url;
+    if (fileUrl) {
+      items.push({
+        key: `upload-${docKey}`,
+        label: OCR_DOC_LABELS[docKey] ?? `Documento ${docKey}`,
+        url: resolveDocUrl(fileUrl),
+        kind: 'upload',
+      });
     }
   }
-
   return items;
 }
 
 function policyNumber(sub: Submission): string | undefined {
-  return strUrl(sub.snapshot?.emission?.cnpoliza);
+  return strUrl(sub.cnpoliza) ?? strUrl(sub.snapshot?.emission?.cnpoliza);
+}
+
+function receiptNumber(sub: Submission): string | undefined {
+  return strUrl(sub.cnrecibo) ?? strUrl(sub.snapshot?.emission?.cnrecibo);
 }
 
 function readPanelToken(): string {
@@ -311,7 +326,11 @@ export function EmisionRevisionPanel() {
   const cedulaOcr = selected?.snapshot?.documents?.cedula?.ocr as Record<string, unknown> | undefined;
   const quote = selected?.snapshot?.quote;
   const emission = selected?.snapshot?.emission;
-  const docLinks = selected ? collectSubmissionDocLinks(selected) : [];
+  const policyDocs = selected ? collectPolicyDocLinks(selected) : [];
+  const uploadDocs = selected ? collectUploadDocLinks(selected) : [];
+  const polNum = selected ? policyNumber(selected) : undefined;
+  const recNum = selected ? receiptNumber(selected) : undefined;
+  const emittedWhen = selected?.emittedAt ?? emission?.emittedAt;
   const emptyMessage =
     filter === 'pending'
       ? 'No hay solicitudes pendientes de revisión.'
@@ -495,16 +514,23 @@ export function EmisionRevisionPanel() {
                         {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
                       </dd>
                     </div>
-                    {emission?.cnpoliza && (
+                    {polNum ? (
                       <div>
                         <dt className="text-slate-400">Nº póliza</dt>
-                        <dd className="font-mono font-semibold text-slate-900">{emission.cnpoliza}</dd>
+                        <dd className="font-mono font-semibold text-slate-900">{polNum}</dd>
+                      </div>
+                    ) : (
+                      <div>
+                        <dt className="text-slate-400">Nº póliza</dt>
+                        <dd className="text-slate-400 italic">
+                          {selected.estado === 'paid' ? 'No registrado' : 'Se genera al pagar y emitir'}
+                        </dd>
                       </div>
                     )}
-                    {emission?.cnrecibo && (
+                    {recNum && (
                       <div>
                         <dt className="text-slate-400">Recibo</dt>
-                        <dd className="font-mono font-medium text-slate-800">{emission.cnrecibo}</dd>
+                        <dd className="font-mono font-medium text-slate-800">{recNum}</dd>
                       </div>
                     )}
                     <div>
@@ -547,19 +573,19 @@ export function EmisionRevisionPanel() {
 
                 <section className="rounded-xl border border-slate-100 p-4">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <FileDown size={13} /> Póliza, anexos y documentos
+                    <FileDown size={13} /> Documentos de póliza emitida
                   </h3>
-                  {docLinks.length === 0 ? (
+                  {policyDocs.length === 0 ? (
                     <p className="text-xs text-slate-500">
                       {selected.estado === 'paid'
-                        ? 'Sin enlaces registrados para esta solicitud.'
+                        ? 'Sin PDF de póliza registrado.'
                         : selected.estado === 'approved'
-                          ? 'Pendiente de pago. Tras emitir aparecerán el cuadro de póliza y anexos.'
-                          : 'Los PDFs de póliza se registran al completar el pago y la emisión.'}
+                          ? 'Aún no hay póliza: el cliente debe pagar en el link de la sección «Pago». Tras la emisión aparecerá el cuadro de póliza (PDF La Mundial) y el número oficial.'
+                          : 'El cuadro de póliza y anexos se guardan al completar pago + emisión.'}
                     </p>
                   ) : (
                     <ul className="space-y-2">
-                      {docLinks.map((doc) => (
+                      {policyDocs.map((doc) => (
                         <li key={doc.key}>
                           <a
                             href={doc.url}
@@ -568,9 +594,7 @@ export function EmisionRevisionPanel() {
                             className={`flex items-start gap-2 text-xs rounded-lg px-3 py-2 border transition-colors ${
                               doc.kind === 'policy'
                                 ? 'border-indigo-200 bg-indigo-50/60 text-indigo-800 hover:bg-indigo-50'
-                                : doc.kind === 'payment'
-                                  ? 'border-emerald-200 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-50'
-                                  : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50'
+                                : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50'
                             }`}
                           >
                             <ExternalLink size={13} className="shrink-0 mt-0.5" />
@@ -583,17 +607,44 @@ export function EmisionRevisionPanel() {
                       ))}
                     </ul>
                   )}
-                  {emission?.emittedAt && (
+                  {emittedWhen && (
                     <p className="text-[10px] text-slate-400 mt-3">
-                      Emitida {formatDate(emission.emittedAt)}
+                      Emitida {formatDate(emittedWhen)}
+                      {polNum ? ` · ${polNum}` : ''}
                     </p>
                   )}
                 </section>
 
+                {uploadDocs.length > 0 && (
+                  <section className="rounded-xl border border-slate-100 p-4">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                      <FileText size={13} /> Expediente OCR
+                    </h3>
+                    <ul className="space-y-2">
+                      {uploadDocs.map((doc) => (
+                        <li key={doc.key}>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-start gap-2 text-xs rounded-lg px-3 py-2 border border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50 transition-colors"
+                          >
+                            <ExternalLink size={13} className="shrink-0 mt-0.5" />
+                            <span className="min-w-0">
+                              <span className="font-bold block">{doc.label}</span>
+                              <span className="break-all opacity-80">{doc.url}</span>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
                 {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
                   <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
                     <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600 mb-3 flex items-center gap-1.5">
-                      <CreditCard size={13} /> Pago
+                      <CreditCard size={13} /> Checkout de pago (no es la póliza)
                     </h3>
                     <dl className="space-y-2 text-xs">
                       {selected.paymentSid && (
