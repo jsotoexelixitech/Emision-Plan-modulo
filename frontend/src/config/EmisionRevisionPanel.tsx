@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Check, X, Loader2, ClipboardList, User, FileText, AlertTriangle,
+  History, Clock, CreditCard,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
 import { readConfigPanelContext, canalDisplayLabel } from './configPanelContext';
@@ -27,21 +28,66 @@ type Submission = {
   tomadorEmail?: string;
   cplan: string;
   planName?: string;
+  cramo?: number;
   scoreTotal: number;
   scoreBreakdown: ScoreLine[];
   healthAnswers: Record<string, unknown>;
   snapshot: {
     tomador?: Record<string, unknown>;
+    asegurado?: Record<string, unknown>;
+    beneficiario?: Record<string, unknown>;
+    funeral?: { frecuencia?: string };
     documents?: Record<string, { ocr?: Record<string, unknown> }>;
-    selectedPlan?: { name?: string };
-    quote?: { mprimaext?: number };
+    selectedPlan?: { name?: string; cplan?: string };
+    quote?: { mprima?: number; mprimaext?: number; ptasa?: number };
+    metadataCanal?: Record<string, unknown>;
   };
   paymentUrl?: string | null;
+  paymentSid?: string | null;
   paymentExpiresAt?: string | null;
+  rejectReason?: string | null;
+  reviewedBy?: string | null;
+  reviewedAt?: string | null;
   createdAt: string;
+  updatedAt?: string;
   emailSent?: boolean;
   emailError?: string;
 };
+
+type ListFilter = 'pending' | 'history' | 'all';
+
+const HISTORY_STATES = new Set(['approved', 'rejected', 'paid', 'expired']);
+
+function estadoLabel(estado: string): string {
+  const map: Record<string, string> = {
+    pending: 'Pendiente',
+    approved: 'Aprobada',
+    rejected: 'Rechazada',
+    paid: 'Pagada',
+    expired: 'Expirada',
+  };
+  return map[estado] ?? estado;
+}
+
+function formatDate(iso?: string | null): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return d.toLocaleString('es-VE', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function personLabel(p?: Record<string, unknown>): string {
+  if (!p) return '—';
+  const name = [p.nombre, p.apellido].filter(Boolean).join(' ').trim();
+  const doc = [p.tipoDoc, p.identificacion].filter(Boolean).join('-').trim();
+  return name || doc || '—';
+}
 
 function readPanelToken(): string {
   try {
@@ -75,6 +121,8 @@ function estadoBadge(estado: string) {
     pending: 'bg-amber-100 text-amber-800 border-amber-200',
     approved: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     rejected: 'bg-rose-100 text-rose-800 border-rose-200',
+    paid: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    expired: 'bg-slate-100 text-slate-600 border-slate-200',
   };
   return map[estado] ?? 'bg-slate-100 text-slate-700 border-slate-200';
 }
@@ -86,7 +134,8 @@ export function EmisionRevisionPanel() {
   const [error, setError] = useState('');
   const [acting, setActing] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
+  const [filter, setFilter] = useState<ListFilter>('history');
+  const [showRawSnapshot, setShowRawSnapshot] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -94,7 +143,7 @@ export function EmisionRevisionPanel() {
     try {
       const q = filter === 'pending' ? '&estado=pending' : '';
       const res = await fetch(
-        `${NEXUS_URL}/api/funeral-submissions?empresaId=${EMPRESA_ID}${q}`,
+        `${NEXUS_URL}/api/funeral-submissions?empresaId=${EMPRESA_ID}${q}&limit=200`,
         { headers: authHeaders() },
       );
       const data = await res.json().catch(() => ({}));
@@ -103,8 +152,17 @@ export function EmisionRevisionPanel() {
         setList([]);
         return;
       }
-      setList(data.data ?? []);
-      if (selected && !(data.data ?? []).find((s: Submission) => s.id === selected.id)) {
+      let rows: Submission[] = data.data ?? [];
+      if (filter === 'history') {
+        rows = rows.filter((s) => HISTORY_STATES.has(s.estado));
+        rows.sort((a, b) => {
+          const dateA = Date.parse(a.reviewedAt || a.updatedAt || a.createdAt);
+          const dateB = Date.parse(b.reviewedAt || b.updatedAt || b.createdAt);
+          return dateB - dateA;
+        });
+      }
+      setList(rows);
+      if (selected && !rows.find((s) => s.id === selected.id)) {
         setSelected(null);
       }
     } catch {
@@ -169,6 +227,19 @@ export function EmisionRevisionPanel() {
   }
 
   const cedulaOcr = selected?.snapshot?.documents?.cedula?.ocr as Record<string, unknown> | undefined;
+  const quote = selected?.snapshot?.quote;
+  const emptyMessage =
+    filter === 'pending'
+      ? 'No hay solicitudes pendientes de revisión.'
+      : filter === 'history'
+        ? 'No hay registros en el histórico (aprobadas, rechazadas o pagadas).'
+        : 'No hay solicitudes registradas para esta empresa.';
+
+  const filterTabs: { key: ListFilter; label: string }[] = [
+    { key: 'pending', label: 'Pendientes' },
+    { key: 'history', label: 'Histórico' },
+    { key: 'all', label: 'Todas' },
+  ];
 
   return (
     <div className="min-h-screen relative">
@@ -192,19 +263,23 @@ export function EmisionRevisionPanel() {
           </div>
         )}
 
-        <div className="flex gap-2 mb-4">
-          {(['pending', 'all'] as const).map((f) => (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          {filterTabs.map(({ key, label }) => (
             <button
-              key={f}
+              key={key}
               type="button"
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                filter === f ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600'
+              onClick={() => setFilter(key)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${
+                filter === key ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600'
               }`}
             >
-              {f === 'pending' ? 'Pendientes' : 'Todas'}
+              {key === 'history' && <History size={12} />}
+              {label}
             </button>
           ))}
+          <span className="text-xs text-slate-400 ml-1">
+            {loading ? '…' : `${list.length} registro${list.length === 1 ? '' : 's'}`}
+          </span>
           <button
             type="button"
             onClick={loadList}
@@ -221,7 +296,7 @@ export function EmisionRevisionPanel() {
                 <Loader2 className="animate-spin text-indigo-500" />
               </div>
             ) : list.length === 0 ? (
-              <p className="p-8 text-sm text-slate-500 text-center">No hay solicitudes.</p>
+              <p className="p-8 text-sm text-slate-500 text-center">{emptyMessage}</p>
             ) : (
               <ul className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
                 {list.map((s) => (
@@ -230,6 +305,7 @@ export function EmisionRevisionPanel() {
                       type="button"
                       onClick={() => {
                         setSelected(s);
+                        setShowRawSnapshot(false);
                         loadDetail(s.id);
                       }}
                       className={`w-full text-left px-4 py-3 hover:bg-indigo-50/50 transition-colors ${
@@ -240,12 +316,15 @@ export function EmisionRevisionPanel() {
                         <span className="font-semibold text-sm text-slate-900 truncate">
                           {s.tomadorNombre || s.tomadorRif || 'Sin nombre'}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(s.estado)}`}>
-                          {s.estado}
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${estadoBadge(s.estado)}`}>
+                          {estadoLabel(s.estado)}
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 truncate">
                         {s.planName || `Plan ${s.cplan}`} · score {s.scoreTotal}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {formatDate(s.reviewedAt || s.createdAt)}
                       </p>
                     </button>
                   </li>
@@ -263,6 +342,14 @@ export function EmisionRevisionPanel() {
               <div className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(selected.estado)}`}>
+                        {estadoLabel(selected.estado)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">
+                        {selected.id.slice(0, 8)}…
+                      </span>
+                    </div>
                     <h2 className="font-display text-xl font-black text-slate-900">
                       {selected.tomadorNombre || 'Tomador'}
                     </h2>
@@ -274,6 +361,129 @@ export function EmisionRevisionPanel() {
                     <p className="text-[10px] uppercase font-bold text-slate-400">Puntaje</p>
                   </div>
                 </div>
+
+                <section className="rounded-xl border border-slate-100 p-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                    <Clock size={13} /> Historial de la solicitud
+                  </h3>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div>
+                      <dt className="text-slate-400">Creada</dt>
+                      <dd className="font-medium text-slate-800">{formatDate(selected.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Revisada</dt>
+                      <dd className="font-medium text-slate-800">{formatDate(selected.reviewedAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Revisor</dt>
+                      <dd className="font-medium text-slate-800">{selected.reviewedBy || '—'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Sesión</dt>
+                      <dd className="font-medium text-slate-800 font-mono text-[10px] break-all">{selected.sessionId || '—'}</dd>
+                    </div>
+                    {selected.rejectReason && (
+                      <div className="col-span-2">
+                        <dt className="text-slate-400">Motivo rechazo</dt>
+                        <dd className="font-medium text-rose-700">{selected.rejectReason}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </section>
+
+                <section className="rounded-xl border border-slate-100 p-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                    <FileText size={13} /> Datos guardados (póliza)
+                  </h3>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                    <div>
+                      <dt className="text-slate-400">Plan</dt>
+                      <dd className="font-medium text-slate-800">
+                        {selected.planName || selected.snapshot?.selectedPlan?.name || selected.cplan}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">cplan / ramo</dt>
+                      <dd className="font-medium text-slate-800">
+                        {selected.cplan}
+                        {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Frecuencia</dt>
+                      <dd className="font-medium text-slate-800">
+                        {selected.snapshot?.funeral?.frecuencia || '—'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Prima</dt>
+                      <dd className="font-medium text-slate-800">
+                        {quote?.mprimaext != null
+                          ? `$${Number(quote.mprimaext).toFixed(2)}`
+                          : quote?.mprima != null
+                            ? `$${Number(quote.mprima).toFixed(2)}`
+                            : '—'}
+                        {quote?.ptasa != null ? ` · tasa ${quote.ptasa}` : ''}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Tomador</dt>
+                      <dd className="font-medium text-slate-800">
+                        {personLabel(selected.snapshot?.tomador)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-slate-400">Asegurado</dt>
+                      <dd className="font-medium text-slate-800">
+                        {personLabel(selected.snapshot?.asegurado)}
+                      </dd>
+                    </div>
+                    <div className="col-span-2">
+                      <dt className="text-slate-400">Beneficiario</dt>
+                      <dd className="font-medium text-slate-800">
+                        {personLabel(selected.snapshot?.beneficiario)}
+                      </dd>
+                    </div>
+                  </dl>
+                </section>
+
+                {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
+                  <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600 mb-3 flex items-center gap-1.5">
+                      <CreditCard size={13} /> Pago
+                    </h3>
+                    <dl className="space-y-2 text-xs">
+                      {selected.paymentSid && (
+                        <div>
+                          <dt className="text-slate-400">SID checkout</dt>
+                          <dd className="font-mono text-[10px] text-slate-700 break-all">{selected.paymentSid}</dd>
+                        </div>
+                      )}
+                      {selected.paymentExpiresAt && (
+                        <div>
+                          <dt className="text-slate-400">Link expira</dt>
+                          <dd className="font-medium text-slate-800">{formatDate(selected.paymentExpiresAt)}</dd>
+                        </div>
+                      )}
+                      {selected.paymentUrl && (
+                        <div>
+                          <dt className="text-slate-400 mb-0.5">URL de pago</dt>
+                          <dd>
+                            <a
+                              href={selected.paymentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-indigo-600 hover:underline break-all"
+                            >
+                              {selected.paymentUrl}
+                            </a>
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                  </section>
+                )}
 
                 <section className="rounded-xl border border-slate-100 p-4">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
@@ -316,14 +526,18 @@ export function EmisionRevisionPanel() {
                   </ul>
                 </section>
 
-                <section className="rounded-xl border border-slate-100 p-4 text-xs text-slate-600">
-                  <FileText size={13} className="inline mr-1 text-slate-400" />
-                  Plan: <strong>{selected.planName || selected.cplan}</strong>
-                  {selected.snapshot?.quote?.mprimaext != null && (
-                    <>
-                      {' '}
-                      · Prima ${Number(selected.snapshot.quote.mprimaext).toFixed(2)}
-                    </>
+                <section className="rounded-xl border border-slate-100 p-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowRawSnapshot((v) => !v)}
+                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider"
+                  >
+                    {showRawSnapshot ? '▾ Ocultar snapshot JSON' : '▸ Ver snapshot JSON completo'}
+                  </button>
+                  {showRawSnapshot && (
+                    <pre className="mt-3 max-h-48 overflow-auto text-[10px] bg-slate-50 rounded-lg p-3 text-slate-700">
+                      {JSON.stringify(selected.snapshot, null, 2)}
+                    </pre>
                   )}
                 </section>
 
@@ -361,24 +575,35 @@ export function EmisionRevisionPanel() {
                 {selected.estado === 'approved' && (
                   <div className="space-y-2">
                     <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3">
-                      Aprobada.
-                      {(selected as Submission).emailSent
+                      Aprobada el {formatDate(selected.reviewedAt)}.
+                      {selected.emailSent
                         ? ' Se envió el correo con el link de pago al cliente.'
-                        : (selected as Submission).emailError
-                          ? ` Link generado pero el correo falló: ${(selected as Submission).emailError}`
+                        : selected.emailError
+                          ? ` Link generado pero el correo falló: ${selected.emailError}`
                           : ' Link de pago generado.'}
                     </p>
-                    {selected.paymentUrl && (
-                      <a
-                        href={selected.paymentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block text-xs text-indigo-600 hover:underline break-all px-1"
-                      >
-                        {selected.paymentUrl}
-                      </a>
-                    )}
                   </div>
+                )}
+
+                {selected.estado === 'paid' && (
+                  <p className="text-sm text-indigo-700 bg-indigo-50 rounded-xl px-4 py-3">
+                    Póliza pagada y emitida. Registro en histórico.
+                  </p>
+                )}
+
+                {selected.estado === 'rejected' && (
+                  <p className="text-sm text-rose-700 bg-rose-50 rounded-xl px-4 py-3">
+                    Solicitud rechazada
+                    {selected.reviewedAt ? ` el ${formatDate(selected.reviewedAt)}` : ''}.
+                    {selected.rejectReason ? ` Motivo: ${selected.rejectReason}` : ''}
+                  </p>
+                )}
+
+                {selected.estado === 'expired' && (
+                  <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-4 py-3">
+                    Link de pago expirado
+                    {selected.paymentExpiresAt ? ` (${formatDate(selected.paymentExpiresAt)})` : ''}.
+                  </p>
                 )}
               </div>
             )}
