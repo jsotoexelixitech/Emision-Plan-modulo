@@ -64,4 +64,58 @@ async function createFuneralSubmission(payload) {
   throw err;
 }
 
-module.exports = { createFuneralSubmission };
+/**
+ * Registra póliza emitida en la solicitud funerario (estado paid + snapshot.emission).
+ * @param {string} submissionId
+ * @param {object} emission
+ * @returns {Promise<object|null>}
+ */
+async function recordFuneralEmission(submissionId, emission) {
+  const apiKey = getApiKey();
+  if (!apiKey || !submissionId) return null;
+
+  const payload = {
+    cnpoliza: emission.cnpoliza,
+    cnrecibo: emission.cnrecibo,
+    urlpoliza: emission.urlpoliza,
+    url_ingreso_caja: emission.url_ingreso_caja,
+    url_conductor_habitual: emission.url_conductor_habitual,
+    url_club_arys: emission.url_club_arys,
+    emittedAt: emission.emittedAt,
+    quote: emission.quote,
+    empresaId: emission.empresaId,
+  };
+
+  let lastErr = '';
+  for (const base of nexusBases()) {
+    const url = `${base}/api/funeral-submissions/${encodeURIComponent(submissionId)}/emission`;
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 12000);
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'x-api-key': apiKey,
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        lastErr = body?.message || `HTTP ${res.status}`;
+        continue;
+      }
+      return body.data ?? null;
+    } catch (err) {
+      lastErr = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  console.warn(`[nexusFuneralSubmission] emission ${submissionId}: ${lastErr}`);
+  return null;
+}
+
+module.exports = { createFuneralSubmission, recordFuneralEmission };

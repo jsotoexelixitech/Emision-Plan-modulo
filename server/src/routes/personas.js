@@ -13,6 +13,7 @@ const express = require('express');
 const personasClient = require('../services/personasClient');
 const personasMapper = require('../services/personasMapper');
 const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
+const { recordFuneralEmission } = require('../services/nexusFuneralSubmission');
 
 const router = express.Router();
 
@@ -207,6 +208,22 @@ router.post('/emision', async (req, res) => {
     });
     if (url_ingreso_caja) {
       console.log(`[personas/emision] URL ingreso caja: ${url_ingreso_caja}`);
+    }
+
+    const submissionId = String(state?.funeralSubmissionId ?? '').trim();
+    if (submissionId) {
+      recordFuneralEmission(submissionId, {
+        cnpoliza: emitted.cnpoliza,
+        cnrecibo: emitted.cnrecibo,
+        urlpoliza: emitted.urlpoliza,
+        url_ingreso_caja,
+        emittedAt: new Date().toISOString(),
+        quote: {
+          mprima: cotizacion.mprima,
+          mprimaext: cotizacion.mprimaext,
+          ptasa: cotizacion.ptasa,
+        },
+      }).catch(() => {});
     }
 
     return res.status(201).json({

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Check, X, Loader2, ClipboardList, User, FileText, AlertTriangle,
-  History, Clock, CreditCard,
+  History, Clock, CreditCard, ExternalLink, FileDown,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
 import { readConfigPanelContext, canalDisplayLabel } from './configPanelContext';
@@ -37,7 +37,19 @@ type Submission = {
     asegurado?: Record<string, unknown>;
     beneficiario?: Record<string, unknown>;
     funeral?: { frecuencia?: string };
-    documents?: Record<string, { ocr?: Record<string, unknown> }>;
+    documents?: Record<string, {
+      ocr?: Record<string, unknown>;
+      file?: { url?: string; name?: string };
+    }>;
+    emission?: {
+      cnpoliza?: string;
+      cnrecibo?: string;
+      urlpoliza?: string;
+      url_ingreso_caja?: string;
+      url_conductor_habitual?: string;
+      url_club_arys?: string;
+      emittedAt?: string;
+    };
     selectedPlan?: { name?: string; cplan?: string };
     quote?: { mprima?: number; mprimaext?: number; ptasa?: number };
     metadataCanal?: Record<string, unknown>;
@@ -87,6 +99,76 @@ function personLabel(p?: Record<string, unknown>): string {
   const name = [p.nombre, p.apellido].filter(Boolean).join(' ').trim();
   const doc = [p.tipoDoc, p.identificacion].filter(Boolean).join('-').trim();
   return name || doc || '—';
+}
+
+type DocLink = { key: string; label: string; url: string; kind: 'policy' | 'annex' | 'payment' | 'upload' };
+
+const OCR_DOC_LABELS: Record<string, string> = {
+  cedula: 'Cédula escaneada',
+  rif: 'RIF',
+  licencia: 'Licencia',
+  certificado: 'Certificado médico',
+  pasaporte: 'Pasaporte',
+};
+
+function resolveDocUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/')) {
+    try {
+      return `${window.location.origin}${trimmed}`;
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
+function strUrl(v: unknown): string | undefined {
+  if (typeof v !== 'string') return undefined;
+  const t = v.trim();
+  return t || undefined;
+}
+
+function collectSubmissionDocLinks(sub: Submission): DocLink[] {
+  const items: DocLink[] = [];
+  const emission = sub.snapshot?.emission;
+
+  const push = (key: string, label: string, url: unknown, kind: DocLink['kind']) => {
+    const resolved = strUrl(url);
+    if (resolved) items.push({ key, label, url: resolveDocUrl(resolved), kind });
+  };
+
+  push('poliza', 'Cuadro de póliza', emission?.urlpoliza, 'policy');
+  push('ingreso', 'Ingreso de caja', emission?.url_ingreso_caja, 'annex');
+  push('conductor', 'Anexo conductor habitual', emission?.url_conductor_habitual, 'annex');
+  push('arys', 'Club Arys', emission?.url_club_arys, 'annex');
+
+  if (sub.paymentUrl && sub.estado !== 'paid') {
+    push('pago', 'Link de pago al cliente', sub.paymentUrl, 'payment');
+  }
+
+  const docs = sub.snapshot?.documents;
+  if (docs && typeof docs === 'object') {
+    for (const [docKey, docVal] of Object.entries(docs)) {
+      const fileUrl = docVal?.file?.url;
+      if (fileUrl) {
+        items.push({
+          key: `upload-${docKey}`,
+          label: OCR_DOC_LABELS[docKey] ?? `Documento ${docKey}`,
+          url: resolveDocUrl(fileUrl),
+          kind: 'upload',
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
+function policyNumber(sub: Submission): string | undefined {
+  return strUrl(sub.snapshot?.emission?.cnpoliza);
 }
 
 function readPanelToken(): string {
@@ -228,6 +310,8 @@ export function EmisionRevisionPanel() {
 
   const cedulaOcr = selected?.snapshot?.documents?.cedula?.ocr as Record<string, unknown> | undefined;
   const quote = selected?.snapshot?.quote;
+  const emission = selected?.snapshot?.emission;
+  const docLinks = selected ? collectSubmissionDocLinks(selected) : [];
   const emptyMessage =
     filter === 'pending'
       ? 'No hay solicitudes pendientes de revisión.'
@@ -322,6 +406,7 @@ export function EmisionRevisionPanel() {
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 truncate">
                         {s.planName || `Plan ${s.cplan}`} · score {s.scoreTotal}
+                        {policyNumber(s) ? ` · ${policyNumber(s)}` : ''}
                       </p>
                       <p className="text-[10px] text-slate-400 mt-0.5">
                         {formatDate(s.reviewedAt || s.createdAt)}
@@ -410,6 +495,18 @@ export function EmisionRevisionPanel() {
                         {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
                       </dd>
                     </div>
+                    {emission?.cnpoliza && (
+                      <div>
+                        <dt className="text-slate-400">Nº póliza</dt>
+                        <dd className="font-mono font-semibold text-slate-900">{emission.cnpoliza}</dd>
+                      </div>
+                    )}
+                    {emission?.cnrecibo && (
+                      <div>
+                        <dt className="text-slate-400">Recibo</dt>
+                        <dd className="font-mono font-medium text-slate-800">{emission.cnrecibo}</dd>
+                      </div>
+                    )}
                     <div>
                       <dt className="text-slate-400">Frecuencia</dt>
                       <dd className="font-medium text-slate-800">
@@ -446,6 +543,51 @@ export function EmisionRevisionPanel() {
                       </dd>
                     </div>
                   </dl>
+                </section>
+
+                <section className="rounded-xl border border-slate-100 p-4">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+                    <FileDown size={13} /> Póliza, anexos y documentos
+                  </h3>
+                  {docLinks.length === 0 ? (
+                    <p className="text-xs text-slate-500">
+                      {selected.estado === 'paid'
+                        ? 'Sin enlaces registrados para esta solicitud.'
+                        : selected.estado === 'approved'
+                          ? 'Pendiente de pago. Tras emitir aparecerán el cuadro de póliza y anexos.'
+                          : 'Los PDFs de póliza se registran al completar el pago y la emisión.'}
+                    </p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {docLinks.map((doc) => (
+                        <li key={doc.key}>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-start gap-2 text-xs rounded-lg px-3 py-2 border transition-colors ${
+                              doc.kind === 'policy'
+                                ? 'border-indigo-200 bg-indigo-50/60 text-indigo-800 hover:bg-indigo-50'
+                                : doc.kind === 'payment'
+                                  ? 'border-emerald-200 bg-emerald-50/60 text-emerald-800 hover:bg-emerald-50'
+                                  : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <ExternalLink size={13} className="shrink-0 mt-0.5" />
+                            <span className="min-w-0">
+                              <span className="font-bold block">{doc.label}</span>
+                              <span className="break-all opacity-80">{doc.url}</span>
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {emission?.emittedAt && (
+                    <p className="text-[10px] text-slate-400 mt-3">
+                      Emitida {formatDate(emission.emittedAt)}
+                    </p>
+                  )}
                 </section>
 
                 {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
