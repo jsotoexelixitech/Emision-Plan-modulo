@@ -5,6 +5,11 @@ import { Toaster } from '../components/Toaster';
 import { WelcomeSplash } from '../components/WelcomeSplash';
 import { Button } from '../components/ui/Button';
 import { ChevronRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { useProductConfig } from '../hooks/useProductConfig';
+import { useUiFlags } from '../lib/ui-flags';
+import { getProductId } from '../lib/product';
+
+const EMPRESA_ID = Number(import.meta.env.VITE_EMPRESA_ID ?? 1);
 
 interface Props {
   subtitle: string;
@@ -29,6 +34,8 @@ export function EmissionPlanShell({
   hideContinuar = false,
 }: Props) {
   void _helpSubject;
+  const { config } = useProductConfig(EMPRESA_ID, getProductId(), 'emision');
+  const { hideStepper, hideFooterBar } = useUiFlags(config);
   return (
     <div className="min-h-screen relative">
       <WelcomeSplash />
@@ -40,7 +47,7 @@ export function EmissionPlanShell({
 
       <main className="flex-1 min-h-screen pt-[72px] lg:pt-10 px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
         <div className="max-w-5xl mx-auto">
-          <TopStepper />
+          {!hideStepper && <TopStepper />}
 
           <header className="mb-8 animate-fade-in">
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -60,18 +67,20 @@ export function EmissionPlanShell({
           <section className="surface-card overflow-hidden step-enter">
             <div className="p-6 sm:p-8 lg:p-10">{children}</div>
 
-            <div className="hidden md:flex items-center justify-between gap-4 px-8 lg:px-10 py-5 border-t border-slate-100/80 bg-gradient-to-b from-slate-50/50 to-white/40 backdrop-blur-sm">
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <ShieldCheck size={13} className="text-emerald-500" />
-                <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
+            {!hideFooterBar && (
+              <div className="hidden md:flex items-center justify-between gap-4 px-8 lg:px-10 py-5 border-t border-slate-100/80 bg-gradient-to-b from-slate-50/50 to-white/40 backdrop-blur-sm">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <ShieldCheck size={13} className="text-emerald-500" />
+                  <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
+                </div>
+                {!hideContinuar && (
+                  <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
+                    {continuarLabel}
+                    <ChevronRight size={15} />
+                  </Button>
+                )}
               </div>
-              {!hideContinuar && (
-                <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
-                  {continuarLabel}
-                  <ChevronRight size={15} />
-                </Button>
-              )}
-            </div>
+            )}
           </section>
         </div>
       </main>
