@@ -67,6 +67,10 @@ const HOST_TO_ORDER: Record<string, number> = {
   'form.200-75-131-138.sslip.io': 2,
   'emision.200-75-131-138.sslip.io': 3,
   'pagos.200-75-131-138.sslip.io': 4,
+  'ocr.exelixitech.com': 1,
+  'formulario.exelixitech.com': 2,
+  'emision.exelixitech.com': 3,
+  'pagos.exelixitech.com': 4,
 };
 
 const HOST_TO_TOKEN_KEY: Record<string, string> = {
@@ -74,6 +78,10 @@ const HOST_TO_TOKEN_KEY: Record<string, string> = {
   'form.200-75-131-138.sslip.io': 'nexus_access_token_formulario',
   'emision.200-75-131-138.sslip.io': 'nexus_access_token_emision',
   'pagos.200-75-131-138.sslip.io': 'nexus_access_token_pagos',
+  'ocr.exelixitech.com': 'nexus_access_token_ocr',
+  'formulario.exelixitech.com': 'nexus_access_token_formulario',
+  'emision.exelixitech.com': 'nexus_access_token_emision',
+  'pagos.exelixitech.com': 'nexus_access_token_pagos',
 };
 
 function matchPathPrefix<T>(rules: [string, T][]): T | null {
@@ -107,12 +115,16 @@ function moduleOrder(): number | null {
   const envOrder = import.meta.env.VITE_BRIDGE_MODULE_ORDER;
   if (envOrder) {
     const n = Number(envOrder);
-    return Number.isFinite(n) ? n : null;
+    if (Number.isFinite(n)) return n;
   }
   const fromPath = matchPathPrefix(PATH_PREFIX_TO_ORDER);
   if (fromPath !== null) return fromPath;
-  const host = window.location.hostname;
+  const host = window.location.hostname.toLowerCase();
   if (HOST_TO_ORDER[host]) return HOST_TO_ORDER[host];
+  if (host.startsWith('ocr.')) return 1;
+  if (host.startsWith('formulario.') || host.startsWith('form.')) return 2;
+  if (host.startsWith('emision.')) return 3;
+  if (host.startsWith('pagos.')) return 4;
   const port = window.location.port || '';
   return PORT_TO_ORDER[port] ?? null;
 }
