@@ -15,6 +15,7 @@ import type {
   QuoteState,
 } from '../types';
 import { getProductId } from '../lib/product';
+import { isFrecuenciaFraccionada } from '../lib/frecuencia';
 import { buildDiligenciaState, preClasificarDiligencia, type DiligenciaState } from '../lib/diligencia';
 
 const defaultDoc = (): DocumentState => ({ status: 'idle', progress: 0 });
@@ -125,6 +126,7 @@ const initialState: WizardState = {
   tomador: defaultTomador(),
   funeral: defaultFuneral(),
   rcv: defaultRcv(),
+  fraccionado: false,
   sameInsured: true,
   asegurado: defaultPerson(),
   differentPayer: false,
@@ -211,12 +213,22 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
     }),
 
   setFuneral: (data) =>
-    set((s) => ({ funeral: { ...s.funeral, ...data } })),
+    set((s) => {
+      const next = { ...s.funeral, ...data };
+      const patch: { funeral: typeof next; fraccionado?: boolean } = { funeral: next };
+      if ('frecuencia' in data) {
+        patch.fraccionado = isFrecuenciaFraccionada(next.frecuencia);
+      }
+      return patch;
+    }),
 
   setRcv: (data, options?: { keepQuote?: boolean }) =>
     set((s) => {
       const next = { ...s.rcv, ...data };
-      if (options?.keepQuote) return { rcv: next };
+      const fraccionado = 'frecuencia' in data
+        ? isFrecuenciaFraccionada(next.frecuencia)
+        : s.fraccionado;
+      if (options?.keepQuote) return { rcv: next, fraccionado };
       // frecuencia/ndias no invalidan quote en RCV nacional (prima anual fija).
       const sigKeys: (keyof RcvPlanData)[] = [
         'coberAdicional', 'coberAdicionales',
@@ -225,13 +237,14 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
       if (changed && s.quote) {
         return {
           rcv: next,
+          fraccionado,
           quote: null,
           quoteState: 'idle',
           quoteError: null,
           quoteVehicleSignature: null,
         };
       }
-      return { rcv: next };
+      return { rcv: next, fraccionado };
     }),
 
   setCategory: (category) => set({ category, selectedPlan: null }),

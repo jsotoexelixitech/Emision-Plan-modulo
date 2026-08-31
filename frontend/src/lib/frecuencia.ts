@@ -28,6 +28,13 @@ export function normalizeFrecuenciaCode(code?: string | null): string {
   return c.charAt(0) || 'A';
 }
 
+const FREQ_FRACCIONADA = new Set(['M', 'T', 'S']);
+
+/** M/T/S → pago fraccionado (domiciliación SyPago en Pagos). */
+export function isFrecuenciaFraccionada(code?: string | null): boolean {
+  return FREQ_FRACCIONADA.has(normalizeFrecuenciaCode(code));
+}
+
 export function getCuotasByFrecuencia(code?: string | null): number {
   const n = CUOTAS_BY_FREC[normalizeFrecuenciaCode(code)];
   return n != null && n > 0 ? n : 1;

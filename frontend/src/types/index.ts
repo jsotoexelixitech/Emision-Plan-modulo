@@ -255,6 +255,8 @@ export interface WizardState {
   funeral: FuneralData;
   /** Frecuencia de pago RCV (plan automóvil). */
   rcv: RcvPlanData;
+  /** true cuando la frecuencia activa es M/T/S (propaga a Pagos vía bridge). */
+  fraccionado?: boolean;
   sameInsured: boolean;
   asegurado: PersonData;
   /** True cuando quien rellena el formulario NO es quien va a pagar la póliza. */

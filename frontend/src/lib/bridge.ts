@@ -28,6 +28,7 @@ import { getProductConfig } from './product';
 import { BUILDER_PRODUCT_STORAGE_KEY, isExelixiCatalogFlow, ensureExelixiFlowQueryParam } from './exelixi-catalog';
 import { ensureCotizadorFlowQueryParam, isCotizadorFlow } from './cotizador-flow';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
+import { isFrecuenciaFraccionada } from './frecuencia';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
 const PORT_TO_ORDER: Record<string, number> = {
@@ -240,6 +241,15 @@ function makeBridge(): BridgeAPI {
     // Solo OCR (order=1) persiste documents; otros módulos tienen slots idle que
     // sobrescribirían el expediente procesado en la sesión del flujo.
     if (order !== 1) delete out.documents;
+
+    const prodKey = String(out.product ?? prod);
+    const freq = prodKey === 'funerario'
+      ? (out.funeral as { frecuencia?: string } | undefined)?.frecuencia
+      : (out.rcv as { frecuencia?: string } | undefined)?.frecuencia;
+    if (typeof out.fraccionado !== 'boolean') {
+      out.fraccionado = isFrecuenciaFraccionada(freq);
+    }
+
     return out;
   };
 
