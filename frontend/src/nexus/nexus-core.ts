@@ -16,7 +16,7 @@ const MODULE_NEXUS_API: [string, string][] = [
 ];
 
 /** Producción GCIA — subdominios (paridad con nexusqa en QA). */
-const PRODUCTION_GCIA_NEXUS_API = 'https://nexus-api.exelixitech.com';
+const PRODUCTION_GCIA_NEXUS_API = 'https://nexus.exelixitech.com';
 const PRODUCTION_GCIA_FRONT_HOSTS = new Set([
   'ocr.exelixitech.com',
   'formulario.exelixitech.com',
