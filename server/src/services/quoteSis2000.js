@@ -81,7 +81,12 @@ async function getCotizacionFromSis2000(input) {
   calcReq.input('iplaca', sql.Char(1), input.iplaca || 'N');
   calcReq.input('fdesde', sql.Date, fdesde);
   calcReq.input('fhasta', sql.Date, fhasta);
-  // sp_calculo_auto_nexus (QA 2026-08): ya no recibe tasaPt/tasaCa/tasaPp.
+  const omitTasa = process.env.MSSQL_SP_CALCULO_AUTO_NEXUS_OMIT_TASA_PARAMS === 'true';
+  if (!omitTasa) {
+    calcReq.input('tasaPt', sql.Numeric(18, 2), null);
+    calcReq.input('tasaCa', sql.Numeric(18, 2), null);
+    calcReq.input('tasaPp', sql.Numeric(18, 2), null);
+  }
   calcReq.input('recargo', sql.Numeric(18, 2), null);
   calcReq.input('tipoV', sql.Numeric(4), tipoV);
   calcReq.input('uso', sql.Numeric(4), input.ccategoria_uso);
