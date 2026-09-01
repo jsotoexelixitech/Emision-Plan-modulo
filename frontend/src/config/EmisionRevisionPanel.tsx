@@ -194,6 +194,38 @@ function readPanelToken(): string {
   }
 }
 
+function replacePanelToken(next: string) {
+  const token = String(next || '').trim();
+  if (!token) return;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('token', token);
+    window.history.replaceState({}, '', url.toString());
+  } catch {
+    /* ignore */
+  }
+}
+
+const REFRESH_MS = 10 * 60 * 1000;
+
+async function refreshRevisionToken(): Promise<boolean> {
+  const current = readPanelToken();
+  if (!current) return false;
+  try {
+    const res = await fetch(`${NEXUS_URL}/api/funeral-submissions/refresh-token`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: current }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) return false;
+    replacePanelToken(String(data.token));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function authHeaders(): Record<string, string> {
   const token = readPanelToken();
   const h: Record<string, string> = { Accept: 'application/json' };
@@ -272,6 +304,14 @@ export function EmisionRevisionPanel() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  useEffect(() => {
+    void refreshRevisionToken();
+    const id = window.setInterval(() => {
+      void refreshRevisionToken();
+    }, REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   async function loadDetail(id: string) {
     const res = await fetch(
