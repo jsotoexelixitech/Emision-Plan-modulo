@@ -192,10 +192,30 @@ async function createEmissionPerson(payload) {
   throw buildError(response.status, response.data, endpoint);
 }
 
+/**
+ * Consulta póliza funeraria vigente por cédula (sin plan).
+ * @param {{ rif: string|number, cramo?: number }} input
+ */
+async function checkPolizaVigente({ rif, cramo }) {
+  const endpoint = '/poliza-vigente';
+  const response = await post(endpoint, { rif, cramo: cramo ?? getConfig().cramo });
+  if (response.status >= 200 && response.status < 300 && response.data?.status === true) {
+    const d = response.data.data ?? {};
+    return {
+      hasVigente: Boolean(d.hasVigente),
+      cnpoliza: d.cnpoliza,
+      cplan: d.cplan,
+      fhasta: d.fhasta,
+    };
+  }
+  throw buildError(response.status, response.data, endpoint);
+}
+
 module.exports = {
   getPlanesPer,
   getCotizacionPer,
   validateEmissionPerson,
+  checkPolizaVigente,
   createEmissionPerson,
   _internal: { getClient, getConfig, extractErrorMessage },
 };
