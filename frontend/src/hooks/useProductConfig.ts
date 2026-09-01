@@ -15,11 +15,47 @@ const NEXUS_KEY = import.meta.env.VITE_NEXUS_API_KEY ?? '';
 
 export type LoadState = 'loading' | 'ready' | 'error';
 
+const REFRESH_MS = 10 * 60 * 1000;
+
 function readConfigPanelToken(): string {
   try {
     return new URL(window.location.href).searchParams.get('token')?.trim() || '';
   } catch {
     return '';
+  }
+}
+
+function replaceConfigPanelToken(next: string) {
+  const token = String(next || '').trim();
+  if (!token) return;
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('token', token);
+    window.history.replaceState({}, '', url.toString());
+  } catch {
+    /* ignore */
+  }
+}
+
+async function refreshConfigPanelToken(): Promise<boolean> {
+  const current = readConfigPanelToken();
+  if (!current) return false;
+  try {
+    const res = await fetch(`${NEXUS_URL}/api/config/refresh-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${current}`,
+        'x-config-token': current,
+      },
+      body: JSON.stringify({ token: current }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.token) return false;
+    replaceConfigPanelToken(String(data.token));
+    return true;
+  } catch {
+    return false;
   }
 }
 
@@ -62,6 +98,14 @@ export function useProductConfig(empresaId: number, producto: string, modulo: st
   }, [empresaId, producto, modulo]);
 
   useEffect(() => { fetchConfig(); }, [fetchConfig]);
+
+  useEffect(() => {
+    void refreshConfigPanelToken();
+    const id = window.setInterval(() => {
+      void refreshConfigPanelToken();
+    }, REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, []);
 
   const saveConfig = useCallback(async (newConfig: Record<string, any>) => {
     setSaving(true);
