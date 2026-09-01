@@ -231,7 +231,7 @@ export function EmisionRevisionPanel() {
   const [error, setError] = useState('');
   const [acting, setActing] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  const [filter, setFilter] = useState<ListFilter>('history');
+  const [filter, setFilter] = useState<ListFilter>('pending');
   const [showRawSnapshot, setShowRawSnapshot] = useState(false);
 
   const loadList = useCallback(async () => {
