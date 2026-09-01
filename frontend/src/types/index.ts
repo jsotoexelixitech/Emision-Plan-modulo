@@ -1,4 +1,11 @@
-export type DocType = 'cedula' | 'licencia' | 'certificado' | 'rif' | 'pasaporte';
+export type DocType =
+  | 'cedula'
+  | 'cedula_titular'
+  | 'cedula_beneficiario'
+  | 'licencia'
+  | 'certificado'
+  | 'rif'
+  | 'pasaporte';
 
 export type { DiligenciaState, TipoDiligencia } from '../lib/diligencia';
 
@@ -127,6 +134,7 @@ export interface FuneralPerson {
   sexo: string;
   /** Código de parentesco La Mundial (1=Titular, 2=Cónyuge, 3=Hijo(a)…). */
   parentesco: string;
+  pporcen?: number;
   telefono?: string;
   email?: string;
 }

@@ -145,8 +145,12 @@ export default function FuneralPlansApp() {
         tomador: { ...tomador },
         asegurado: { ...asegurado },
         sameInsured,
-        hasBeneficiary,
-        beneficiario: hasBeneficiary ? { ...beneficiario } : undefined,
+        hasBeneficiary: hasBeneficiary || (funeral.beneficiarios?.length ?? 0) > 0,
+        beneficiario: hasBeneficiary
+          ? { ...beneficiario }
+          : funeral.beneficiarios?.[0]
+            ? { ...funeral.beneficiarios[0] }
+            : undefined,
         funeral: { ...funeral, ...mapHealthToFuneral(answers) },
         selectedPlan: { ...selectedPlan },
         quote: quote ? { ...quote } : null,

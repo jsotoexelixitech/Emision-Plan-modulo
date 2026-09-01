@@ -216,7 +216,11 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
       xapellido_beneficiario: cleanString(b.apellido),
       fnac_beneficiario: normalizeDate(b.fechaNac),
       isexo_beneficiario: normalizeSexo(b.sexo),
-      nparentesco_beneficiario: Number(b.cparen ?? b.parentesco) || 0
+      nparentesco_beneficiario: Number(b.cparen ?? b.parentesco) || 0,
+      iestado_civil_beneficiario: normalizeEstadoCivil(b.estadoCivil) || 'S',
+      xtelefono_beneficiario: cleanPhone(b.telefono),
+      xcorreo_beneficiario: cleanString(b.email),
+      pporce_beneficiario: Number(b.pporcen ?? b.pporce ?? b.pporce_beneficiario) || 0,
     })),
   };
 
