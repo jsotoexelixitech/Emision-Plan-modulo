@@ -14,7 +14,29 @@ const personasClient = require('../services/personasClient');
 const personasMapper = require('../services/personasMapper');
 const { assertPersonasCanEmit } = require('../services/assertPersonasCanEmit');
 const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
-const { recordFuneralEmission } = require('../services/nexusFuneralSubmission');
+const {
+  recordFuneralEmission,
+  recordFuneralEmissionBySid,
+} = require('../services/nexusFuneralSubmission');
+
+function resolveFuneralSubmissionId(state) {
+  const payload = state?.checkoutPayload && typeof state.checkoutPayload === 'object'
+    ? state.checkoutPayload
+    : {};
+  const canal = state?.metadataCanal && typeof state.metadataCanal === 'object'
+    ? state.metadataCanal
+    : {};
+  return String(
+    state?.funeralSubmissionId
+    || payload.funeralSubmissionId
+    || canal.funeralSubmissionId
+    || '',
+  ).trim();
+}
+
+function resolvePaymentSid(state) {
+  return String(state?.paymentSid || state?.sid || '').trim();
+}
 
 const router = express.Router();
 
@@ -233,20 +255,33 @@ router.post('/emision', async (req, res) => {
       console.log(`[personas/emision] URL ingreso caja: ${url_ingreso_caja}`);
     }
 
-    const submissionId = String(state?.funeralSubmissionId ?? '').trim();
-    if (submissionId) {
-      recordFuneralEmission(submissionId, {
-        cnpoliza: emitted.cnpoliza,
-        cnrecibo: emitted.cnrecibo,
-        urlpoliza: emitted.urlpoliza,
-        url_ingreso_caja,
-        emittedAt: new Date().toISOString(),
-        quote: {
-          mprima: cotizacion.mprima,
-          mprimaext: cotizacion.mprimaext,
-          ptasa: cotizacion.ptasa,
-        },
-      }).catch(() => {});
+    const emissionRecord = {
+      cnpoliza: emitted.cnpoliza,
+      cnrecibo: emitted.cnrecibo,
+      urlpoliza: emitted.urlpoliza,
+      url_ingreso_caja,
+      emittedAt: new Date().toISOString(),
+      quote: {
+        mprima: cotizacion.mprima,
+        mprimaext: cotizacion.mprimaext,
+        ptasa: cotizacion.ptasa,
+      },
+    };
+    const submissionId = resolveFuneralSubmissionId(state);
+    const paymentSid = resolvePaymentSid(state);
+    try {
+      let saved = null;
+      if (submissionId) {
+        saved = await recordFuneralEmission(submissionId, emissionRecord);
+      }
+      if (!saved && paymentSid) {
+        saved = await recordFuneralEmissionBySid(paymentSid, emissionRecord);
+      }
+      if (!saved) {
+        console.warn('[personas/emision] póliza emitida sin URL en historial (falta funeralSubmissionId/sid)');
+      }
+    } catch (err) {
+      console.warn('[personas/emision] no se pudo guardar URL en historial:', err?.message || err);
     }
 
     return res.status(201).json({

@@ -70,25 +70,13 @@ async function createFuneralSubmission(payload) {
  * @param {object} emission
  * @returns {Promise<object|null>}
  */
-async function recordFuneralEmission(submissionId, emission) {
+async function postEmission(path, payload) {
   const apiKey = getApiKey();
-  if (!apiKey || !submissionId) return null;
-
-  const payload = {
-    cnpoliza: emission.cnpoliza,
-    cnrecibo: emission.cnrecibo,
-    urlpoliza: emission.urlpoliza,
-    url_ingreso_caja: emission.url_ingreso_caja,
-    url_conductor_habitual: emission.url_conductor_habitual,
-    url_club_arys: emission.url_club_arys,
-    emittedAt: emission.emittedAt,
-    quote: emission.quote,
-    empresaId: emission.empresaId,
-  };
+  if (!apiKey) return null;
 
   let lastErr = '';
   for (const base of nexusBases()) {
-    const url = `${base}/api/funeral-submissions/${encodeURIComponent(submissionId)}/emission`;
+    const url = `${base}/api/funeral-submissions/${path}`;
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 12000);
@@ -113,9 +101,40 @@ async function recordFuneralEmission(submissionId, emission) {
       lastErr = err instanceof Error ? err.message : String(err);
     }
   }
-
-  console.warn(`[nexusFuneralSubmission] emission ${submissionId}: ${lastErr}`);
+  console.warn(`[nexusFuneralSubmission] ${path}: ${lastErr}`);
   return null;
 }
 
-module.exports = { createFuneralSubmission, recordFuneralEmission };
+async function recordFuneralEmission(submissionId, emission) {
+  if (!submissionId) return null;
+  return postEmission(`${encodeURIComponent(submissionId)}/emission`, {
+    cnpoliza: emission.cnpoliza,
+    cnrecibo: emission.cnrecibo,
+    urlpoliza: emission.urlpoliza,
+    url_ingreso_caja: emission.url_ingreso_caja,
+    url_conductor_habitual: emission.url_conductor_habitual,
+    url_club_arys: emission.url_club_arys,
+    emittedAt: emission.emittedAt,
+    quote: emission.quote,
+    empresaId: emission.empresaId,
+  });
+}
+
+async function recordFuneralEmissionBySid(paymentSid, emission) {
+  if (!paymentSid) return null;
+  return postEmission('emission-by-sid', {
+    paymentSid,
+    cnpoliza: emission.cnpoliza,
+    cnrecibo: emission.cnrecibo,
+    urlpoliza: emission.urlpoliza,
+    url_ingreso_caja: emission.url_ingreso_caja,
+    emittedAt: emission.emittedAt,
+    quote: emission.quote,
+  });
+}
+
+module.exports = {
+  createFuneralSubmission,
+  recordFuneralEmission,
+  recordFuneralEmissionBySid,
+};

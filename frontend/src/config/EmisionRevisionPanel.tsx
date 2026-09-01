@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   Check, X, Loader2, ClipboardList, User, FileText, AlertTriangle,
-  History, Clock, CreditCard, ExternalLink, FileDown,
+  History, Clock, CreditCard, ExternalLink, FileDown, ArrowLeft,
+  RefreshCw, Mail, Hash,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
 import { readConfigPanelContext, canalDisplayLabel } from './configPanelContext';
@@ -36,7 +37,10 @@ type Submission = {
     tomador?: Record<string, unknown>;
     asegurado?: Record<string, unknown>;
     beneficiario?: Record<string, unknown>;
-    funeral?: { frecuencia?: string };
+    funeral?: {
+      frecuencia?: string;
+      beneficiarios?: Record<string, unknown>[];
+    };
     documents?: Record<string, {
       ocr?: Record<string, unknown>;
       file?: { url?: string; name?: string };
@@ -98,6 +102,20 @@ function formatDate(iso?: string | null): string {
   });
 }
 
+function beneficiaryLines(sub: Submission): string[] {
+  const list = sub.snapshot?.funeral?.beneficiarios;
+  if (Array.isArray(list) && list.length > 0) {
+    return list.map((b) => {
+      const pct = b.pporcen != null && String(b.pporcen).trim() !== ''
+        ? ` · ${b.pporcen}%`
+        : '';
+      return `${personLabel(b)}${pct}`;
+    });
+  }
+  const one = personLabel(sub.snapshot?.beneficiario);
+  return one === '—' ? [] : [one];
+}
+
 function personLabel(p?: Record<string, unknown>): string {
   if (!p) return '—';
   const name = [p.nombre, p.apellido].filter(Boolean).join(' ').trim();
@@ -108,7 +126,9 @@ function personLabel(p?: Record<string, unknown>): string {
 type DocLink = { key: string; label: string; url: string; kind: 'policy' | 'annex' | 'upload' };
 
 const OCR_DOC_LABELS: Record<string, string> = {
-  cedula: 'Cédula escaneada',
+  cedula: 'Cédula del tomador',
+  cedula_titular: 'Cédula del titular',
+  cedula_beneficiario: 'Cédula del beneficiario',
   rif: 'RIF',
   licencia: 'Licencia',
   certificado: 'Certificado médico',
@@ -256,6 +276,97 @@ function estadoBadge(estado: string) {
   return map[estado] ?? 'bg-slate-100 text-slate-700 border-slate-200';
 }
 
+function scoreTone(score: number): string {
+  if (score >= 100) return 'bg-rose-50 text-rose-700 border-rose-200';
+  if (score >= 50) return 'bg-amber-50 text-amber-800 border-amber-200';
+  return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+}
+
+function collectOcrBlocks(sub: Submission): { key: string; label: string; ocr: Record<string, unknown> }[] {
+  const docs = sub.snapshot?.documents;
+  if (!docs) return [];
+  return ['cedula', 'cedula_titular', 'cedula_beneficiario']
+    .map((key) => {
+      const ocr = docs[key]?.ocr;
+      if (!ocr || typeof ocr !== 'object') return null;
+      const entries = Object.entries(ocr).filter(([, v]) => v != null && String(v).trim());
+      if (!entries.length) return null;
+      return { key, label: OCR_DOC_LABELS[key] ?? key, ocr };
+    })
+    .filter((x): x is { key: string; label: string; ocr: Record<string, unknown> } => x != null);
+}
+
+function DocLinkCard({ doc }: { doc: DocLink }) {
+  const isPolicy = doc.kind === 'policy';
+  return (
+    <a
+      href={doc.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 transition-all active:scale-[0.99] ${
+        isPolicy
+          ? 'border-indigo-200 bg-gradient-to-r from-indigo-50 to-white text-indigo-950 shadow-sm hover:border-indigo-300 hover:shadow'
+          : 'border-slate-200/80 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50'
+      }`}
+    >
+      <span className={`grid place-items-center w-11 h-11 rounded-xl shrink-0 ${
+        isPolicy ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
+      }`}
+      >
+        {isPolicy ? <FileDown size={18} /> : <ExternalLink size={16} />}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold leading-tight">{doc.label}</span>
+        <span className="block text-[11px] text-slate-500 truncate mt-0.5">
+          Abrir en una pestaña nueva
+        </span>
+      </span>
+      <span className="text-[11px] font-bold text-indigo-600 shrink-0">
+        Ver
+      </span>
+    </a>
+  );
+}
+
+function SectionCard({
+  title,
+  icon,
+  children,
+  accent,
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+  accent?: boolean;
+}) {
+  return (
+    <section className={`rounded-2xl border p-4 sm:p-5 ${
+      accent
+        ? 'border-indigo-100 bg-indigo-50/50'
+        : 'border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+    }`}
+    >
+      <h3 className={`text-[11px] font-black uppercase tracking-[0.14em] mb-3.5 flex items-center gap-2 ${
+        accent ? 'text-indigo-600' : 'text-slate-500'
+      }`}
+      >
+        {icon}
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+  return (
+    <div className={wide ? 'col-span-2' : undefined}>
+      <dt className="text-[11px] font-semibold text-slate-400 mb-0.5">{label}</dt>
+      <dd className="text-sm font-medium text-slate-800 break-words">{children}</dd>
+    </div>
+  );
+}
+
 export function EmisionRevisionPanel() {
   const [list, setList] = useState<Submission[]>([]);
   const [selected, setSelected] = useState<Submission | null>(null);
@@ -265,6 +376,7 @@ export function EmisionRevisionPanel() {
   const [rejectReason, setRejectReason] = useState('');
   const [filter, setFilter] = useState<ListFilter>('pending');
   const [showRawSnapshot, setShowRawSnapshot] = useState(false);
+  const [mobileDetail, setMobileDetail] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -293,6 +405,7 @@ export function EmisionRevisionPanel() {
       setList(rows);
       if (selected && !rows.find((s) => s.id === selected.id)) {
         setSelected(null);
+        setMobileDetail(false);
       }
     } catch {
       setError('No se pudo conectar con Nexus.');
@@ -363,11 +476,12 @@ export function EmisionRevisionPanel() {
     }
   }
 
-  const cedulaOcr = selected?.snapshot?.documents?.cedula?.ocr as Record<string, unknown> | undefined;
   const quote = selected?.snapshot?.quote;
   const emission = selected?.snapshot?.emission;
   const policyDocs = selected ? collectPolicyDocLinks(selected) : [];
   const uploadDocs = selected ? collectUploadDocLinks(selected) : [];
+  const ocrBlocks = selected ? collectOcrBlocks(selected) : [];
+  const beneficiaries = selected ? beneficiaryLines(selected) : [];
   const polNum = selected ? policyNumber(selected) : undefined;
   const recNum = selected ? receiptNumber(selected) : undefined;
   const emittedWhen = selected?.emittedAt ?? emission?.emittedAt;
@@ -384,75 +498,84 @@ export function EmisionRevisionPanel() {
     { key: 'all', label: 'Todas' },
   ];
 
+  const openSubmission = (s: Submission) => {
+    setSelected(s);
+    setShowRawSnapshot(false);
+    setMobileDetail(true);
+    void loadDetail(s.id);
+  };
+
   return (
     <div className="min-h-screen relative">
       <AuroraBackground />
-      <div className="pt-[40px] px-4 sm:px-6 lg:px-10 pb-12 max-w-6xl mx-auto relative z-10">
-        <header className="mb-8">
+      <div className="pt-6 sm:pt-8 px-3 sm:px-6 lg:px-10 pb-28 lg:pb-12 max-w-6xl mx-auto relative z-10">
+        <header className={`mb-5 sm:mb-8 ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
           <p className="text-[0.68rem] font-black tracking-[0.22em] text-violet-500 uppercase mb-2">
             Revisión técnica · funerario
           </p>
-          <h1 className="font-display text-3xl font-black text-slate-900">
+          <h1 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Autorización de pólizas
           </h1>
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-sm text-slate-500 mt-1.5">
             Empresa #{EMPRESA_ID} · canal {canalDisplayLabel(PANEL.canal)}
           </p>
         </header>
 
         {error && (
-          <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-center gap-2">
-            <AlertTriangle size={16} /> {error}
+          <div className="mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
+            <AlertTriangle size={16} className="shrink-0 mt-0.5" /> {error}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          {filterTabs.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setFilter(key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${
-                filter === key ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600'
-              }`}
-            >
-              {key === 'history' && <History size={12} />}
-              {label}
-            </button>
-          ))}
-          <span className="text-xs text-slate-400 ml-1">
+        <div className={`flex flex-wrap items-center gap-2 mb-4 ${mobileDetail && selected ? 'hidden lg:flex' : ''}`}>
+          <div className="flex p-1 rounded-xl bg-white/80 border border-slate-200/80 shadow-sm">
+            {filterTabs.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setFilter(key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
+                  filter === key ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {key === 'history' && <History size={12} />}
+                {label}
+              </button>
+            ))}
+          </div>
+          <span className="text-xs text-slate-400">
             {loading ? '…' : `${list.length} registro${list.length === 1 ? '' : 's'}`}
           </span>
           <button
             type="button"
-            onClick={loadList}
-            className="ml-auto text-xs font-semibold text-indigo-600 hover:underline"
+            onClick={() => void loadList()}
+            className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
           >
+            <RefreshCw size={12} />
             Actualizar
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <div className="lg:col-span-2 bg-white/90 rounded-2xl border border-slate-200 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
+          <div className={`lg:col-span-2 bg-white/90 backdrop-blur rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm ${
+            mobileDetail && selected ? 'hidden lg:block' : ''
+          }`}
+          >
             {loading ? (
-              <div className="p-8 flex justify-center">
+              <div className="p-10 flex justify-center">
                 <Loader2 className="animate-spin text-indigo-500" />
               </div>
             ) : list.length === 0 ? (
               <p className="p-8 text-sm text-slate-500 text-center">{emptyMessage}</p>
             ) : (
-              <ul className="divide-y divide-slate-100 max-h-[70vh] overflow-y-auto">
+              <ul className="divide-y divide-slate-100 max-h-[min(70vh,720px)] overflow-y-auto">
                 {list.map((s) => (
                   <li key={s.id}>
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelected(s);
-                        setShowRawSnapshot(false);
-                        loadDetail(s.id);
-                      }}
-                      className={`w-full text-left px-4 py-3 hover:bg-indigo-50/50 transition-colors ${
-                        selected?.id === s.id ? 'bg-indigo-50' : ''
+                      onClick={() => openSubmission(s)}
+                      className={`w-full text-left px-4 py-3.5 hover:bg-indigo-50/60 transition-colors ${
+                        selected?.id === s.id ? 'bg-indigo-50/90 border-l-4 border-indigo-500' : 'border-l-4 border-transparent'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -463,13 +586,18 @@ export function EmisionRevisionPanel() {
                           {estadoLabel(s.estado)}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">
-                        {s.planName || `Plan ${s.cplan}`} · score {s.scoreTotal}
+                      <p className="text-xs text-slate-500 mt-1 truncate">
+                        {s.planName || `Plan ${s.cplan}`}
                         {policyNumber(s) ? ` · ${policyNumber(s)}` : ''}
                       </p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">
-                        {formatDate(s.reviewedAt || s.createdAt)}
-                      </p>
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <p className="text-[10px] text-slate-400">
+                          {formatDate(s.reviewedAt || s.createdAt)}
+                        </p>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${scoreTone(s.scoreTotal)}`}>
+                          {s.scoreTotal} pts
+                        </span>
+                      </div>
                     </button>
                   </li>
                 ))}
@@ -477,309 +605,285 @@ export function EmisionRevisionPanel() {
             )}
           </div>
 
-          <div className="lg:col-span-3 bg-white/90 rounded-2xl border border-slate-200 p-5 min-h-[320px]">
+          <div className={`lg:col-span-3 min-h-[280px] ${
+            !(mobileDetail && selected) ? 'hidden lg:block' : ''
+          }`}
+          >
             {!selected ? (
-              <p className="text-sm text-slate-500 text-center py-16">
-                Selecciona una solicitud para ver el detalle.
-              </p>
+              <div className="bg-white/80 rounded-2xl border border-dashed border-slate-200 p-8 text-center">
+                <ClipboardList className="mx-auto mb-3 text-slate-300" size={32} />
+                <p className="text-sm text-slate-500">
+                  Selecciona una solicitud para ver el detalle.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(selected.estado)}`}>
-                        {estadoLabel(selected.estado)}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono truncate max-w-[140px]">
-                        {selected.id.slice(0, 8)}…
-                      </span>
+              <div className="space-y-4">
+                <button
+                  type="button"
+                  onClick={() => setMobileDetail(false)}
+                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600"
+                >
+                  <ArrowLeft size={16} />
+                  Volver al listado
+                </button>
+
+                <div className="rounded-2xl border border-slate-200/80 bg-white/95 p-4 sm:p-5 shadow-sm">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(selected.estado)}`}>
+                          {estadoLabel(selected.estado)}
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono inline-flex items-center gap-1">
+                          <Hash size={10} />
+                          {selected.id.slice(0, 8)}
+                        </span>
+                      </div>
+                      <h2 className="font-display text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                        {selected.tomadorNombre || 'Tomador'}
+                      </h2>
+                      <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-1.5 sm:gap-3 text-sm text-slate-500">
+                        {selected.tomadorRif && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <User size={13} className="text-slate-400" />
+                            {selected.tomadorRif}
+                          </span>
+                        )}
+                        {selected.tomadorEmail && (
+                          <span className="inline-flex items-center gap-1.5 min-w-0">
+                            <Mail size={13} className="text-slate-400 shrink-0" />
+                            <span className="truncate">{selected.tomadorEmail}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <h2 className="font-display text-xl font-black text-slate-900">
-                      {selected.tomadorNombre || 'Tomador'}
-                    </h2>
-                    <p className="text-sm text-slate-500">{selected.tomadorRif}</p>
-                    <p className="text-sm text-slate-500">{selected.tomadorEmail}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-indigo-700 tabular-nums">{selected.scoreTotal}</p>
-                    <p className="text-[10px] uppercase font-bold text-slate-400">Puntaje</p>
+                    <div className={`rounded-2xl border px-4 py-3 text-center min-w-[88px] ${scoreTone(selected.scoreTotal)}`}>
+                      <p className="text-2xl font-black tabular-nums leading-none">{selected.scoreTotal}</p>
+                      <p className="text-[10px] uppercase font-bold mt-1 tracking-wider">Puntaje</p>
+                    </div>
                   </div>
                 </div>
 
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <Clock size={13} /> Historial de la solicitud
-                  </h3>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                    <div>
-                      <dt className="text-slate-400">Creada</dt>
-                      <dd className="font-medium text-slate-800">{formatDate(selected.createdAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Revisada</dt>
-                      <dd className="font-medium text-slate-800">{formatDate(selected.reviewedAt)}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Revisor</dt>
-                      <dd className="font-medium text-slate-800">{selected.reviewedBy || '—'}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Sesión</dt>
-                      <dd className="font-medium text-slate-800 font-mono text-[10px] break-all">{selected.sessionId || '—'}</dd>
-                    </div>
-                    {selected.rejectReason && (
-                      <div className="col-span-2">
-                        <dt className="text-slate-400">Motivo rechazo</dt>
-                        <dd className="font-medium text-rose-700">{selected.rejectReason}</dd>
-                      </div>
-                    )}
-                  </dl>
-                </section>
+                {selected.estado === 'paid' && (
+                  <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+                    Póliza pagada y emitida. Quedó registrada en el histórico
+                    {polNum ? ` · ${polNum}` : ''}.
+                  </p>
+                )}
+                {selected.estado === 'approved' && (
+                  <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3">
+                    Aprobada el {formatDate(selected.reviewedAt)}.
+                    {selected.emailSent
+                      ? ' Se envió el correo con el link de pago al cliente.'
+                      : selected.emailError
+                        ? ` Link generado pero el correo falló: ${selected.emailError}`
+                        : ' Link de pago generado.'}
+                  </p>
+                )}
+                {selected.estado === 'rejected' && (
+                  <p className="text-sm text-rose-800 bg-rose-50 border border-rose-100 rounded-2xl px-4 py-3">
+                    Solicitud rechazada
+                    {selected.reviewedAt ? ` el ${formatDate(selected.reviewedAt)}` : ''}.
+                    {selected.rejectReason ? ` Motivo: ${selected.rejectReason}` : ''}
+                  </p>
+                )}
+                {selected.estado === 'expired' && (
+                  <p className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+                    Link de pago expirado
+                    {selected.paymentExpiresAt ? ` (${formatDate(selected.paymentExpiresAt)})` : ''}.
+                  </p>
+                )}
 
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <FileText size={13} /> Datos guardados (póliza)
-                  </h3>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
-                    <div>
-                      <dt className="text-slate-400">Plan</dt>
-                      <dd className="font-medium text-slate-800">
-                        {selected.planName || selected.snapshot?.selectedPlan?.name || selected.cplan}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">cplan / ramo</dt>
-                      <dd className="font-medium text-slate-800">
-                        {selected.cplan}
-                        {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
-                      </dd>
-                    </div>
-                    {polNum ? (
-                      <div>
-                        <dt className="text-slate-400">Nº póliza</dt>
-                        <dd className="font-mono font-semibold text-slate-900">{polNum}</dd>
-                      </div>
-                    ) : (
-                      <div>
-                        <dt className="text-slate-400">Nº póliza</dt>
-                        <dd className="text-slate-400 italic">
-                          {selected.estado === 'paid' ? 'No registrado' : 'Se genera al pagar y emitir'}
-                        </dd>
-                      </div>
-                    )}
-                    {recNum && (
-                      <div>
-                        <dt className="text-slate-400">Recibo</dt>
-                        <dd className="font-mono font-medium text-slate-800">{recNum}</dd>
-                      </div>
-                    )}
-                    <div>
-                      <dt className="text-slate-400">Frecuencia</dt>
-                      <dd className="font-medium text-slate-800">
-                        {selected.snapshot?.funeral?.frecuencia || '—'}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Prima</dt>
-                      <dd className="font-medium text-slate-800">
-                        {quote?.mprimaext != null
-                          ? `$${Number(quote.mprimaext).toFixed(2)}`
-                          : quote?.mprima != null
-                            ? `$${Number(quote.mprima).toFixed(2)}`
-                            : '—'}
-                        {quote?.ptasa != null ? ` · tasa ${quote.ptasa}` : ''}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Tomador</dt>
-                      <dd className="font-medium text-slate-800">
-                        {personLabel(selected.snapshot?.tomador)}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-slate-400">Asegurado</dt>
-                      <dd className="font-medium text-slate-800">
-                        {personLabel(selected.snapshot?.asegurado)}
-                      </dd>
-                    </div>
-                    <div className="col-span-2">
-                      <dt className="text-slate-400">Beneficiario</dt>
-                      <dd className="font-medium text-slate-800">
-                        {personLabel(selected.snapshot?.beneficiario)}
-                      </dd>
-                    </div>
-                  </dl>
-                </section>
-
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <FileDown size={13} /> Documentos de póliza emitida
-                  </h3>
+                <SectionCard title="Documentos de póliza emitida" icon={<FileDown size={14} />}>
                   {policyDocs.length === 0 ? (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm text-slate-500">
                       {selected.estado === 'paid'
-                        ? 'Sin PDF de póliza registrado.'
+                        ? 'Sin PDF de póliza registrado. La URL se guarda al completar la emisión.'
                         : selected.estado === 'approved'
-                          ? 'Aún no hay póliza: el cliente debe pagar en el link de la sección «Pago». Tras la emisión aparecerá el cuadro de póliza (PDF La Mundial) y el número oficial.'
-                          : 'El cuadro de póliza y anexos se guardan al completar pago + emisión.'}
+                          ? 'Aún no hay póliza: el cliente debe pagar. Tras la emisión aparecerán el cuadro de póliza y el número oficial.'
+                          : 'El cuadro de póliza y anexos se guardan aquí al completar pago + emisión.'}
                     </p>
                   ) : (
                     <ul className="space-y-2">
                       {policyDocs.map((doc) => (
                         <li key={doc.key}>
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`flex items-start gap-2 text-xs rounded-lg px-3 py-2 border transition-colors ${
-                              doc.kind === 'policy'
-                                ? 'border-indigo-200 bg-indigo-50/60 text-indigo-800 hover:bg-indigo-50'
-                                : 'border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            <ExternalLink size={13} className="shrink-0 mt-0.5" />
-                            <span className="min-w-0">
-                              <span className="font-bold block">{doc.label}</span>
-                              <span className="break-all opacity-80">{doc.url}</span>
-                            </span>
-                          </a>
+                          <DocLinkCard doc={doc} />
                         </li>
                       ))}
                     </ul>
                   )}
                   {emittedWhen && (
-                    <p className="text-[10px] text-slate-400 mt-3">
+                    <p className="text-[11px] text-slate-400 mt-3">
                       Emitida {formatDate(emittedWhen)}
                       {polNum ? ` · ${polNum}` : ''}
                     </p>
                   )}
-                </section>
+                </SectionCard>
+
+                <SectionCard title="Datos de la póliza" icon={<FileText size={14} />}>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <Field label="Plan" wide>
+                      {selected.planName || selected.snapshot?.selectedPlan?.name || selected.cplan}
+                    </Field>
+                    <Field label="Código / ramo">
+                      {selected.cplan}
+                      {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
+                    </Field>
+                    <Field label="Nº póliza">
+                      {polNum || (
+                        <span className="text-slate-400 italic font-normal">
+                          {selected.estado === 'paid' ? 'No registrado' : 'Se genera al pagar y emitir'}
+                        </span>
+                      )}
+                    </Field>
+                    {recNum && <Field label="Recibo">{recNum}</Field>}
+                    <Field label="Frecuencia">
+                      {selected.snapshot?.funeral?.frecuencia || '—'}
+                    </Field>
+                    <Field label="Prima">
+                      {quote?.mprimaext != null
+                        ? `$${Number(quote.mprimaext).toFixed(2)}`
+                        : quote?.mprima != null
+                          ? `$${Number(quote.mprima).toFixed(2)}`
+                          : '—'}
+                      {quote?.ptasa != null ? ` · tasa ${quote.ptasa}` : ''}
+                    </Field>
+                    <Field label="Tomador">{personLabel(selected.snapshot?.tomador)}</Field>
+                    <Field label="Asegurado / titular">{personLabel(selected.snapshot?.asegurado)}</Field>
+                    <Field label="Beneficiarios" wide>
+                      {beneficiaries.length === 0 ? (
+                        '—'
+                      ) : (
+                        <ul className="space-y-1">
+                          {beneficiaries.map((line) => (
+                            <li key={line} className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm">
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Field>
+                  </dl>
+                </SectionCard>
+
+                <SectionCard title="Historial de la solicitud" icon={<Clock size={14} />}>
+                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <Field label="Creada">{formatDate(selected.createdAt)}</Field>
+                    <Field label="Revisada">{formatDate(selected.reviewedAt)}</Field>
+                    <Field label="Revisor">{selected.reviewedBy || '—'}</Field>
+                    <Field label="Sesión">
+                      <span className="font-mono text-[11px]">{selected.sessionId || '—'}</span>
+                    </Field>
+                    {selected.rejectReason && (
+                      <Field label="Motivo rechazo" wide>
+                        <span className="text-rose-700">{selected.rejectReason}</span>
+                      </Field>
+                    )}
+                  </dl>
+                </SectionCard>
 
                 {uploadDocs.length > 0 && (
-                  <section className="rounded-xl border border-slate-100 p-4">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                      <FileText size={13} /> Expediente OCR
-                    </h3>
+                  <SectionCard title="Expediente OCR" icon={<FileText size={14} />}>
                     <ul className="space-y-2">
                       {uploadDocs.map((doc) => (
                         <li key={doc.key}>
-                          <a
-                            href={doc.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-start gap-2 text-xs rounded-lg px-3 py-2 border border-slate-200 bg-slate-50/80 text-slate-700 hover:bg-slate-50 transition-colors"
-                          >
-                            <ExternalLink size={13} className="shrink-0 mt-0.5" />
-                            <span className="min-w-0">
-                              <span className="font-bold block">{doc.label}</span>
-                              <span className="break-all opacity-80">{doc.url}</span>
-                            </span>
-                          </a>
+                          <DocLinkCard doc={doc} />
                         </li>
                       ))}
                     </ul>
-                  </section>
+                  </SectionCard>
                 )}
 
                 {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
-                  <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-indigo-600 mb-3 flex items-center gap-1.5">
-                      <CreditCard size={13} /> Checkout de pago (no es la póliza)
-                    </h3>
-                    <dl className="space-y-2 text-xs">
+                  <SectionCard title="Checkout de pago (no es la póliza)" icon={<CreditCard size={14} />} accent>
+                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {selected.paymentSid && (
-                        <div>
-                          <dt className="text-slate-400">SID checkout</dt>
-                          <dd className="font-mono text-[10px] text-slate-700 break-all">{selected.paymentSid}</dd>
-                        </div>
+                        <Field label="SID checkout">
+                          <span className="font-mono text-[11px] break-all">{selected.paymentSid}</span>
+                        </Field>
                       )}
                       {selected.paymentExpiresAt && (
-                        <div>
-                          <dt className="text-slate-400">Link expira</dt>
-                          <dd className="font-medium text-slate-800">{formatDate(selected.paymentExpiresAt)}</dd>
-                        </div>
+                        <Field label="Link expira">{formatDate(selected.paymentExpiresAt)}</Field>
                       )}
                       {selected.paymentUrl && (
-                        <div>
-                          <dt className="text-slate-400 mb-0.5">URL de pago</dt>
-                          <dd>
-                            <a
-                              href={selected.paymentUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-indigo-600 hover:underline break-all"
-                            >
-                              {selected.paymentUrl}
-                            </a>
-                          </dd>
-                        </div>
+                        <Field label="URL de pago" wide>
+                          <a
+                            href={selected.paymentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-indigo-700 font-semibold hover:underline"
+                          >
+                            Abrir checkout
+                            <ExternalLink size={13} />
+                          </a>
+                        </Field>
                       )}
                     </dl>
-                  </section>
+                  </SectionCard>
                 )}
 
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <User size={13} /> Cédula / OCR
-                  </h3>
-                  {cedulaOcr ? (
-                    <dl className="grid grid-cols-2 gap-2 text-xs">
-                      {Object.entries(cedulaOcr)
-                        .filter(([, v]) => v != null && String(v).trim())
-                        .slice(0, 12)
-                        .map(([k, v]) => (
-                          <div key={k}>
-                            <dt className="text-slate-400 uppercase text-[10px]">{k}</dt>
-                            <dd className="font-medium text-slate-800">{String(v)}</dd>
-                          </div>
-                        ))}
-                    </dl>
+                <SectionCard title="Datos OCR de cédulas" icon={<User size={14} />}>
+                  {ocrBlocks.length === 0 ? (
+                    <p className="text-sm text-slate-500">Sin datos OCR de cédula en el snapshot.</p>
                   ) : (
-                    <p className="text-xs text-slate-500">Sin datos OCR de cédula en el snapshot.</p>
+                    <div className="space-y-4">
+                      {ocrBlocks.map((block) => (
+                        <div key={block.key}>
+                          <p className="text-xs font-bold text-slate-600 mb-2">{block.label}</p>
+                          <dl className="grid grid-cols-2 gap-2">
+                            {Object.entries(block.ocr)
+                              .filter(([, v]) => v != null && String(v).trim())
+                              .slice(0, 12)
+                              .map(([k, v]) => (
+                                <div key={k}>
+                                  <dt className="text-slate-400 uppercase text-[10px]">{k}</dt>
+                                  <dd className="text-sm font-medium text-slate-800">{String(v)}</dd>
+                                </div>
+                              ))}
+                          </dl>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </section>
+                </SectionCard>
 
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
-                    <ClipboardList size={13} /> Scoring y preguntas
-                  </h3>
-                  <ul className="space-y-2 max-h-48 overflow-y-auto">
+                <SectionCard title="Scoring y preguntas" icon={<ClipboardList size={14} />}>
+                  <ul className="space-y-2 max-h-56 overflow-y-auto pr-1">
                     {(selected.scoreBreakdown ?? []).map((line) => (
                       <li
                         key={line.questionId}
-                        className="flex items-start justify-between gap-2 text-xs border-b border-slate-50 pb-2"
+                        className="flex items-start justify-between gap-2 text-sm border-b border-slate-100 last:border-0 pb-2"
                       >
                         <div className="min-w-0">
                           <p className="font-medium text-slate-800">{line.label}</p>
-                          <p className="text-slate-500">Resp: {formatAnswer(line.answer)}</p>
+                          <p className="text-xs text-slate-500">Resp: {formatAnswer(line.answer)}</p>
                         </div>
                         <span className="font-bold text-indigo-600 shrink-0">+{line.points}</span>
                       </li>
                     ))}
                   </ul>
-                </section>
+                </SectionCard>
 
-                <section className="rounded-xl border border-slate-100 p-4">
-                  <button
-                    type="button"
+                <details className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3">
+                  <summary
+                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
                     onClick={() => setShowRawSnapshot((v) => !v)}
-                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider"
                   >
-                    {showRawSnapshot ? '▾ Ocultar snapshot JSON' : '▸ Ver snapshot JSON completo'}
-                  </button>
+                    {showRawSnapshot ? 'Ocultar snapshot JSON' : 'Ver snapshot JSON completo'}
+                  </summary>
                   {showRawSnapshot && (
-                    <pre className="mt-3 max-h-48 overflow-auto text-[10px] bg-slate-50 rounded-lg p-3 text-slate-700">
+                    <pre className="mt-3 max-h-48 overflow-auto text-[10px] bg-slate-50 rounded-xl p-3 text-slate-700">
                       {JSON.stringify(selected.snapshot, null, 2)}
                     </pre>
                   )}
-                </section>
+                </details>
 
                 {selected.estado === 'pending' && (
-                  <div className="flex flex-col sm:flex-row gap-2 pt-2">
+                  <div className="hidden lg:flex flex-col sm:flex-row gap-2 pt-1">
                     <button
                       type="button"
                       disabled={acting}
-                      onClick={() => approve(selected.id)}
+                      onClick={() => void approve(selected.id)}
                       className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
                     >
                       {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
@@ -796,7 +900,7 @@ export function EmisionRevisionPanel() {
                       <button
                         type="button"
                         disabled={acting}
-                        onClick={() => reject(selected.id)}
+                        onClick={() => void reject(selected.id)}
                         className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-50"
                       >
                         <X size={16} /> Rechazar
@@ -804,45 +908,42 @@ export function EmisionRevisionPanel() {
                     </div>
                   </div>
                 )}
-
-                {selected.estado === 'approved' && (
-                  <div className="space-y-2">
-                    <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-4 py-3">
-                      Aprobada el {formatDate(selected.reviewedAt)}.
-                      {selected.emailSent
-                        ? ' Se envió el correo con el link de pago al cliente.'
-                        : selected.emailError
-                          ? ` Link generado pero el correo falló: ${selected.emailError}`
-                          : ' Link de pago generado.'}
-                    </p>
-                  </div>
-                )}
-
-                {selected.estado === 'paid' && (
-                  <p className="text-sm text-indigo-700 bg-indigo-50 rounded-xl px-4 py-3">
-                    Póliza pagada y emitida. Registro en histórico.
-                  </p>
-                )}
-
-                {selected.estado === 'rejected' && (
-                  <p className="text-sm text-rose-700 bg-rose-50 rounded-xl px-4 py-3">
-                    Solicitud rechazada
-                    {selected.reviewedAt ? ` el ${formatDate(selected.reviewedAt)}` : ''}.
-                    {selected.rejectReason ? ` Motivo: ${selected.rejectReason}` : ''}
-                  </p>
-                )}
-
-                {selected.estado === 'expired' && (
-                  <p className="text-sm text-slate-600 bg-slate-50 rounded-xl px-4 py-3">
-                    Link de pago expirado
-                    {selected.paymentExpiresAt ? ` (${formatDate(selected.paymentExpiresAt)})` : ''}.
-                  </p>
-                )}
               </div>
             )}
           </div>
         </div>
       </div>
+
+      {selected?.estado === 'pending' && mobileDetail && (
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+          <input
+            type="text"
+            placeholder="Motivo rechazo (opcional)"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 mb-2"
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void approve(selected.id)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50"
+            >
+              {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+              Aprobar
+            </button>
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => void reject(selected.id)}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold disabled:opacity-50"
+            >
+              <X size={16} /> Rechazar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
