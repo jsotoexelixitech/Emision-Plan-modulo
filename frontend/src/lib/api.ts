@@ -698,10 +698,55 @@ export interface SubmitFuneralReviewPayload {
 export async function submitFuneralPolicyReview(
   payload: SubmitFuneralReviewPayload,
 ): Promise<{ submission: FuneralSubmissionResult; scoring: { total: number } }> {
-  const { data } = await api.post<{
-    success: boolean;
-    submission: FuneralSubmissionResult;
-    scoring: { total: number };
-  }>('/funeral/submissions', payload);
-  return { submission: data.submission, scoring: data.scoring };
+  try {
+    const { data } = await api.post<{
+      success: boolean;
+      submission: FuneralSubmissionResult;
+      scoring: { total: number };
+    }>('/funeral/submissions', payload);
+    return { submission: data.submission, scoring: data.scoring };
+  } catch (err) {
+    const axErr = err as AxiosError<{ success?: boolean; code?: string; message?: string }>;
+    const data = axErr.response?.data;
+    if (data && (data.code || data.message)) {
+      throw new PolicyEmitError({
+        code: data.code ?? 'SUBMISSION_ERROR',
+        message: data.message ?? 'No se pudo registrar la solicitud funeraria.',
+        httpStatus: axErr.response?.status,
+        stage: 'validate',
+      });
+    }
+    throw err;
+  }
+}
+
+/** Valida titular/plan en Sis2000 (speeValidatePersonGeneral) antes de enviar al técnico. */
+export async function validateFuneralEmission(payload: {
+  state: unknown;
+  plan?: string;
+}): Promise<{ success: boolean; validation?: unknown }> {
+  try {
+    const response = await api.post<{ success: boolean; validation?: unknown }>(
+      '/personas/validacion',
+      payload,
+    );
+    return response.data;
+  } catch (err) {
+    const axErr = err as AxiosError<{
+      success?: boolean;
+      code?: string;
+      message?: string;
+      stage?: string;
+    }>;
+    const data = axErr.response?.data;
+    if (data && (data.code || data.message)) {
+      throw new PolicyEmitError({
+        code: data.code ?? 'PERSONAS_VALIDATION_ERROR',
+        message: data.message ?? 'No se pudo validar la emisión funeraria.',
+        httpStatus: axErr.response?.status,
+        stage: data.stage ?? 'validate',
+      });
+    }
+    throw err;
+  }
 }

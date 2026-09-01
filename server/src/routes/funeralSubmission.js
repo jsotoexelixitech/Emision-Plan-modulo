@@ -1,13 +1,14 @@
 /**
  * Solicitudes funerario — scoring + registro en Nexus (revisión técnica).
  *
- * POST /api/funeral/submissions → calcula score y crea solicitud pending
+ * POST /api/funeral/submissions → valida póliza vigente, score y crea solicitud pending
  */
 const express = require('express');
 const { resolveQuestionsForPlan } = require('../config/funeralHealthQuestions');
 const { computeHealthScore } = require('../lib/funeralHealthScoring');
 const { upsertHealthAnswers } = require('../services/healthDb');
 const { createFuneralSubmission } = require('../services/nexusFuneralSubmission');
+const { assertPersonasCanEmit } = require('../services/assertPersonasCanEmit');
 const { isFunerarioCplan } = require('../lib/funerarioPlan');
 const { resolveCanalKey } = require('../lib/canalKey');
 
@@ -78,6 +79,17 @@ router.post('/submissions', async (req, res) => {
   const tomadorEmail = String(tomador.email ?? body.tomadorEmail ?? '').trim() || null;
 
   try {
+    // Gate Sis2000: si ya hay póliza vigente, no crear solicitud ni avisar al técnico.
+    await assertPersonasCanEmit(
+      {
+        tomador,
+        funeral: body.funeral,
+        selectedPlan,
+        metadataCanal: body.metadataCanal ?? metadata,
+      },
+      { plan: cplan },
+    );
+
     const { questions } = await resolveQuestionsForPlan(cplan, {
       empresaId,
       metadata,
@@ -140,11 +152,15 @@ router.post('/submissions', async (req, res) => {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const code = err && typeof err === 'object' && 'code' in err ? err.code : 'SUBMISSION_ERROR';
-    console.error('[funeral/submissions]', msg);
-    return res.status(code === 'NEXUS_API_KEY_MISSING' ? 503 : 500).json({
+    const httpStatus =
+      (err && typeof err === 'object' && Number(err.httpStatus)) ||
+      (code === 'NEXUS_API_KEY_MISSING' ? 503 : 500);
+    console.error('[funeral/submissions]', code || '', msg);
+    return res.status(httpStatus).json({
       success: false,
       code,
       message: msg,
+      stage: 'validate',
     });
   }
 });

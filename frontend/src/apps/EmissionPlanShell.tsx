@@ -20,6 +20,7 @@ interface Props {
   title?: string;
   continuarLabel?: string;
   hideContinuar?: boolean;
+  continuarBusy?: boolean;
 }
 
 /** Shell visual compartido del paso 4 — sin lógica de producto. */
@@ -32,6 +33,7 @@ export function EmissionPlanShell({
   title,
   continuarLabel = 'Confirmar plan',
   hideContinuar = false,
+  continuarBusy = false,
 }: Props) {
   void _helpSubject;
   const { config } = useProductConfig(EMPRESA_ID, getProductId(), 'emision');
@@ -74,9 +76,14 @@ export function EmissionPlanShell({
                   <span className="font-medium">Cifrado de extremo a extremo · TLS 1.3</span>
                 </div>
                 {!hideContinuar && (
-                  <Button variant="primary" onClick={onContinuar} className="min-w-[180px]">
-                    {continuarLabel}
-                    <ChevronRight size={15} />
+                  <Button
+                    variant="primary"
+                    onClick={onContinuar}
+                    disabled={continuarBusy}
+                    className="min-w-[180px]"
+                  >
+                    {continuarBusy ? 'Validando…' : continuarLabel}
+                    {!continuarBusy && <ChevronRight size={15} />}
                   </Button>
                 )}
               </div>
@@ -87,8 +94,13 @@ export function EmissionPlanShell({
 
       {!hideContinuar && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
-          <Button variant="primary" className="w-full" onClick={onContinuar}>
-            {continuarLabel}
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={onContinuar}
+            disabled={continuarBusy}
+          >
+            {continuarBusy ? 'Validando…' : continuarLabel}
           </Button>
         </div>
       )}

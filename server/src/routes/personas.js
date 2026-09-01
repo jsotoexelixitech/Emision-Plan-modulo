@@ -3,7 +3,7 @@
  *
  *   GET  /api/personas/planes?cramo=9   → planes vigentes de personas
  *   POST /api/personas/cotizacion       → cotización (getCotizacionPer)
- *   POST /api/personas/validacion       → validación pre-emisión (paso 5)
+ *   POST /api/personas/validacion       → póliza vigente (paso 4, antes del técnico)
  *   POST /api/personas/emision          → cotiza + valida + emite (pasos 4–6)
  *
  * Estas rutas hablan con nest-api (módulo personas, QA por defecto) vía
@@ -12,6 +12,7 @@
 const express = require('express');
 const personasClient = require('../services/personasClient');
 const personasMapper = require('../services/personasMapper');
+const { assertPersonasCanEmit } = require('../services/assertPersonasCanEmit');
 const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
 const { recordFuneralEmission } = require('../services/nexusFuneralSubmission');
 
@@ -108,24 +109,8 @@ router.post('/validacion', async (req, res) => {
   const { state, plan: bodyPlan } = req.body || {};
   const cplan = bodyPlan || state?.selectedPlan?.cplan;
 
-  if (!state || !state.tomador) {
-    return res.status(400).json({ success: false, code: 'MISSING_STATE', message: 'state.tomador requerido.' });
-  }
-  if (!cplan) {
-    return res.status(400).json({ success: false, code: 'MISSING_PLAN', message: 'cplan es obligatorio.' });
-  }
-
-  const validatePayload = personasMapper.buildValidateEmissionPersonRequest(state, { plan: cplan });
-  if (!validatePayload.rif_titular || !validatePayload.fnac_titular) {
-    return res.status(400).json({
-      success: false,
-      code: 'INVALID_TITULAR',
-      message: 'Titular requiere identificación y fecha de nacimiento válidas.',
-    });
-  }
-
   try {
-    const validation = await personasClient.validateEmissionPerson(validatePayload);
+    const validation = await assertPersonasCanEmit(state, { plan: cplan });
     res.json({ success: true, validation: validation.result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

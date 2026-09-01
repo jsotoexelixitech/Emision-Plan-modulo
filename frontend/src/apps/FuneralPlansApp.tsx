@@ -10,6 +10,8 @@ import {
   fetchFuneralHealthQuestions,
   saveFuneralHealthAnswers,
   submitFuneralPolicyReview,
+  validateFuneralEmission,
+  PolicyEmitError,
   type HealthQuestion,
 } from '../lib/api';
 import { EmissionPlanShell } from './EmissionPlanShell';
@@ -56,14 +58,51 @@ export default function FuneralPlansApp() {
   const [healthQuestions, setHealthQuestions] = useState<HealthQuestion[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [savingHealth, setSavingHealth] = useState(false);
+  const [validatingEmit, setValidatingEmit] = useState(false);
   const [pendingSubmission, setPendingSubmission] = useState<{
     id: string;
     scoreTotal: number;
   } | null>(null);
 
-  function handleContinuar() {
+  function toastPersonasBlocked(err: unknown) {
+    const code = err instanceof PolicyEmitError ? err.code : '';
+    const msg =
+      err instanceof Error
+        ? err.message
+        : 'Ya existe una póliza funeraria activa para este asegurado.';
+    if (code === 'PERSONAS_DUPLICATE' || /p[oó]liza vigente|mismo asegurado/i.test(msg)) {
+      toast.warning(
+        'Póliza vigente',
+        'Este asegurado ya tiene una póliza activa. No se envía al técnico ni se continúa al pago.',
+        8000,
+      );
+      return;
+    }
+    toast.error('No se puede continuar', msg);
+  }
+
+  async function handleContinuar() {
     if (!validatePlanReady(category, selectedPlan, quoteState, quote)) return;
-    openHealthModal();
+    if (!selectedPlan?.cplan) return;
+    setValidatingEmit(true);
+    try {
+      await validateFuneralEmission({
+        state: {
+          tomador,
+          funeral,
+          selectedPlan,
+          sameInsured,
+          asegurado,
+          metadataCanal,
+        },
+        plan: selectedPlan.cplan,
+      });
+      await openHealthModal();
+    } catch (err) {
+      toastPersonasBlocked(err);
+    } finally {
+      setValidatingEmit(false);
+    }
   }
 
   async function openHealthModal() {
@@ -129,8 +168,7 @@ export default function FuneralPlansApp() {
         'Un técnico revisará tu caso. Recibirás un correo cuando puedas pagar.',
       );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Error al registrar la solicitud';
-      toast.error('No se pudo enviar la solicitud', msg);
+      toastPersonasBlocked(err);
     } finally {
       setSavingHealth(false);
     }
@@ -141,8 +179,9 @@ export default function FuneralPlansApp() {
       <EmissionPlanShell
         subtitle="Planes funerarios para proteger a tu grupo familiar."
         helpSubject="Suscripción Funerario - Soporte"
-        onContinuar={handleContinuar}
+        onContinuar={() => { void handleContinuar(); }}
         hideContinuar={Boolean(pendingSubmission)}
+        continuarBusy={validatingEmit}
       >
         <FuneralPlansStep />
       </EmissionPlanShell>
