@@ -65,8 +65,9 @@ function upperPlate(v) {
  *   - DD-MM-YYYY
  */
 function normalizeDate(v) {
-  if (!v) return '';
+  if (!v) return null;
   const s = String(v).trim();
+  if (!s) return null;
   // YYYY-MM-DD o ISO
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return `${m[1]}-${m[2]}-${m[3]}`;
@@ -81,7 +82,7 @@ function normalizeDate(v) {
     const dd = String(d.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   }
-  return '';
+  return null;
 }
 
 /**
@@ -420,10 +421,10 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     ccategoria_uso: (v.ccategoria_uso != null && v.ccategoria_uso !== '')
       ? parseInt(v.ccategoria_uso, 10)
       : resolveUsageCategory(v.uso),
-    // ntoneladas: nullable, default 60. Se usa el valor del usuario si fue ingresado.
+    // ntoneladas: 0 si no viene (alineado a cotización Sis2000). No default 60.
     ntoneladas: (v.ntoneladas != null && !Number.isNaN(Number(v.ntoneladas)))
       ? parseInt(v.ntoneladas, 10)
-      : 60,
+      : 0,
 
     coberAdicional,
     ...(() => {
@@ -521,7 +522,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     xsermot: p.serial_motor || null,
     ccategoria_uso: p.ccategoria_uso,
     npuestos: p.npuestos ?? 5,
-    ntoneladas: p.ntoneladas ?? 60,
+    ntoneladas: p.ntoneladas != null ? p.ntoneladas : 0,
     iplaca: p.iplaca || 'N',
     precargorcv: 0,
     cpersona_politica: parseInt(p.dec_persona_politica || '0', 10),
