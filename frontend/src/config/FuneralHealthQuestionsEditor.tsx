@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Plus, Trash2, CornerDownRight, ChevronDown, ChevronRight, GitBranch,
+  RotateCcw, ChevronUp, Percent,
 } from 'lucide-react';
 
 export type HealthQuestionType = 'boolean' | 'text' | 'select';
@@ -18,6 +19,9 @@ export interface HealthQuestionDraft {
   scoreIfFalse?: number;
   scoreIfFilled?: number;
   optionScores?: Record<string, number>;
+  blockIfTrue?: boolean;
+  blockIfFalse?: boolean;
+  blockReason?: string;
 }
 
 export type PlanOption = { code: string; label: string };
@@ -51,6 +55,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Incluye cigarrillos, tabaco, puros o vapeo.',
     required: true,
     plans: [...FALLBACK_CODES],
+    scoreIfTrue: 15,
   },
   {
     id: 'diagnosticoEnfermedad',
@@ -59,6 +64,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Cáncer, diabetes, hipertensión, cardiopatías, VIH, etc.',
     required: true,
     plans: [...FALLBACK_CODES],
+    scoreIfTrue: 40,
   },
   {
     id: 'descripcionEnfermedad',
@@ -68,6 +74,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     required: true,
     plans: [...FALLBACK_CODES],
     showIf: { field: 'diagnosticoEnfermedad', equals: true },
+    scoreIfFilled: 5,
   },
   {
     id: 'aceptaTerminos',
@@ -76,6 +83,9 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Declaro que la información suministrada es verídica y acepto las condiciones de la póliza.',
     required: true,
     plans: [...FALLBACK_CODES],
+    scoreIfFalse: 100,
+    blockIfFalse: true,
+    blockReason: 'Debe aceptar los términos y condiciones.',
   },
   {
     id: 'consumeAlcohol',
@@ -84,6 +94,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Más de 2 copas por semana de forma regular.',
     required: true,
     plans: ['5', '6', '7', '8', '9'],
+    scoreIfTrue: 10,
   },
   {
     id: 'hospitalizacionReciente',
@@ -91,6 +102,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     label: '¿Ha sido hospitalizado en los últimos 24 meses?',
     required: true,
     plans: ['5', '6', '7', '8', '9'],
+    scoreIfTrue: 25,
   },
   {
     id: 'motivoHospitalizacion',
@@ -99,6 +111,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     required: true,
     plans: ['5', '6', '7', '8', '9'],
     showIf: { field: 'hospitalizacionReciente', equals: true },
+    scoreIfFilled: 5,
   },
   {
     id: 'medicacionCronica',
@@ -107,6 +120,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Medicamentos prescritos de forma continua.',
     required: true,
     plans: ['7', '8', '9'],
+    scoreIfTrue: 20,
   },
   {
     id: 'detalleMedicacion',
@@ -115,6 +129,7 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     required: true,
     plans: ['7', '8', '9'],
     showIf: { field: 'medicacionCronica', equals: true },
+    scoreIfFilled: 5,
   },
   {
     id: 'deporteRiesgo',
@@ -123,8 +138,43 @@ export const DEFAULT_HEALTH_QUESTIONS_SEED: HealthQuestionDraft[] = [
     description: 'Paracaidismo, montañismo, buceo, carreras, etc.',
     required: true,
     plans: ['9'],
+    scoreIfTrue: 30,
   },
 ];
+
+/** Si una pregunta conocida no tiene %, rellena el puntaje del default (no pisa valores ya guardados). */
+export function enrichHealthQuestionScores(list: HealthQuestionDraft[]): HealthQuestionDraft[] {
+  const byId = new Map(DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => [q.id, q]));
+  return list.map((q) => {
+    const d = byId.get(q.id);
+    if (!d) return q;
+    return {
+      ...q,
+      scoreIfTrue: q.scoreIfTrue ?? d.scoreIfTrue,
+      scoreIfFalse: q.scoreIfFalse ?? d.scoreIfFalse,
+      scoreIfFilled: q.scoreIfFilled ?? d.scoreIfFilled,
+      optionScores: q.optionScores ?? d.optionScores,
+      blockIfTrue: q.blockIfTrue ?? d.blockIfTrue,
+      blockIfFalse: q.blockIfFalse ?? d.blockIfFalse,
+      blockReason: q.blockReason ?? d.blockReason,
+    };
+  });
+}
+
+function scoreSummary(q: HealthQuestionDraft): string {
+  const bits: string[] = [];
+  if (q.type === 'boolean') {
+    if (q.scoreIfTrue) bits.push(`Sí +${q.scoreIfTrue}%`);
+    if (q.scoreIfFalse) bits.push(`No +${q.scoreIfFalse}%`);
+  } else if (q.type === 'text' && q.scoreIfFilled) {
+    bits.push(`texto +${q.scoreIfFilled}%`);
+  } else if (q.type === 'select' && q.optionScores) {
+    const scored = Object.entries(q.optionScores).filter(([, n]) => Number(n) > 0);
+    if (scored.length) bits.push(scored.map(([k, n]) => `${k} +${n}%`).join(' · '));
+  }
+  if (q.blockIfTrue || q.blockIfFalse) bits.push('bloquea');
+  return bits.join(' · ') || 'sin %';
+}
 
 function slugId(label: string): string {
   const base = label
@@ -206,9 +256,29 @@ export function FuneralHealthQuestionsEditor({
         label: 'Nueva pregunta',
         required: true,
         plans: [...allPlanCodes],
+        scoreIfTrue: 10,
       },
     ]);
     setOpenId(id);
+  };
+
+  const move = (idx: number, dir: -1 | 1) => {
+    const to = idx + dir;
+    if (to < 0 || to >= questions.length) return;
+    const next = [...questions];
+    const [row] = next.splice(idx, 1);
+    next.splice(to, 0, row);
+    onChange(next);
+  };
+
+  const restoreDefaults = () => {
+    onChange(DEFAULT_HEALTH_QUESTIONS_SEED.map((q) => ({
+      ...q,
+      plans: [...q.plans],
+      options: q.options ? q.options.map((o) => ({ ...o })) : undefined,
+      optionScores: q.optionScores ? { ...q.optionScores } : undefined,
+    })));
+    setOpenId(null);
   };
 
   const addFollowUp = (parentIdx: number) => {
@@ -228,6 +298,7 @@ export function FuneralHealthQuestionsEditor({
       required: true,
       plans: [...parent.plans],
       showIf: { field: parent.id, equals: true },
+      scoreIfFilled: 5,
     };
     const next = [...questions];
     next.splice(parentIdx + 1, 0, child);
@@ -256,22 +327,33 @@ export function FuneralHealthQuestionsEditor({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-black text-slate-500 uppercase tracking-widest">
             Preguntas · {questions.length}
           </p>
-          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-            Clic en una fila para editar. «Se despliega si» = otra pregunta del cuestionario (no es el plan).
+          <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+            Agrega, quita o edita. El <strong className="font-semibold text-slate-600">%</strong> es el
+            puntaje que suma al técnico. Tras guardar, el cliente ve estas mismas preguntas.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={addQuestion}
-          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shrink-0"
-        >
-          <Plus size={14} /> Nueva
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={restoreDefaults}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
+            title="Volver a las preguntas y % de fábrica"
+          >
+            <RotateCcw size={13} /> Defaults
+          </button>
+          <button
+            type="button"
+            onClick={addQuestion}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+          >
+            <Plus size={14} /> Nueva
+          </button>
+        </div>
       </div>
 
       {questions.length === 0 && (
@@ -326,7 +408,31 @@ export function FuneralHealthQuestionsEditor({
                       {q.required ? ' · obligatoria' : ''}
                     </span>
                   </span>
+                  <span className="hidden sm:inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700">
+                    <Percent size={10} />
+                    {scoreSummary(q)}
+                  </span>
                 </button>
+                <div className="flex flex-col justify-center border-l border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => move(idx, -1)}
+                    disabled={idx === 0}
+                    className="px-1.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20"
+                    title="Subir"
+                  >
+                    <ChevronUp size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => move(idx, 1)}
+                    disabled={idx === questions.length - 1}
+                    className="px-1.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20"
+                    title="Bajar"
+                  >
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => remove(idx)}
@@ -364,7 +470,10 @@ export function FuneralHealthQuestionsEditor({
                               { value: 'no', label: 'No' },
                             ];
                           }
-                          if (type !== 'select') patch.options = undefined;
+                          if (type !== 'select') {
+                            patch.options = undefined;
+                            patch.optionScores = undefined;
+                          }
                           update(idx, patch);
                         }}
                       >
@@ -415,85 +524,169 @@ export function FuneralHealthQuestionsEditor({
                     />
                   </div>
 
-                  {(q.type === 'boolean' || q.type === 'text') && (
-                    <div className="grid grid-cols-2 gap-2 rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5">
-                      <p className="col-span-2 text-[10px] font-black uppercase tracking-wider text-indigo-600">
-                        Scoring (puntos de riesgo)
-                      </p>
-                      {q.type === 'boolean' && (
-                        <>
-                          <div>
-                            <label className={lbl}>Si responde Sí</label>
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 space-y-2.5">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 inline-flex items-center gap-1">
+                      <Percent size={11} />
+                      Puntaje (%) · lo ve el técnico
+                    </p>
+                    {q.type === 'boolean' && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className={lbl}>Si responde Sí</label>
+                          <div className="relative">
                             <input
                               type="number"
                               min={0}
-                              className={inp}
+                              className={`${inp} pr-8`}
                               value={q.scoreIfTrue ?? ''}
                               onChange={(e) =>
                                 update(idx, {
                                   scoreIfTrue: e.target.value === '' ? undefined : Number(e.target.value),
                                 })
                               }
+                              placeholder="0"
                             />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
                           </div>
-                          <div>
-                            <label className={lbl}>Si responde No</label>
+                        </div>
+                        <div>
+                          <label className={lbl}>Si responde No</label>
+                          <div className="relative">
                             <input
                               type="number"
                               min={0}
-                              className={inp}
+                              className={`${inp} pr-8`}
                               value={q.scoreIfFalse ?? ''}
                               onChange={(e) =>
                                 update(idx, {
                                   scoreIfFalse: e.target.value === '' ? undefined : Number(e.target.value),
                                 })
                               }
+                              placeholder="0"
                             />
+                            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
                           </div>
-                        </>
-                      )}
-                      {q.type === 'text' && (
-                        <div className="col-span-2">
-                          <label className={lbl}>Si tiene texto</label>
+                        </div>
+                      </div>
+                    )}
+                    {q.type === 'text' && (
+                      <div>
+                        <label className={lbl}>Si escribe algo</label>
+                        <div className="relative max-w-[10rem]">
                           <input
                             type="number"
                             min={0}
-                            className={inp}
+                            className={`${inp} pr-8`}
                             value={q.scoreIfFilled ?? ''}
                             onChange={(e) =>
                               update(idx, {
                                 scoreIfFilled: e.target.value === '' ? undefined : Number(e.target.value),
                               })
                             }
+                            placeholder="0"
                           />
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400">%</span>
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {q.type === 'select' && (
-                    <div>
-                      <label className={lbl}>Opciones · value|etiqueta</label>
-                      <textarea
-                        className={`${inp} font-mono text-xs min-h-[56px]`}
-                        value={(q.options ?? []).map((o) => `${o.value}|${o.label}`).join('\n')}
-                        onChange={(e) => {
-                          const options = e.target.value
-                            .split('\n')
-                            .map((line) => line.trim())
-                            .filter(Boolean)
-                            .map((line) => {
-                              const [value, ...rest] = line.split('|');
-                              const label = rest.join('|').trim() || value.trim();
-                              return { value: value.trim(), label };
+                      </div>
+                    )}
+                    {q.type === 'select' && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] text-slate-500">Cada opción puede tener su propio %.</p>
+                        {(q.options ?? []).map((opt, oi) => (
+                          <div key={`${opt.value}-${oi}`} className="grid grid-cols-[1fr_1fr_5.5rem] gap-1.5">
+                            <input
+                              className={`${inp} font-mono text-xs`}
+                              value={opt.value}
+                              placeholder="valor"
+                              onChange={(e) => {
+                                const options = [...(q.options ?? [])];
+                                const prev = options[oi].value;
+                                options[oi] = { ...options[oi], value: e.target.value.trim() };
+                                const optionScores = { ...(q.optionScores ?? {}) };
+                                if (prev && prev !== options[oi].value) {
+                                  optionScores[options[oi].value] = optionScores[prev];
+                                  delete optionScores[prev];
+                                }
+                                update(idx, { options, optionScores });
+                              }}
+                            />
+                            <input
+                              className={inp}
+                              value={opt.label}
+                              placeholder="Etiqueta"
+                              onChange={(e) => {
+                                const options = [...(q.options ?? [])];
+                                options[oi] = { ...options[oi], label: e.target.value };
+                                update(idx, { options });
+                              }}
+                            />
+                            <div className="relative">
+                              <input
+                                type="number"
+                                min={0}
+                                className={`${inp} pr-6`}
+                                value={q.optionScores?.[opt.value] ?? ''}
+                                placeholder="0"
+                                onChange={(e) => {
+                                  const optionScores = { ...(q.optionScores ?? {}) };
+                                  if (e.target.value === '') delete optionScores[opt.value];
+                                  else optionScores[opt.value] = Number(e.target.value);
+                                  update(idx, { optionScores });
+                                }}
+                              />
+                              <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400">%</span>
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            update(idx, {
+                              options: [...(q.options ?? []), { value: `opcion_${(q.options?.length ?? 0) + 1}`, label: 'Nueva opción' }],
                             })
-                            .filter((o) => o.value);
-                          update(idx, { options });
-                        }}
-                        placeholder={'si|Sí\nno|No'}
-                      />
-                    </div>
-                  )}
+                          }
+                          className="text-[11px] font-bold text-indigo-600 hover:underline"
+                        >
+                          + Opción
+                        </button>
+                      </div>
+                    )}
+                    {q.type === 'boolean' && (
+                      <div className="pt-1 border-t border-indigo-100 space-y-2">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                          Bloqueo automático
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded text-indigo-600"
+                              checked={!!q.blockIfTrue}
+                              onChange={(e) => update(idx, { blockIfTrue: e.target.checked || undefined })}
+                            />
+                            Bloquear si Sí
+                          </label>
+                          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              className="rounded text-indigo-600"
+                              checked={!!q.blockIfFalse}
+                              onChange={(e) => update(idx, { blockIfFalse: e.target.checked || undefined })}
+                            />
+                            Bloquear si No
+                          </label>
+                        </div>
+                        {(q.blockIfTrue || q.blockIfFalse) && (
+                          <input
+                            className={inp}
+                            value={q.blockReason ?? ''}
+                            onChange={(e) => update(idx, { blockReason: e.target.value || undefined })}
+                            placeholder="Motivo que verá el cliente / técnico"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">

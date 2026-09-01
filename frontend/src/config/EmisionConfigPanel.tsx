@@ -12,6 +12,7 @@ import {
   FuneralHealthQuestionsEditor,
   DEFAULT_HEALTH_QUESTIONS_SEED,
   FALLBACK_FUNERAL_PLAN_OPTIONS,
+  enrichHealthQuestionScores,
   type HealthQuestionDraft,
   type PlanOption,
 } from './FuneralHealthQuestionsEditor';
@@ -177,11 +178,13 @@ export function EmisionConfigPanel() {
       const by: Record<string, HealthQuestionDraft[]> = {};
       if (rawBy && typeof rawBy === 'object' && !Array.isArray(rawBy)) {
         for (const [k, v] of Object.entries(rawBy)) {
-          if (Array.isArray(v) && v.length > 0) by[k] = v;
+          if (Array.isArray(v) && v.length > 0) by[k] = enrichHealthQuestionScores(v);
         }
       }
       if (!by.default?.length) {
-        by.default = Array.isArray(legacy) && legacy.length > 0 ? legacy : seed;
+        by.default = enrichHealthQuestionScores(
+          Array.isArray(legacy) && legacy.length > 0 ? legacy : seed,
+        );
       }
       setHealthByCanal(by);
       // Preferir canal de la URL/token; si aún no existe en config, se crea al cambiar
@@ -372,7 +375,7 @@ export function EmisionConfigPanel() {
               </h1>
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
                 {soloPreguntas
-                  ? 'Define las preguntas de salud del flujo funerario por empresa y canal.'
+                  ? 'Arma el cuestionario: texto, planes, % de riesgo y si se bloquea. Lo que guardes es lo que ve el cliente y el técnico.'
                   : 'Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.'}
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
