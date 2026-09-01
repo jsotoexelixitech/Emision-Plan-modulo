@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
   Check, X, Loader2, ClipboardList, User, FileText, AlertTriangle,
   History, Clock, CreditCard, ExternalLink, FileDown, ArrowLeft,
-  RefreshCw, Mail, Hash,
+  RefreshCw, Mail, Hash, ShieldCheck, Inbox,
 } from 'lucide-react';
 import { AuroraBackground } from '../components/AuroraBackground';
 import { readConfigPanelContext, canalDisplayLabel } from './configPanelContext';
@@ -367,6 +367,12 @@ function Field({ label, children, wide }: { label: string; children: ReactNode; 
   );
 }
 
+function initials(name?: string | null): string {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  return parts.slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
+}
+
 export function EmisionRevisionPanel() {
   const [list, setList] = useState<Submission[]>([]);
   const [selected, setSelected] = useState<Submission | null>(null);
@@ -492,6 +498,7 @@ export function EmisionRevisionPanel() {
         ? 'No hay registros en el histórico (aprobadas, rechazadas o pagadas).'
         : 'No hay solicitudes registradas para esta empresa.';
 
+  const pendingCount = list.filter((s) => s.estado === 'pending').length;
   const filterTabs: { key: ListFilter; label: string }[] = [
     { key: 'pending', label: 'Pendientes' },
     { key: 'history', label: 'Histórico' },
@@ -508,17 +515,32 @@ export function EmisionRevisionPanel() {
   return (
     <div className="min-h-screen relative">
       <AuroraBackground />
-      <div className="pt-6 sm:pt-8 px-3 sm:px-6 lg:px-10 pb-28 lg:pb-12 max-w-6xl mx-auto relative z-10">
-        <header className={`mb-5 sm:mb-8 ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
-          <p className="text-[0.68rem] font-black tracking-[0.22em] text-violet-500 uppercase mb-2">
-            Revisión técnica · funerario
-          </p>
-          <h1 className="font-display text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Autorización de pólizas
-          </h1>
-          <p className="text-sm text-slate-500 mt-1.5">
-            Empresa #{EMPRESA_ID} · canal {canalDisplayLabel(PANEL.canal)}
-          </p>
+      <div className="pt-4 sm:pt-6 px-3 sm:px-6 lg:px-10 pb-28 lg:pb-12 max-w-6xl mx-auto relative z-10">
+        <header className={`mb-4 sm:mb-6 ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
+          <div className="rounded-3xl bg-indigo-700 text-white px-5 sm:px-7 py-5 sm:py-6 shadow-[0_18px_40px_-20px_rgba(15,26,90,0.55)]">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[0.65rem] font-bold tracking-[0.2em] text-indigo-200 uppercase mb-1.5 inline-flex items-center gap-1.5">
+                  <ShieldCheck size={12} />
+                  Mesa técnica · funerario
+                </p>
+                <h1 className="font-display text-2xl sm:text-[1.85rem] font-black tracking-tight">
+                  Autorización de pólizas
+                </h1>
+                <p className="text-sm text-indigo-100/80 mt-1.5">
+                  Empresa #{EMPRESA_ID} · {canalDisplayLabel(PANEL.canal)}
+                </p>
+              </div>
+              {filter === 'pending' && !loading && (
+                <div className="rounded-2xl bg-white/10 border border-white/15 px-4 py-3 min-w-[96px] text-center">
+                  <p className="text-2xl font-black tabular-nums leading-none">{pendingCount}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-indigo-100 mt-1 font-bold">
+                    Por revisar
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </header>
 
         {error && (
@@ -557,10 +579,14 @@ export function EmisionRevisionPanel() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
-          <div className={`lg:col-span-2 bg-white/90 backdrop-blur rounded-2xl border border-slate-200/80 overflow-hidden shadow-sm ${
+          <div className={`lg:col-span-2 bg-white/95 backdrop-blur rounded-3xl border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-18px_rgba(15,23,42,0.25)] ${
             mobileDetail && selected ? 'hidden lg:block' : ''
           }`}
           >
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <Inbox size={14} className="text-indigo-600" />
+              <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Bandeja</p>
+            </div>
             {loading ? (
               <div className="p-10 flex justify-center">
                 <Loader2 className="animate-spin text-indigo-500" />
@@ -574,28 +600,35 @@ export function EmisionRevisionPanel() {
                     <button
                       type="button"
                       onClick={() => openSubmission(s)}
-                      className={`w-full text-left px-4 py-3.5 hover:bg-indigo-50/60 transition-colors ${
-                        selected?.id === s.id ? 'bg-indigo-50/90 border-l-4 border-indigo-500' : 'border-l-4 border-transparent'
+                      className={`w-full text-left px-4 py-3.5 hover:bg-indigo-50/70 transition-colors ${
+                        selected?.id === s.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : 'border-l-4 border-transparent'
                       }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-sm text-slate-900 truncate">
-                          {s.tomadorNombre || s.tomadorRif || 'Sin nombre'}
+                      <div className="flex items-start gap-3">
+                        <span className="grid place-items-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-800 text-xs font-black shrink-0">
+                          {initials(s.tomadorNombre || s.tomadorRif)}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${estadoBadge(s.estado)}`}>
-                          {estadoLabel(s.estado)}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-1 truncate">
-                        {s.planName || `Plan ${s.cplan}`}
-                        {policyNumber(s) ? ` · ${policyNumber(s)}` : ''}
-                      </p>
-                      <div className="flex items-center justify-between gap-2 mt-1">
-                        <p className="text-[10px] text-slate-400">
-                          {formatDate(s.reviewedAt || s.createdAt)}
-                        </p>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${scoreTone(s.scoreTotal)}`}>
-                          {s.scoreTotal} pts
+                        <span className="min-w-0 flex-1">
+                          <span className="flex items-center justify-between gap-2">
+                            <span className="font-semibold text-sm text-slate-900 truncate">
+                              {s.tomadorNombre || s.tomadorRif || 'Sin nombre'}
+                            </span>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${estadoBadge(s.estado)}`}>
+                              {estadoLabel(s.estado)}
+                            </span>
+                          </span>
+                          <p className="text-xs text-slate-500 mt-0.5 truncate">
+                            {s.planName || `Plan ${s.cplan}`}
+                            {policyNumber(s) ? ` · ${policyNumber(s)}` : ''}
+                          </p>
+                          <div className="flex items-center justify-between gap-2 mt-1">
+                            <p className="text-[10px] text-slate-400">
+                              {formatDate(s.reviewedAt || s.createdAt)}
+                            </p>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${scoreTone(s.scoreTotal)}`}>
+                              {s.scoreTotal} pts
+                            </span>
+                          </div>
                         </span>
                       </div>
                     </button>
@@ -610,10 +643,13 @@ export function EmisionRevisionPanel() {
           }`}
           >
             {!selected ? (
-              <div className="bg-white/80 rounded-2xl border border-dashed border-slate-200 p-8 text-center">
-                <ClipboardList className="mx-auto mb-3 text-slate-300" size={32} />
-                <p className="text-sm text-slate-500">
-                  Selecciona una solicitud para ver el detalle.
+              <div className="bg-white/90 rounded-3xl border border-dashed border-slate-200 p-10 text-center shadow-sm">
+                <span className="mx-auto mb-4 grid place-items-center w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-400">
+                  <ClipboardList size={26} />
+                </span>
+                <p className="font-semibold text-slate-700">Elige una solicitud</p>
+                <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto">
+                  Revisa identidad, scoring y documentos antes de autorizar el pago.
                 </p>
               </div>
             ) : (
@@ -627,7 +663,7 @@ export function EmisionRevisionPanel() {
                   Volver al listado
                 </button>
 
-                <div className="rounded-2xl border border-slate-200/80 bg-white/95 p-4 sm:p-5 shadow-sm">
+                <div className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 sm:p-6 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.25)]">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -766,20 +802,27 @@ export function EmisionRevisionPanel() {
                   </dl>
                 </SectionCard>
 
-                <SectionCard title="Historial de la solicitud" icon={<Clock size={14} />}>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    <Field label="Creada">{formatDate(selected.createdAt)}</Field>
-                    <Field label="Revisada">{formatDate(selected.reviewedAt)}</Field>
-                    <Field label="Revisor">{selected.reviewedBy || '—'}</Field>
-                    <Field label="Sesión">
-                      <span className="font-mono text-[11px]">{selected.sessionId || '—'}</span>
-                    </Field>
-                    {selected.rejectReason && (
-                      <Field label="Motivo rechazo" wide>
-                        <span className="text-rose-700">{selected.rejectReason}</span>
-                      </Field>
-                    )}
-                  </dl>
+                <SectionCard title="Línea de tiempo" icon={<Clock size={14} />}>
+                  <ol className="space-y-3">
+                    {[
+                      { label: 'Solicitud creada', value: formatDate(selected.createdAt) },
+                      { label: 'Revisión técnica', value: selected.reviewedAt ? `${formatDate(selected.reviewedAt)}${selected.reviewedBy ? ` · ${selected.reviewedBy}` : ''}` : 'Pendiente' },
+                      { label: 'Emisión', value: emittedWhen ? formatDate(emittedWhen) : 'Aún no emitida' },
+                    ].map((item) => (
+                      <li key={item.label} className="flex gap-3">
+                        <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
+                          <p className="text-sm font-medium text-slate-800">{item.value}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  {selected.rejectReason && (
+                    <p className="mt-3 text-sm text-rose-700 bg-rose-50 rounded-xl px-3 py-2">
+                      Motivo rechazo: {selected.rejectReason}
+                    </p>
+                  )}
                 </SectionCard>
 
                 {uploadDocs.length > 0 && (
@@ -822,33 +865,49 @@ export function EmisionRevisionPanel() {
                   </SectionCard>
                 )}
 
-                <SectionCard title="Datos OCR de cédulas" icon={<User size={14} />}>
-                  {ocrBlocks.length === 0 ? (
-                    <p className="text-sm text-slate-500">Sin datos OCR de cédula en el snapshot.</p>
-                  ) : (
-                    <div className="space-y-4">
-                      {ocrBlocks.map((block) => (
-                        <div key={block.key}>
-                          <p className="text-xs font-bold text-slate-600 mb-2">{block.label}</p>
-                          <dl className="grid grid-cols-2 gap-2">
-                            {Object.entries(block.ocr)
-                              .filter(([, v]) => v != null && String(v).trim())
-                              .slice(0, 12)
-                              .map(([k, v]) => (
-                                <div key={k}>
-                                  <dt className="text-slate-400 uppercase text-[10px]">{k}</dt>
-                                  <dd className="text-sm font-medium text-slate-800">{String(v)}</dd>
-                                </div>
-                              ))}
-                          </dl>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </SectionCard>
+                <details className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 group">
+                  <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                    <User size={14} />
+                    Datos OCR de cédulas
+                    <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
+                      {ocrBlocks.length ? `${ocrBlocks.length} documento${ocrBlocks.length === 1 ? '' : 's'}` : 'Sin datos'}
+                    </span>
+                  </summary>
+                  <div className="mt-3">
+                    {ocrBlocks.length === 0 ? (
+                      <p className="text-sm text-slate-500">Sin datos OCR de cédula en el snapshot.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {ocrBlocks.map((block) => (
+                          <div key={block.key}>
+                            <p className="text-xs font-bold text-slate-600 mb-2">{block.label}</p>
+                            <dl className="grid grid-cols-2 gap-2">
+                              {Object.entries(block.ocr)
+                                .filter(([, v]) => v != null && String(v).trim())
+                                .slice(0, 12)
+                                .map(([k, v]) => (
+                                  <div key={k}>
+                                    <dt className="text-slate-400 uppercase text-[10px]">{k}</dt>
+                                    <dd className="text-sm font-medium text-slate-800">{String(v)}</dd>
+                                  </div>
+                                ))}
+                            </dl>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </details>
 
-                <SectionCard title="Scoring y preguntas" icon={<ClipboardList size={14} />}>
-                  <ul className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <details className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3">
+                  <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                    <ClipboardList size={14} />
+                    Scoring y preguntas
+                    <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${scoreTone(selected.scoreTotal)}`}>
+                      {selected.scoreTotal} pts
+                    </span>
+                  </summary>
+                  <ul className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
                     {(selected.scoreBreakdown ?? []).map((line) => (
                       <li
                         key={line.questionId}
@@ -862,7 +921,7 @@ export function EmisionRevisionPanel() {
                       </li>
                     ))}
                   </ul>
-                </SectionCard>
+                </details>
 
                 <details className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3">
                   <summary
@@ -879,32 +938,37 @@ export function EmisionRevisionPanel() {
                 </details>
 
                 {selected.estado === 'pending' && (
-                  <div className="hidden lg:flex flex-col sm:flex-row gap-2 pt-1">
-                    <button
-                      type="button"
-                      disabled={acting}
-                      onClick={() => void approve(selected.id)}
-                      className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
-                      Aprobar
-                    </button>
-                    <div className="flex-1 flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Motivo rechazo (opcional)"
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        className="flex-1 text-sm border border-slate-200 rounded-xl px-3"
-                      />
+                  <div className="hidden lg:block rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
+                      Decisión del técnico
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
                         disabled={acting}
-                        onClick={() => void reject(selected.id)}
-                        className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-50"
+                        onClick={() => void approve(selected.id)}
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
                       >
-                        <X size={16} /> Rechazar
+                        {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                        Autorizar pago
                       </button>
+                      <div className="flex-1 flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Motivo de rechazo (opcional)"
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          className="flex-1 text-sm border border-slate-200 rounded-xl px-3"
+                        />
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => void reject(selected.id)}
+                          className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-50"
+                        >
+                          <X size={16} /> Rechazar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
