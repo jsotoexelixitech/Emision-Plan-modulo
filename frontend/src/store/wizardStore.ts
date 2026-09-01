@@ -15,6 +15,7 @@ import type {
   QuoteState,
 } from '../types';
 import { getProductId } from '../lib/product';
+import type { CanalVisibility } from '../lib/canal-visibility';
 
 const defaultDoc = (): DocumentState => ({ status: 'idle', progress: 0 });
 
@@ -105,6 +106,7 @@ interface WizardActions {
   setQuoteState: (s: QuoteState, error?: string | null) => void;
   clearQuote: () => void;
   setMetadataCanal: (data: Record<string, any> | null) => void;
+  setCanalVisibility: (data: CanalVisibility | null) => void;
   reset: () => void;
 }
 
@@ -141,6 +143,7 @@ const initialState: WizardState = {
   quoteError: null,
   quoteVehicleSignature: null,
   metadataCanal: null,
+  canalVisibility: null,
 };
 
 export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
@@ -231,6 +234,8 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
     set({ quote: null, quoteState: 'idle', quoteError: null, quoteVehicleSignature: null }),
 
   setMetadataCanal: (data) => set({ metadataCanal: data }),
+
+  setCanalVisibility: (canalVisibility) => set({ canalVisibility }),
 
   reset: () => set(initialState),
 }));

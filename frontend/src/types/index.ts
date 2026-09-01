@@ -1,3 +1,5 @@
+import type { CanalVisibility } from '../lib/canal-visibility';
+
 export type DocType = 'cedula' | 'licencia' | 'certificado' | 'rif';
 
 /** Producto de seguro que se está suscribiendo en el flujo. */
@@ -266,4 +268,6 @@ export interface WizardState {
   quoteVehicleSignature: string | null;
   /** Datos dinámicos del canal (SSO Delegate) para emisión dinámica */
   metadataCanal: Record<string, any> | null;
+  /** Reglas de visibilidad del canal (SysIP / nest-api canal/visibility). */
+  canalVisibility: CanalVisibility | null;
 }
