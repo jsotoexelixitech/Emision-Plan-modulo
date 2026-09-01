@@ -231,12 +231,15 @@ export function resolveRcvEmissionRequiredDocs(params: {
 
   const carnetBinacionalMode = params.vehicle?.tipoPlaca === 'binacional';
 
+  const idleDoc = { status: 'idle' as const, progress: 0 };
   const docsRecord = {
-    cedula: (params.documents.cedula ?? { status: 'idle', progress: 0 }) as DocumentState,
-    licencia: (params.documents.licencia ?? { status: 'idle', progress: 0 }) as DocumentState,
-    certificado: (params.documents.certificado ?? { status: 'idle', progress: 0 }) as DocumentState,
-    rif: (params.documents.rif ?? { status: 'idle', progress: 0 }) as DocumentState,
-    pasaporte: (params.documents.pasaporte ?? { status: 'idle', progress: 0 }) as DocumentState,
+    cedula: (params.documents.cedula ?? idleDoc) as DocumentState,
+    cedula_titular: idleDoc as DocumentState,
+    cedula_beneficiario: idleDoc as DocumentState,
+    licencia: (params.documents.licencia ?? idleDoc) as DocumentState,
+    certificado: (params.documents.certificado ?? idleDoc) as DocumentState,
+    rif: (params.documents.rif ?? idleDoc) as DocumentState,
+    pasaporte: (params.documents.pasaporte ?? idleDoc) as DocumentState,
   };
 
   const { requiredDocs } = adjustDocsForBinacionalCarnet(
