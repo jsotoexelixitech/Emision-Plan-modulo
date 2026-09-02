@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useWizardStore } from '../store/wizardStore';
 import { applyMetadataFromNexusToken } from '../lib/nexus-token-client';
+import { persistProductFromHints } from '../lib/product';
 
 const STORAGE_KEY = 'nexus_access_token_emision';
 
@@ -11,6 +12,9 @@ export function useSessionTokenDelegation() {
   useEffect(() => {
     applyMetadataFromNexusToken(STORAGE_KEY, (metadata) => {
       setMetadataCanal(metadata);
+      if (metadata.product === 'funerario' || metadata.product === 'rcv') {
+        persistProductFromHints({ product: String(metadata.product) });
+      }
     });
 
     const searchParams = new URLSearchParams(window.location.search);

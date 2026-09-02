@@ -80,6 +80,16 @@ function edadDesdeFecha(fecha) {
   return edad >= 0 ? edad : null;
 }
 
+/** Canal alterno La Mundial: vacío → null; entero positivo válido. */
+function parseCanalAltOptional(value) {
+  if (value === undefined || value === null) return null;
+  const s = String(value).trim();
+  if (!s) return null;
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
 function todayYmd() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -131,8 +141,12 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
 
   const cramo = metadata.cramo ? parseInt(metadata.cramo, 10) : (parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9);
   const productor = metadata.cproductor ? parseInt(metadata.cproductor, 10) : (parseInt(process.env.LAMUNDIAL_PRODUCTOR, 10) || 80080);
-  const ctipocanal = metadata.ctipocanal ? parseInt(metadata.ctipocanal, 10) : undefined;
+  const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
+    ? metadata.ctipocanal
+    : undefined;
   const cusuario = metadata.cusuario ? parseInt(metadata.cusuario, 10) : undefined;
+  const ccanalalt = parseCanalAltOptional(metadata.ccanalalt_in ?? metadata.ccanalalt);
+  const cscanalalt = parseCanalAltOptional(metadata.cscanalalt_in ?? metadata.cscanalalt);
   const plan = overrides.plan || state.selectedPlan?.cplan || '';
   const frecuencia = overrides.frecuencia || funeral.frecuencia || 'M';
   const fecha_emision = overrides.fechaEmision || todayYmd();
@@ -191,10 +205,12 @@ function buildEmissionPersonRequest(state, cotizacion, overrides = {}) {
     dec_diagnos_enferm: funeral.diagnosticoEnfermedad === true ? 1 : 0,
     dec_descrip_enferm: cleanString(funeral.descripcionEnfermedad) || '',
 
-    // ── Canal ──────────────────────────────────────────────────────────────────
+    // ── Canal (mismo contrato SSO que RCV) ────────────────────────────────────
     productor,
     ...(cusuario !== undefined ? { cusuario } : {}),
     ...(ctipocanal !== undefined ? { ctipocanal } : {}),
+    ccanalalt,
+    cscanalalt,
 
     // ── Asegurados (para el trigger de Sis2000) ─────────────────────────────────
     asegurados: asegurados.map((a, idx) => ({

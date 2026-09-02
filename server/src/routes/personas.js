@@ -38,6 +38,18 @@ function resolvePaymentSid(state) {
   return String(state?.paymentSid || state?.sid || '').trim();
 }
 
+/** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal — igual que RCV. */
+function withNexusMetadata(state, nexusMetadata) {
+  if (!state || typeof state !== 'object') return state;
+  if (!nexusMetadata || typeof nexusMetadata !== 'object' || !Object.keys(nexusMetadata).length) {
+    return state;
+  }
+  return {
+    ...state,
+    metadataCanal: { ...(state.metadataCanal || {}), ...nexusMetadata },
+  };
+}
+
 const router = express.Router();
 
 const DEFAULT_RAMO = parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9;
@@ -167,10 +179,11 @@ router.post('/poliza-vigente', async (req, res) => {
 // ── POST /validacion ──────────────────────────────────────────────────────────
 router.post('/validacion', async (req, res) => {
   const { state, plan: bodyPlan } = req.body || {};
-  const cplan = bodyPlan || state?.selectedPlan?.cplan;
+  const mergedState = withNexusMetadata(state, req.nexusMetadata);
+  const cplan = bodyPlan || mergedState?.selectedPlan?.cplan;
 
   try {
-    const validation = await assertPersonasCanEmit(state, { plan: cplan });
+    const validation = await assertPersonasCanEmit(mergedState, { plan: cplan });
     res.json({ success: true, validation: validation.result });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -190,7 +203,8 @@ router.post('/validacion', async (req, res) => {
 // emite la póliza (vista eePoliza_Personas_General) vía nest-api.
 // Recibe el estado del wizard: { state: { tomador, funeral, selectedPlan }, frecuencia? }
 router.post('/emision', async (req, res) => {
-  const { state, frecuencia } = req.body || {};
+  const { state: rawState, frecuencia } = req.body || {};
+  const state = withNexusMetadata(rawState, req.nexusMetadata);
   const funeral = state?.funeral || {};
   const cplan = state?.selectedPlan?.cplan;
   const cramo = DEFAULT_RAMO;
@@ -241,6 +255,11 @@ router.post('/emision', async (req, res) => {
       state,
       cotizacion,
       { plan: cplan, frecuencia: ifrecuencia },
+    );
+
+    const meta = state.metadataCanal || {};
+    console.log(
+      `[personas/emision] metadataCanal cproductor=${meta.cproductor ?? 'default'} cusuario=${meta.cusuario ?? 'default'} canal=${meta.canal ?? 'default'} cgestor_in=${meta.cgestor_in ?? 'none'} jwtKeys=${Object.keys(req.nexusMetadata || {}).join(',') || 'none'}`,
     );
 
     const emitted = await personasClient.createEmissionPerson(payload);
