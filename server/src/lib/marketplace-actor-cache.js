@@ -1,5 +1,35 @@
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
 const store = new Map();
 const TTL_MS = 8 * 60 * 60 * 1000;
+const CACHE_FILE = process.env.MARKETPLACE_ACTOR_CACHE_FILE
+  || path.join(os.tmpdir(), 'exelixi-marketplace-actor.json');
+
+function hydrate() {
+  try {
+    if (!fs.existsSync(CACHE_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(CACHE_FILE, 'utf8'));
+    if (!data || typeof data !== 'object') return;
+    for (const [key, rec] of Object.entries(data)) {
+      if (!rec?.cgestor || !rec.at || Date.now() - rec.at > TTL_MS) continue;
+      const existing = store.get(key);
+      if (!existing || rec.at > existing.at) store.set(key, rec);
+    }
+  } catch { /* ignore */ }
+}
+
+function persist() {
+  try {
+    const out = {};
+    for (const [key, rec] of store.entries()) {
+      if (!rec?.cgestor || Date.now() - rec.at > TTL_MS) continue;
+      out[key] = rec;
+    }
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(out));
+  } catch { /* ignore */ }
+}
 
 function preferGestor(a, b) {
   const sa = a != null ? String(a).trim() : '';
@@ -37,11 +67,14 @@ function keysFrom(req, meta = {}) {
 function remember(cgestor, keys) {
   const g = cgestor != null ? String(cgestor).trim() : '';
   if (!g || !keys.length) return;
+  hydrate();
   const rec = { cgestor: g, at: Date.now() };
   for (const key of keys) store.set(key, rec);
+  persist();
 }
 
 function lookup(keys) {
+  hydrate();
   let best = '';
   for (const key of keys) {
     const rec = store.get(key);

@@ -170,6 +170,14 @@ export function mergeMarketplaceActorMetadata(
   const out: Record<string, unknown> = { ...(base || {}), ...fromTokens };
 
   for (const key of MARKETPLACE_ACTOR_KEYS) {
+    if (key === 'cgestor' || key === 'cgestor_in') {
+      const chosen = preferGestorCode(
+        preferGestorCode(snapshot[key], fromTokens[key]),
+        (base || {})[key],
+      );
+      if (isActorValue(chosen)) out[key] = chosen;
+      continue;
+    }
     for (const src of [snapshot, fromTokens, base || {}]) {
       const val = src[key];
       if (val != null && String(val).trim() !== '') {
