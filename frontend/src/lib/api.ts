@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios';
+import type { CanalVisibility } from './canal-visibility';
 import type { DocType, OcrResult, DocumentFile, PolicyCoverageLine } from '../types';
 import { moduleApiBase } from './app-base';
 import { attachNexusTokenAxios } from './nexus-token-client';
@@ -542,8 +543,17 @@ export const catalogoApi = {
     if (ctipo != null) qs.set('ctipo', String(ctipo));
     if (iplaca) qs.set('iplaca', iplaca);
     const query = qs.toString();
-    return api.get<{ success: boolean; planes: PlanRcv[] }>(
+    return api.get<{ success: boolean; planes: PlanRcv[]; canalVisibility?: CanalVisibility | null }>(
       `/catalogo/planes${query ? `?${query}` : ''}`,
+    );
+  },
+  canalVisibility: (params?: { cproducto?: string; cramo?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.cproducto) qs.set('cproducto', params.cproducto);
+    if (params?.cramo != null) qs.set('cramo', String(params.cramo));
+    const query = qs.toString();
+    return api.get<{ success: boolean; canalVisibility: CanalVisibility | null }>(
+      `/catalogo/canal-visibility${query ? `?${query}` : ''}`,
     );
   },
 };

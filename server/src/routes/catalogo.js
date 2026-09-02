@@ -13,6 +13,10 @@ const {
   getRecargosRcv,
 } = require('../services/nestApiClient');
 const { fetchPlanesV2, resolvePlanesParams } = require('../services/planesClient');
+const {
+  fetchCanalVisibility,
+  filterPlanesByVisibility,
+} = require('../services/canalClient');
 
 const router = express.Router();
 
@@ -145,6 +149,28 @@ router.get('/resolver', async (req, res) => {
   }
 });
 
+router.get('/canal-visibility', async (req, res) => {
+  const meta = req.nexusMetadata || {};
+  const cproducto = req.query.cproducto != null ? String(req.query.cproducto).trim() : undefined;
+  const cramo = req.query.cramo != null ? parseInt(String(req.query.cramo), 10) : undefined;
+
+  try {
+    const data = await fetchCanalVisibility(meta, {
+      cproducto: cproducto || undefined,
+      cramo: Number.isNaN(cramo) ? undefined : cramo,
+    });
+
+    if (!data) {
+      return res.json({ success: true, canalVisibility: null });
+    }
+
+    res.json({ success: true, canalVisibility: data });
+  } catch (err) {
+    console.error('[catalogo/canal-visibility]', err.message);
+    res.status(502).json({ success: false, message: err.message });
+  }
+});
+
 router.get('/planes', async (req, res) => {
   const meta = req.nexusMetadata || {};
   const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
@@ -159,11 +185,24 @@ router.get('/planes', async (req, res) => {
   try {
     const result = await fetchPlanesV2(meta, ctipo, iplaca);
 
+    let canalVisibility = null;
+    const ccanalalt = meta.ccanalalt_in ?? meta.ccanalalt;
+    if (ccanalalt != null && ccanalalt !== '') {
+      const firstPlan = result.planes?.[0];
+      canalVisibility = await fetchCanalVisibility(meta, {
+        cproducto: firstPlan?.cproducto ?? meta.cproducto,
+        cramo: resolved.cramo,
+      });
+    }
+
+    const planes = filterPlanesByVisibility(result.planes ?? [], canalVisibility);
+
     res.json({
       success: true,
-      planes: result.planes,
+      planes,
       source: result.source,
       productor: result.request?.citem ?? result.request?.cproductor,
+      canalVisibility,
     });
   } catch (err) {
     console.error('[catalogo/planes]', err.message);

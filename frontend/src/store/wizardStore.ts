@@ -17,6 +17,7 @@ import type {
 import { getProductId } from '../lib/product';
 import { isFrecuenciaFraccionada } from '../lib/frecuencia';
 import { buildDiligenciaState, preClasificarDiligencia, type DiligenciaState } from '../lib/diligencia';
+import type { CanalVisibility } from '../lib/canal-visibility';
 
 const defaultDoc = (): DocumentState => ({ status: 'idle', progress: 0 });
 
@@ -109,6 +110,7 @@ interface WizardActions {
   clearQuote: () => void;
   setMetadataCanal: (data: Record<string, any> | null) => void;
   setDiligencia: (data: Partial<DiligenciaState> | null) => void;
+  setCanalVisibility: (data: CanalVisibility | null) => void;
   reset: () => void;
 }
 
@@ -150,6 +152,7 @@ const initialState: WizardState = {
   quoteVehicleSignature: null,
   metadataCanal: null,
   diligencia: buildDiligenciaState({ itipoDiligencia: 'S', clasificadoEn: 'emision' }),
+  canalVisibility: null,
 };
 
 export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
@@ -289,6 +292,8 @@ export const useWizardStore = create<WizardState & WizardActions>()((set) => ({
       });
       return { diligencia: { ...base, ...data } };
     }),
+
+  setCanalVisibility: (canalVisibility) => set({ canalVisibility }),
 
   reset: () => set(initialState),
 }));

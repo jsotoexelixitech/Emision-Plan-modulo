@@ -1,3 +1,5 @@
+import type { CanalVisibility } from '../lib/canal-visibility';
+
 export type DocType =
   | 'cedula'
   | 'cedula_titular'
@@ -292,4 +294,6 @@ export interface WizardState {
   /** Datos dinámicos del canal (SSO Delegate) para emisión dinámica */
   metadataCanal: Record<string, any> | null;
   diligencia: import('../lib/diligencia').DiligenciaState | null;
+  /** Reglas de visibilidad del canal (SysIP / nest-api canal/visibility). */
+  canalVisibility: CanalVisibility | null;
 }

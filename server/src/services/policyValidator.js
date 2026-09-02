@@ -63,6 +63,11 @@ function validateEmissionPayload(p) {
   if (!/^\d{1,8}$/.test(p.rif_titular || '')) errors.push('rif_titular invalido (solo digitos, 1-8)');
   if (!p.nombre_titular?.trim()) errors.push('nombre_titular requerido');
   if (!p.apellido_titular?.trim()) errors.push('apellido_titular requerido');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(p.fnac_titular || '')) {
+    errors.push('fnac_titular formato YYYY-MM-DD (fecha nacimiento titular/asegurado)');
+  } else if (ageInYears(p.fnac_titular) < 18) {
+    errors.push('titular debe ser mayor de edad (18+)');
+  }
 
   // Vehiculo
   if (!/^[A-Z0-9]{6,8}$/.test(p.placa || '')) errors.push('placa invalida (6-8 alfanumericos en mayusculas)');
