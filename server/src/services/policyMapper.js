@@ -136,6 +136,18 @@ function normalizeDate(v) {
   return null;
 }
 
+/** Fecha de nacimiento desde wizard (fechaNac, fechaNacimiento, fnacimiento…). */
+function resolveBirthDate(person) {
+  if (!person || typeof person !== 'object') return null;
+  const raw =
+    person.fechaNac
+    ?? person.fechaNacimiento
+    ?? person.fnacimiento
+    ?? person.fnac
+    ?? '';
+  return normalizeDate(raw);
+}
+
 /**
  * Tipo de cedula: V|E|J. Si llega texto raro lo mapeamos al mas probable.
  */
@@ -382,6 +394,12 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const tipo_cedula_tomador = normalizeTipoCedula(tomador.tipoDoc);
   const tipo_cedula_titular = sameInsured ? tipo_cedula_tomador : (titular.tipoDoc ? normalizeTipoCedula(titular.tipoDoc) : null);
 
+  const fnacTomador = resolveBirthDate(tomador);
+  const fnacTitularRaw = sameInsured ? fnacTomador : resolveBirthDate(titular);
+  // Paridad SysIP sp_pre_emision: si falta una, hereda de la otra.
+  const fnac_tomador = fnacTomador || fnacTitularRaw;
+  const fnac_titular = fnacTitularRaw || fnacTomador;
+
   // Prioridad: código real del selector (cestado/cciudad) → fallback al mapa estático por texto
   const stateCodeTomador = tomador.cestado   ? parseInt(tomador.cestado, 10)  : resolveStateCode(tomador.estado);
   const cityCodeTomador  = tomador.cciudad   ? parseInt(tomador.cciudad, 10)  : resolveCityCode(tomador.ciudad, stateCodeTomador);
@@ -416,7 +434,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     telefono_tomador: cleanPhone(tomador.telefono),
     correo_tomador: cleanString(tomador.email),
     sexo_tomador: normalizeSexo(tomador.sexo),
-    fnac_tomador: normalizeDate(tomador.fechaNac),
+    fnac_tomador,
     estado_tomador: stateCodeTomador,
     ciudad_tomador: cityCodeTomador,
     direccion_tomador: cleanString(tomador.direccion),
@@ -430,7 +448,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     nombre_titular: sameInsured ? cleanString(tomador.nombre) : cleanString(titular.nombre),
     apellido_titular: sameInsured ? cleanString(tomador.apellido) : cleanString(titular.apellido),
     sexo_titular: sameInsured ? normalizeSexo(tomador.sexo) : (titular.sexo ? normalizeSexo(titular.sexo) : ''),
-    fnac_titular: sameInsured ? normalizeDate(tomador.fechaNac) : normalizeDate(titular.fechaNac),
+    fnac_titular,
     estado_titular: stateCodeTitular,
     ciudad_titular: cityCodeTitular,
     direccion_titular: sameInsured ? cleanString(tomador.direccion) : cleanString(titular.direccion),
@@ -447,7 +465,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
         xapellido_conductor: cleanString(cond.apellido),
         isexo_conductor: normalizeSexo(cond.sexo),
         iestado_civil_conductor: normalizeEstadoCivil(cond.estadoCivil),
-        fnac_conductor: normalizeDate(cond.fechaNac),
+        fnac_conductor: resolveBirthDate(cond),
         cestado_conductor: cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado),
         cciudad_conductor: cond.cciudad ? parseInt(cond.cciudad, 10) : resolveCityCode(cond.ciudad, cond.cestado ? parseInt(cond.cestado, 10) : resolveStateCode(cond.estado)),
         xdireccion_conductor: cleanString(cond.direccion),
@@ -464,7 +482,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
         xapellido_beneficiario: cleanString(ben.apellido),
         isexo_beneficiario: normalizeSexo(ben.sexo),
         iestado_civil_beneficiario: normalizeEstadoCivil(ben.estadoCivil),
-        fnac_beneficiario: normalizeDate(ben.fechaNac),
+        fnac_beneficiario: resolveBirthDate(ben),
         cestado_beneficiario: ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado),
         cciudad_beneficiario: ben.cciudad ? parseInt(ben.cciudad, 10) : resolveCityCode(ben.ciudad, ben.cestado ? parseInt(ben.cestado, 10) : resolveStateCode(ben.estado)),
         xdireccion_beneficiario: cleanString(ben.direccion),
