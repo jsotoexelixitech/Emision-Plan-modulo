@@ -387,8 +387,13 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   };
   const cgestor = preferGestor(pickActor('cgestor'), metadata.cgestor, state.cgestor);
   const cgestorIn = preferGestor(pickActor('cgestor_in'), metadata.cgestor_in, state.cgestor_in);
-  // Gestor marketplace: adpoliza.cusuario = 7 (Generico). 1422 es solo cotización.
-  const cusuario = cgestor ? 7 : resolveCusuarioCoberturas(metadata);
+  const ssoCusuario = pickActor('cusuario');
+  const ssoUser = ssoCusuario != null ? parseInt(String(ssoCusuario), 10) : NaN;
+  const planesUser = parseInt(String(resolveCusuarioCoberturas(metadata)), 10);
+  // Emisión: cusuario del SSO (p.ej. 7 del iframe). 1422/planes solo cotiza.
+  const cusuario = Number.isFinite(ssoUser) && ssoUser > 0 && ssoUser !== planesUser
+    ? ssoUser
+    : (cgestor ? undefined : planesUser);
   const centidadRaw = pickActor('centidad');
   const centidad = centidadRaw != null ? String(centidadRaw).trim().toUpperCase() : undefined;
   const citemRaw = pickActor('citem');
@@ -643,7 +648,9 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
-    cusuario: p.cgestor ? 7 : parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
+    ...(p.cusuario != null && String(p.cusuario).trim() !== ''
+      ? { cusuario: parseInt(String(p.cusuario), 10) }
+      : {}),
     ...(p.cgestor ? { cgestor: String(p.cgestor).trim() } : {}),
     ...(p.cgestor_in ? { cgestor_in: String(p.cgestor_in).trim() } : {}),
     ...(p.centidad ? { centidad: String(p.centidad).trim().toUpperCase() } : {}),

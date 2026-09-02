@@ -98,10 +98,12 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
   };
   if (payload.cgestor) {
     emissionBody.cgestor = String(payload.cgestor).trim();
-    emissionBody.cusuario = 7;
   }
   if (payload.cgestor_in && !emissionBody.cgestor) {
     emissionBody.cgestor_in = String(payload.cgestor_in).trim();
+  }
+  if (payload.cusuario != null && String(payload.cusuario).trim() !== '') {
+    emissionBody.cusuario = payload.cusuario;
   }
   console.log(
     `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} centidad=${emissionBody.centidad ?? '?'} citem=${emissionBody.citem ?? '?'} cusuario=${emissionBody.cusuario ?? '?'} cgestor=${emissionBody.cgestor ?? 'none'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'} tasaCa=${emissionBody.tasaCa ?? 0} tasaPt=${emissionBody.tasaPt ?? 0} tasaPp=${emissionBody.tasaPp ?? 0}`,

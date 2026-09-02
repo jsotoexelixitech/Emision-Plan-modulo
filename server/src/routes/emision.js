@@ -60,11 +60,6 @@ function withNexusMetadata(state, nexusMetadata) {
   }
 
   const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';
-  if (gestor) {
-    mergedMeta.cusuario = 7;
-    state.cgestor = gestor;
-  }
-
   return { ...state, metadataCanal: mergedMeta, ...(gestor ? { cgestor: gestor } : {}) };
 }
 
