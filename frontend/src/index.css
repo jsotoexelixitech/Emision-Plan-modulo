@@ -546,8 +546,17 @@ body {
     linear-gradient(180deg, #f7f8fc 0%, #eceff6 100%);
 }
 
+.revision-decision-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
+  border: 1px solid rgba(15, 26, 90, 0.1);
+  box-shadow: 0 12px 40px -20px rgba(9, 17, 51, 0.22);
+  min-width: 0;
+  max-width: 100%;
+}
+
 .revision-brand-bar {
   height: 4px;
+  width: 100%;
   background: linear-gradient(90deg, #091133 0%, #0F1A5A 38%, #2E6DBF 68%, #E84F51 100%);
 }
 
@@ -583,10 +592,4 @@ body {
 .revision-empty-icon {
   background: linear-gradient(135deg, #ECEFF8 0%, #ffffff 55%, #FFECEC 100%);
   box-shadow: 0 12px 32px -16px rgba(15, 26, 90, 0.2);
-}
-
-.revision-decision-card {
-  background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
-  border: 1px solid rgba(15, 26, 90, 0.1);
-  box-shadow: 0 12px 40px -20px rgba(9, 17, 51, 0.22);
 }

@@ -437,8 +437,8 @@ function DecisionPanel({
   className?: string;
 }) {
   return (
-    <div className={`revision-decision-card rounded-2xl p-4 sm:p-5 ${className}`}>
-      <BrandBar className="rounded-full mb-4 -mt-1" />
+    <div className={`revision-decision-card rounded-2xl p-4 sm:p-5 min-w-0 w-full overflow-hidden ${className}`}>
+      <BrandBar className="w-full rounded-t-xl mb-4" />
       <p className="text-xs font-black uppercase tracking-[0.14em] text-indigo-800 mb-1">
         Decisión del técnico
       </p>
@@ -454,19 +454,19 @@ function DecisionPanel({
         {acting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
         Autorizar pago
       </button>
-      <div className="flex flex-col sm:flex-row gap-2">
+      <div className="flex flex-col gap-2 w-full min-w-0">
         <input
           type="text"
           placeholder="Motivo de rechazo (opcional)"
           value={rejectReason}
           onChange={(e) => onRejectReason(e.target.value)}
-          className="flex-1 text-sm border border-slate-200 rounded-xl px-3 min-h-[44px] bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+          className="w-full min-w-0 text-sm border border-slate-200 rounded-xl px-3 min-h-[44px] bg-white focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none"
         />
         <button
           type="button"
           disabled={acting}
           onClick={onReject}
-          className="inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 border-rose-200 bg-white text-rose-700 text-sm font-bold hover:bg-rose-50 disabled:opacity-50 min-h-[44px] shrink-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30"
+          className="w-full inline-flex items-center justify-center gap-1.5 px-4 py-3 rounded-xl border-2 border-rose-200 bg-white text-rose-700 text-sm font-bold hover:bg-rose-50 disabled:opacity-50 min-h-[44px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/30"
         >
           <X size={16} /> Rechazar
         </button>
@@ -635,7 +635,7 @@ export function EmisionRevisionPanel() {
       : null;
 
   return (
-    <div className="revision-shell min-h-screen">
+    <div className="revision-shell min-h-screen overflow-x-hidden">
       <header className={`sticky top-0 z-30 bg-white shadow-sm ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
         <BrandBar />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -769,7 +769,7 @@ export function EmisionRevisionPanel() {
             </div>
           </aside>
 
-          <main className={`lg:col-span-8 min-h-[320px] ${
+          <main className={`lg:col-span-8 min-h-[320px] min-w-0 ${
             !(mobileDetail && selected) ? 'hidden lg:block' : ''
           }`}
           >
@@ -893,8 +893,8 @@ export function EmisionRevisionPanel() {
                   </p>
                 )}
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                  <div className="xl:col-span-2 space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start min-w-0">
+                  <div className="lg:col-span-2 space-y-4 min-w-0">
                 <InfoSection title="Documentos de póliza emitida" icon={<FileDown size={14} />}>
                   {policyDocs.length === 0 ? (
                     <p className="text-sm text-slate-500">
@@ -1104,8 +1104,8 @@ export function EmisionRevisionPanel() {
                   </div>
 
                   {selected.estado === 'pending' && (
-                    <div className="hidden xl:block xl:col-span-1">
-                      <div className="sticky top-[7.5rem]">
+                    <div className="hidden lg:block lg:col-span-1 min-w-0 w-full">
+                      <div className="sticky top-[7.5rem] w-full min-w-0">
                         <DecisionPanel
                           acting={acting}
                           rejectReason={rejectReason}
