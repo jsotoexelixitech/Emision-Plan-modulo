@@ -33,6 +33,7 @@ import {
   enrichBridgePayloadForSave,
   extractActorMetadataFromBridgeData,
 } from './sso-metadata';
+import { readFlowHandoff } from './flow-handoff';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
 const PORT_TO_ORDER: Record<string, number> = {
@@ -326,6 +327,12 @@ function makeBridge(): BridgeAPI {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[bridge] hydrate failed', e);
+    }
+    const local = readFlowHandoff();
+    const storeV = (useWizardStore.getState() as { vehicle?: { cmarca?: string; cversion?: string } }).vehicle;
+    const localV = local?.vehicle as { cmarca?: string; cversion?: string } | undefined;
+    if (local && localV?.cmarca && (!storeV?.cmarca || !storeV?.cversion)) {
+      applyHydration(local);
     }
   };
 
