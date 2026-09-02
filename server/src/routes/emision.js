@@ -23,10 +23,18 @@ function withNexusMetadata(state, nexusMetadata) {
   if (!nexusMetadata || typeof nexusMetadata !== 'object' || !Object.keys(nexusMetadata).length) {
     return state;
   }
-  return {
+  const merged = {
     ...state,
     metadataCanal: { ...(state.metadataCanal || {}), ...nexusMetadata },
   };
+  const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in'];
+  for (const key of actorKeys) {
+    const val = nexusMetadata[key];
+    if (val != null && String(val).trim() !== '') {
+      merged.metadataCanal[key] = val;
+    }
+  }
+  return merged;
 }
 
 /**

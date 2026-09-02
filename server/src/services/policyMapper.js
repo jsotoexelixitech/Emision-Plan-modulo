@@ -373,6 +373,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const cgestor = metadata.cgestor != null && String(metadata.cgestor).trim() !== ''
     ? String(metadata.cgestor).trim()
     : undefined;
+  const cgestorIn = metadata.cgestor_in != null && String(metadata.cgestor_in).trim() !== ''
+    ? String(metadata.cgestor_in).trim()
+    : undefined;
   const centidad = metadata.centidad != null && String(metadata.centidad).trim() !== ''
     ? String(metadata.centidad).trim().toUpperCase()
     : undefined;
@@ -431,6 +434,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     productor: productor != null ? String(productor) : undefined,
     cusuario,
     ...(cgestor ? { cgestor } : {}),
+    ...(cgestorIn ? { cgestor_in: cgestorIn } : {}),
     ...(centidad ? { centidad } : {}),
     ...(citem ? { citem } : {}),
     ...(ctipocanal !== undefined ? { ctipocanal } : {}),
@@ -630,6 +634,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     ctipocanal: p.ctipocanal ?? 'E',
     cusuario: parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
     ...(p.cgestor ? { cgestor: String(p.cgestor).trim() } : {}),
+    ...(p.cgestor_in ? { cgestor_in: String(p.cgestor_in).trim() } : {}),
     ...(p.centidad ? { centidad: String(p.centidad).trim().toUpperCase() } : {}),
     ...(p.citem ? { citem: String(p.citem).trim() } : {}),
     msumaaseg,
