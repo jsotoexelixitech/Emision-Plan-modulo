@@ -40,6 +40,18 @@ function isActorValue(val: unknown): boolean {
   return val != null && String(val).trim() !== '';
 }
 
+function preferGestorCode(a: unknown, b: unknown): unknown {
+  const sa = a != null ? String(a).trim() : '';
+  const sb = b != null ? String(b).trim() : '';
+  if (!sa) return sb || undefined;
+  if (!sb) return sa || undefined;
+  if (sb.startsWith(`${sa}-`)) return sb;
+  if (sa.startsWith(`${sb}-`)) return sa;
+  if (sa.includes('-') && !sb.includes('-')) return sa;
+  if (sb.includes('-') && !sa.includes('-')) return sb;
+  return sa;
+}
+
 function pickActorFields(meta?: Record<string, unknown> | null): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   if (!meta) return out;
@@ -67,7 +79,17 @@ export function readMarketplaceActorSnapshot(): Record<string, unknown> {
 export function snapshotMarketplaceActor(
   meta?: Record<string, unknown> | null,
 ): Record<string, unknown> {
-  const next = { ...readMarketplaceActorSnapshot(), ...pickActorFields(meta) };
+  const prev = readMarketplaceActorSnapshot();
+  const incoming = pickActorFields(meta);
+  const next: Record<string, unknown> = { ...prev };
+  for (const key of MARKETPLACE_ACTOR_KEYS) {
+    if (key === 'cgestor' || key === 'cgestor_in') {
+      const chosen = preferGestorCode(prev[key], incoming[key]);
+      if (isActorValue(chosen)) next[key] = chosen;
+      continue;
+    }
+    if (isActorValue(incoming[key])) next[key] = incoming[key];
+  }
   if (typeof window !== 'undefined') {
     try {
       sessionStorage.setItem(ACTOR_SNAPSHOT_KEY, JSON.stringify(next));

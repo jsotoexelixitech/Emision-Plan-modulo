@@ -37,12 +37,16 @@ function withNexusMetadata(state, nexusMetadata) {
   for (const key of actorKeys) {
     const fromState = baseMeta[key];
     const fromJwt = jwtMeta[key];
-    const val = fromState != null && String(fromState).trim() !== ''
-      ? fromState
-      : fromJwt;
-    if (val != null && String(val).trim() !== '') {
-      mergedMeta[key] = val;
+    const sa = fromState != null ? String(fromState).trim() : '';
+    const sb = fromJwt != null ? String(fromJwt).trim() : '';
+    let val = sa || sb;
+    if ((key === 'cgestor' || key === 'cgestor_in') && sa && sb) {
+      if (sb.startsWith(`${sa}-`)) val = sb;
+      else if (sa.startsWith(`${sb}-`)) val = sa;
+      else if (sa.includes('-') && !sb.includes('-')) val = sa;
+      else if (sb.includes('-') && !sa.includes('-')) val = sb;
     }
+    if (val) mergedMeta[key] = val;
   }
 
   const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';

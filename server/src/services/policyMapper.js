@@ -379,10 +379,15 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     : undefined;
   const ccanalalt = parseCanalAltOptional(pickActor('ccanalalt_in', 'ccanalalt'));
   const cscanalalt = parseCanalAltOptional(pickActor('cscanalalt_in', 'cscanalalt'));
-  const cgestorRaw = pickActor('cgestor');
-  const cgestor = cgestorRaw != null ? String(cgestorRaw).trim() : undefined;
-  const cgestorInRaw = pickActor('cgestor_in');
-  const cgestorIn = cgestorInRaw != null ? String(cgestorInRaw).trim() : undefined;
+  const preferGestor = (...vals) => {
+    const codes = vals
+      .map((v) => (v != null ? String(v).trim() : ''))
+      .filter(Boolean);
+    if (!codes.length) return undefined;
+    return codes.find((c) => c.includes('-')) || codes[0];
+  };
+  const cgestor = preferGestor(pickActor('cgestor'), metadata.cgestor, state.cgestor);
+  const cgestorIn = preferGestor(pickActor('cgestor_in'), metadata.cgestor_in, state.cgestor_in);
   const centidadRaw = pickActor('centidad');
   const centidad = centidadRaw != null ? String(centidadRaw).trim().toUpperCase() : undefined;
   const citemRaw = pickActor('citem');
