@@ -27,6 +27,13 @@ function parseCscanalalt(meta = {}) {
  * @returns {{ centidad: string, citem: string } | null}
  */
 function resolveEntityContext(meta = {}) {
+  const gestor = meta.cgestor != null && String(meta.cgestor).trim() !== ''
+    ? String(meta.cgestor).trim()
+    : '';
+  if (gestor) {
+    return { centidad: 'P', citem: gestor };
+  }
+
   const centidad = meta.centidad != null ? String(meta.centidad).trim().toUpperCase() : '';
   const citemRaw = meta.citem
     ?? (centidad === 'P' ? meta.cproductor : null)
