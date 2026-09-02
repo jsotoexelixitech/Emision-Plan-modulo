@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
-  Check, X, Loader2, ClipboardList, User, FileText, AlertTriangle,
-  History, Clock, CreditCard, ExternalLink, FileDown, ArrowLeft,
-  RefreshCw, Mail, Hash, ShieldCheck, Inbox,
+  Check, X, Loader2, ClipboardList, User, AlertTriangle,
+  History, ExternalLink, FileDown, ArrowLeft,
+  RefreshCw, Mail, ShieldCheck, Inbox,
 } from 'lucide-react';
 import { readConfigPanelContext, canalDisplayLabel } from './configPanelContext';
 import { resolveNexusApiUrl } from '../nexus/nexus-core';
@@ -382,41 +382,187 @@ function DocLinkCard({ doc }: { doc: DocLink }) {
   );
 }
 
-function InfoSection({
-  title,
-  icon,
-  children,
-  accent,
-}: {
-  title: string;
-  icon: ReactNode;
-  children: ReactNode;
-  accent?: boolean;
-}) {
+function ScoringCard({ total, breakdown }: { total: number; breakdown: ScoreLine[] }) {
   return (
-    <section className="revision-card overflow-hidden">
-      <div className={`flex items-center gap-2.5 px-4 py-3 border-b ${
-        accent ? 'bg-fuchsia-50/80 border-fuchsia-100' : 'bg-slate-50/90 border-slate-100'
-      }`}
-      >
-        <span className={`grid place-items-center w-8 h-8 rounded-lg shrink-0 ${
-          accent ? 'bg-fuchsia-500 text-white' : 'bg-indigo-700 text-white'
-        }`}
-        >
-          {icon}
+    <div className="revision-card overflow-hidden min-w-0">
+      <div className="flex items-center justify-between gap-2 px-4 py-2.5 bg-slate-50/90 border-b border-slate-100">
+        <div className="flex items-center gap-2">
+          <span className="grid place-items-center w-7 h-7 rounded-lg bg-indigo-700 text-white shrink-0">
+            <ClipboardList size={13} />
+          </span>
+          <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-indigo-900">
+            Scoring salud
+          </h3>
+        </div>
+        <span className={`text-[10px] font-black px-2 py-0.5 rounded-md border ${scoreTone(total)}`}>
+          {total} pts
         </span>
-        <h3 className="text-xs font-black uppercase tracking-[0.12em] text-indigo-900">{title}</h3>
       </div>
-      <div className="p-4 sm:p-5 bg-white">{children}</div>
-    </section>
+      <ul className="p-3 space-y-1.5 max-h-52 overflow-y-auto">
+        {breakdown.length === 0 ? (
+          <li className="text-sm text-slate-500 py-2">Sin desglose de preguntas.</li>
+        ) : (
+          breakdown.map((line) => (
+            <li
+              key={line.questionId}
+              className="flex items-start justify-between gap-2 text-xs border-b border-slate-100 last:border-0 pb-1.5"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-slate-800 leading-snug">{line.label}</p>
+                <p className="text-[10px] text-slate-500">Resp: {formatAnswer(line.answer)}</p>
+              </div>
+              <span className="font-bold text-indigo-700 shrink-0 tabular-nums">+{line.points}</span>
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
   );
 }
 
-function Field({ label, children, wide }: { label: string; children: ReactNode; wide?: boolean }) {
+function CompactSummaryCard({
+  selected,
+  primaLabel,
+  beneficiaries,
+  polNum,
+  recNum,
+  emittedWhen,
+}: {
+  selected: Submission;
+  primaLabel: string | null;
+  beneficiaries: string[];
+  polNum?: string;
+  recNum?: string;
+  emittedWhen?: string | null;
+}) {
   return (
-    <div className={wide ? 'col-span-2' : undefined}>
-      <dt className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</dt>
-      <dd className="text-sm font-medium text-slate-800 break-words">{children}</dd>
+    <div className="revision-card overflow-hidden min-w-0">
+      <BrandBar />
+      <div className="p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
+            <span className="grid place-items-center w-11 h-11 rounded-xl bg-indigo-700 text-white text-sm font-black shrink-0">
+              {initials(selected.tomadorNombre || selected.tomadorRif)}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(selected.estado)}`}>
+                  {estadoLabel(selected.estado)}
+                </span>
+                <span className="text-[10px] text-slate-400 font-mono">#{selected.id.slice(0, 8)}</span>
+              </div>
+              <h2 className="font-display text-lg sm:text-xl font-black text-indigo-900 leading-tight truncate">
+                {selected.tomadorNombre || 'Tomador'}
+              </h2>
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                {selected.tomadorRif && (
+                  <span className="inline-flex items-center gap-1">
+                    <User size={11} className="text-indigo-400" />
+                    {selected.tomadorRif}
+                  </span>
+                )}
+                {selected.tomadorEmail && (
+                  <span className="inline-flex items-center gap-1 min-w-0">
+                    <Mail size={11} className="text-indigo-400 shrink-0" />
+                    <span className="truncate max-w-[200px]">{selected.tomadorEmail}</span>
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <div className={`rounded-lg border px-3 py-1.5 text-center min-w-[64px] ${scoreTone(selected.scoreTotal)}`}>
+              <p className="text-base font-black tabular-nums leading-none">{selected.scoreTotal}</p>
+              <p className="text-[8px] uppercase font-bold mt-0.5 tracking-wider">Score</p>
+            </div>
+            {primaLabel && (
+              <div className="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-center min-w-[64px]">
+                <p className="text-base font-black tabular-nums leading-none text-indigo-800">{primaLabel}</p>
+                <p className="text-[8px] uppercase font-bold mt-0.5 tracking-wider text-indigo-400">Prima</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Plan</dt>
+            <dd className="font-semibold text-slate-800 mt-0.5 leading-snug">
+              {selected.planName || selected.snapshot?.selectedPlan?.name || selected.cplan}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Código</dt>
+            <dd className="font-semibold text-slate-800 mt-0.5">
+              {selected.cplan}
+              {selected.cramo != null ? ` · R${selected.cramo}` : ''}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Frecuencia</dt>
+            <dd className="font-semibold text-slate-800 mt-0.5">
+              {selected.snapshot?.funeral?.frecuencia || '—'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Tomador</dt>
+            <dd className="font-medium text-slate-800 mt-0.5 leading-snug">{personLabel(selected.snapshot?.tomador)}</dd>
+          </div>
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Titular</dt>
+            <dd className="font-medium text-slate-800 mt-0.5 leading-snug">{personLabel(selected.snapshot?.asegurado)}</dd>
+          </div>
+          <div>
+            <dt className="text-[9px] font-bold text-slate-400 uppercase">Póliza</dt>
+            <dd className="font-medium text-slate-800 mt-0.5">
+              {polNum || <span className="text-slate-400 italic">Pendiente</span>}
+            </dd>
+          </div>
+        </dl>
+
+        {beneficiaries.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-slate-100">
+            <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Beneficiarios</p>
+            <ul className="flex flex-wrap gap-1">
+              {beneficiaries.map((line) => (
+                <li key={line} className="text-[11px] rounded-md bg-slate-50 px-2 py-0.5 text-slate-700">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-slate-100">
+          {[
+            { label: 'Solicitud', value: formatDate(selected.createdAt) },
+            {
+              label: 'Revisión',
+              value: selected.reviewedAt
+                ? formatDate(selected.reviewedAt)
+                : 'Pendiente',
+            },
+            {
+              label: 'Emisión',
+              value: emittedWhen ? formatDate(emittedWhen) : '—',
+            },
+          ].map((item) => (
+            <span
+              key={item.label}
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-50 border border-slate-100 px-2 py-1 text-[10px] text-slate-600"
+            >
+              <span className="font-bold text-slate-400 uppercase">{item.label}</span>
+              {item.value}
+            </span>
+          ))}
+          {recNum && (
+            <span className="inline-flex items-center rounded-lg bg-slate-50 border border-slate-100 px-2 py-1 text-[10px] text-slate-600">
+              <span className="font-bold text-slate-400 uppercase mr-1">Recibo</span>
+              {recNum}
+            </span>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -428,6 +574,7 @@ function DecisionPanel({
   onApprove,
   onReject,
   className = '',
+  compact = false,
 }: {
   acting: boolean;
   rejectReason: string;
@@ -435,21 +582,25 @@ function DecisionPanel({
   onApprove: () => void;
   onReject: () => void;
   className?: string;
+  compact?: boolean;
 }) {
   return (
-    <div className={`revision-decision-card rounded-2xl p-4 sm:p-5 min-w-0 w-full overflow-hidden ${className}`}>
-      <BrandBar className="w-full rounded-t-xl mb-4" />
-      <p className="text-xs font-black uppercase tracking-[0.14em] text-indigo-800 mb-1">
+    <div
+      className={
+        compact
+          ? `min-w-0 w-full ${className}`
+          : `revision-decision-card rounded-2xl p-4 sm:p-5 min-w-0 w-full overflow-hidden ${className}`
+      }
+    >
+      {!compact && <BrandBar className="w-full rounded-t-xl mb-4" />}
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-indigo-800 mb-2">
         Decisión del técnico
-      </p>
-      <p className="text-sm text-slate-500 mb-4">
-        Revisa identidad, scoring y documentos antes de autorizar el enlace de pago.
       </p>
       <button
         type="button"
         disabled={acting}
         onClick={onApprove}
-        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 rounded-xl bg-indigo-700 text-white text-sm font-bold hover:bg-indigo-800 disabled:opacity-50 min-h-[48px] shadow-lg shadow-indigo-700/25 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 mb-3"
+        className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-700 text-white text-sm font-bold hover:bg-indigo-800 disabled:opacity-50 min-h-[44px] shadow-lg shadow-indigo-700/25 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 mb-2"
       >
         {acting ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
         Autorizar pago
@@ -789,334 +940,204 @@ export function EmisionRevisionPanel() {
                 )}
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button
                   type="button"
                   onClick={() => setMobileDetail(false)}
-                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
+                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 min-h-[40px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
                 >
                   <ArrowLeft size={16} />
                   Volver al listado
                 </button>
 
-                <div className="revision-card overflow-hidden">
-                  <BrandBar />
-                  <div className="p-4 sm:p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0">
-                        <span className="grid place-items-center w-14 h-14 rounded-2xl bg-indigo-700 text-white text-lg font-black shrink-0 shadow-md shadow-indigo-700/25">
-                          {initials(selected.tomadorNombre || selected.tomadorRif)}
+                {selected.estado === 'paid' && (
+                  <p className="text-xs text-indigo-900 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                    Póliza pagada y emitida{polNum ? ` · ${polNum}` : ''}.
+                  </p>
+                )}
+                {selected.estado === 'approved' && (
+                  <p className="text-xs text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2">
+                    Aprobada {formatDate(selected.reviewedAt)}.
+                    {selected.emailSent
+                      ? ' Correo con link de pago enviado.'
+                      : selected.emailError
+                        ? ` Correo falló: ${selected.emailError}`
+                        : ' Link de pago generado.'}
+                  </p>
+                )}
+                {selected.estado === 'rejected' && (
+                  <p className="text-xs text-rose-800 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+                    Rechazada{selected.reviewedAt ? ` ${formatDate(selected.reviewedAt)}` : ''}.
+                    {selected.rejectReason ? ` Motivo: ${selected.rejectReason}` : ''}
+                  </p>
+                )}
+                {selected.estado === 'expired' && (
+                  <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                    Link expirado{selected.paymentExpiresAt ? ` (${formatDate(selected.paymentExpiresAt)})` : ''}.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start min-w-0">
+                  <div className="lg:col-span-3 space-y-3 min-w-0 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto revision-detail-scroll">
+                    <CompactSummaryCard
+                      selected={selected}
+                      primaLabel={primaLabel}
+                      beneficiaries={beneficiaries}
+                      polNum={polNum}
+                      recNum={recNum}
+                      emittedWhen={emittedWhen}
+                    />
+
+                    <details
+                      className="revision-card px-4 py-3 group"
+                      open={policyDocs.length > 0 || uploadDocs.length > 0}
+                    >
+                      <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                        <FileDown size={14} />
+                        Documentos y enlaces
+                        <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
+                          {policyDocs.length + uploadDocs.length} archivo
+                          {policyDocs.length + uploadDocs.length === 1 ? '' : 's'}
                         </span>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${estadoBadge(selected.estado)}`}>
-                              {estadoLabel(selected.estado)}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono inline-flex items-center gap-1">
-                              <Hash size={10} />
-                              {selected.id.slice(0, 8)}
-                            </span>
-                          </div>
-                          <h2 className="font-display text-2xl sm:text-3xl font-black text-indigo-900 leading-tight">
-                            {selected.tomadorNombre || 'Tomador'}
-                          </h2>
-                          <div className="mt-2 flex flex-col sm:flex-row sm:flex-wrap gap-2 text-sm text-slate-500">
-                            {selected.tomadorRif && (
-                              <span className="inline-flex items-center gap-1.5">
-                                <User size={13} className="text-indigo-400" />
-                                {selected.tomadorRif}
-                              </span>
+                      </summary>
+                      <div className="mt-3 space-y-3">
+                        {policyDocs.length === 0 && uploadDocs.length === 0 ? (
+                          <p className="text-xs text-slate-500">
+                            {selected.estado === 'paid'
+                              ? 'Sin PDF de póliza registrado.'
+                              : 'Cuadro de póliza y expediente OCR aparecen tras pago/emisión.'}
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {policyDocs.map((doc) => (
+                              <li key={doc.key}>
+                                <DocLinkCard doc={doc} />
+                              </li>
+                            ))}
+                            {uploadDocs.map((doc) => (
+                              <li key={doc.key}>
+                                <DocLinkCard doc={doc} />
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
+                          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
+                            {selected.paymentUrl && (
+                              <div className="sm:col-span-2">
+                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Checkout</dt>
+                                <dd>
+                                  <a
+                                    href={selected.paymentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-indigo-700 font-semibold hover:underline"
+                                  >
+                                    Abrir link de pago
+                                    <ExternalLink size={12} />
+                                  </a>
+                                </dd>
+                              </div>
                             )}
-                            {selected.tomadorEmail && (
-                              <span className="inline-flex items-center gap-1.5 min-w-0">
-                                <Mail size={13} className="text-indigo-400 shrink-0" />
-                                <span className="truncate">{selected.tomadorEmail}</span>
-                              </span>
+                            {selected.paymentExpiresAt && (
+                              <div>
+                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Expira</dt>
+                                <dd className="font-medium text-slate-800">{formatDate(selected.paymentExpiresAt)}</dd>
+                              </div>
                             )}
-                          </div>
-                        </div>
+                            {selected.paymentSid && (
+                              <div>
+                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">SID</dt>
+                                <dd className="font-mono text-[10px] text-slate-700 break-all">{selected.paymentSid}</dd>
+                              </div>
+                            )}
+                          </dl>
+                        )}
                       </div>
-                      <div className="flex flex-wrap gap-2 sm:gap-3">
-                        <div className={`rounded-xl border px-4 py-2.5 text-center min-w-[80px] ${scoreTone(selected.scoreTotal)}`}>
-                          <p className="text-xl font-black tabular-nums leading-none">{selected.scoreTotal}</p>
-                          <p className="text-[9px] uppercase font-bold mt-1 tracking-wider">Scoring</p>
-                        </div>
-                        {primaLabel && (
-                          <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-2.5 text-center min-w-[80px]">
-                            <p className="text-xl font-black tabular-nums leading-none text-indigo-800">{primaLabel}</p>
-                            <p className="text-[9px] uppercase font-bold mt-1 tracking-wider text-indigo-400">Prima</p>
+                    </details>
+
+                    <details className="revision-card px-4 py-3">
+                      <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                        <User size={14} />
+                        Datos OCR de cédulas
+                        <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
+                          {ocrBlocks.length ? `${ocrBlocks.length} doc.` : 'Sin datos'}
+                        </span>
+                      </summary>
+                      <div className="mt-3">
+                        {ocrBlocks.length === 0 ? (
+                          <p className="text-xs text-slate-500">Sin datos OCR en el snapshot.</p>
+                        ) : (
+                          <div className="space-y-3 max-h-40 overflow-y-auto">
+                            {ocrBlocks.map((block) => (
+                              <div key={block.key}>
+                                <p className="text-[10px] font-bold text-slate-600 mb-1">{block.label}</p>
+                                <dl className="grid grid-cols-2 gap-1.5">
+                                  {Object.entries(block.ocr)
+                                    .filter(([, v]) => v != null && String(v).trim())
+                                    .slice(0, 8)
+                                    .map(([k, v]) => (
+                                      <div key={k}>
+                                        <dt className="text-slate-400 uppercase text-[9px]">{k}</dt>
+                                        <dd className="text-xs font-medium text-slate-800">{String(v)}</dd>
+                                      </div>
+                                    ))}
+                                </dl>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
+                    </details>
+
+                    <details className="revision-card px-4 py-3">
+                      <summary
+                        className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
+                        onClick={() => setShowRawSnapshot((v) => !v)}
+                      >
+                        {showRawSnapshot ? 'Ocultar JSON' : 'Ver snapshot JSON'}
+                      </summary>
+                      {showRawSnapshot && (
+                        <pre className="mt-2 max-h-36 overflow-auto text-[10px] bg-slate-50 rounded-lg p-2 text-slate-700">
+                          {JSON.stringify(selected.snapshot, null, 2)}
+                        </pre>
+                      )}
+                    </details>
+                  </div>
+
+                  <div className="lg:col-span-2 min-w-0 space-y-3">
+                    <div className="lg:sticky lg:top-[7.5rem] space-y-3">
+                      {selected.estado === 'pending' && (
+                        <div className="hidden lg:block">
+                          <DecisionPanel
+                            acting={acting}
+                            rejectReason={rejectReason}
+                            onRejectReason={setRejectReason}
+                            onApprove={() => void approve(selected.id)}
+                            onReject={() => void reject(selected.id)}
+                          />
+                        </div>
+                      )}
+                      <ScoringCard
+                        total={selected.scoreTotal}
+                        breakdown={selected.scoreBreakdown ?? []}
+                      />
                     </div>
                   </div>
                 </div>
 
                 {selected.estado === 'pending' && (
-                  <DecisionPanel
-                    className="lg:hidden"
-                    acting={acting}
-                    rejectReason={rejectReason}
-                    onRejectReason={setRejectReason}
-                    onApprove={() => void approve(selected.id)}
-                    onReject={() => void reject(selected.id)}
-                  />
-                )}
-
-                {selected.estado === 'paid' && (
-                  <p className="text-sm text-indigo-900 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
-                    Póliza pagada y emitida. Quedó registrada en el histórico
-                    {polNum ? ` · ${polNum}` : ''}.
-                  </p>
-                )}
-                {selected.estado === 'approved' && (
-                  <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3">
-                    Aprobada el {formatDate(selected.reviewedAt)}.
-                    {selected.emailSent
-                      ? ' Se envió el correo con el link de pago al cliente.'
-                      : selected.emailError
-                        ? ` Link generado pero el correo falló: ${selected.emailError}`
-                        : ' Link de pago generado.'}
-                  </p>
-                )}
-                {selected.estado === 'rejected' && (
-                  <p className="text-sm text-rose-800 bg-rose-50 border border-rose-100 rounded-xl px-4 py-3">
-                    Solicitud rechazada
-                    {selected.reviewedAt ? ` el ${formatDate(selected.reviewedAt)}` : ''}.
-                    {selected.rejectReason ? ` Motivo: ${selected.rejectReason}` : ''}
-                  </p>
-                )}
-                {selected.estado === 'expired' && (
-                  <p className="text-sm text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
-                    Link de pago expirado
-                    {selected.paymentExpiresAt ? ` (${formatDate(selected.paymentExpiresAt)})` : ''}.
-                  </p>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start min-w-0">
-                  <div className="lg:col-span-2 space-y-4 min-w-0">
-                <InfoSection title="Documentos de póliza emitida" icon={<FileDown size={14} />}>
-                  {policyDocs.length === 0 ? (
-                    <p className="text-sm text-slate-500">
-                      {selected.estado === 'paid'
-                        ? 'Sin PDF de póliza registrado. La URL se guarda al completar la emisión.'
-                        : selected.estado === 'approved'
-                          ? 'Aún no hay póliza: el cliente debe pagar. Tras la emisión aparecerán el cuadro de póliza y el número oficial.'
-                          : 'El cuadro de póliza y anexos se guardan aquí al completar pago + emisión.'}
-                    </p>
-                  ) : (
-                    <ul className="space-y-2">
-                      {policyDocs.map((doc) => (
-                        <li key={doc.key}>
-                          <DocLinkCard doc={doc} />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  {emittedWhen && (
-                    <p className="text-[11px] text-slate-400 mt-3">
-                      Emitida {formatDate(emittedWhen)}
-                      {polNum ? ` · ${polNum}` : ''}
-                    </p>
-                  )}
-                </InfoSection>
-
-                <InfoSection title="Datos de la póliza" icon={<FileText size={14} />}>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
-                    <Field label="Plan" wide>
-                      {selected.planName || selected.snapshot?.selectedPlan?.name || selected.cplan}
-                    </Field>
-                    <Field label="Código / ramo">
-                      {selected.cplan}
-                      {selected.cramo != null ? ` · ramo ${selected.cramo}` : ''}
-                    </Field>
-                    <Field label="Nº póliza">
-                      {polNum || (
-                        <span className="text-slate-400 italic font-normal">
-                          {selected.estado === 'paid' ? 'No registrado' : 'Se genera al pagar y emitir'}
-                        </span>
-                      )}
-                    </Field>
-                    {recNum && <Field label="Recibo">{recNum}</Field>}
-                    <Field label="Frecuencia">
-                      {selected.snapshot?.funeral?.frecuencia || '—'}
-                    </Field>
-                    <Field label="Prima">
-                      {quote?.mprimaext != null
-                        ? `$${Number(quote.mprimaext).toFixed(2)}`
-                        : quote?.mprima != null
-                          ? `$${Number(quote.mprima).toFixed(2)}`
-                          : '—'}
-                      {quote?.ptasa != null ? ` · tasa ${quote.ptasa}` : ''}
-                    </Field>
-                    <Field label="Tomador">{personLabel(selected.snapshot?.tomador)}</Field>
-                    <Field label="Asegurado / titular">{personLabel(selected.snapshot?.asegurado)}</Field>
-                    <Field label="Beneficiarios" wide>
-                      {beneficiaries.length === 0 ? (
-                        '—'
-                      ) : (
-                        <ul className="space-y-1">
-                          {beneficiaries.map((line) => (
-                            <li key={line} className="rounded-lg bg-slate-50 px-2.5 py-1.5 text-sm">
-                              {line}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </Field>
-                  </dl>
-                </InfoSection>
-
-                <InfoSection title="Línea de tiempo" icon={<Clock size={14} />}>
-                  <ol className="space-y-3">
-                    {[
-                      { label: 'Solicitud creada', value: formatDate(selected.createdAt) },
-                      { label: 'Revisión técnica', value: selected.reviewedAt ? `${formatDate(selected.reviewedAt)}${selected.reviewedBy ? ` · ${selected.reviewedBy}` : ''}` : 'Pendiente' },
-                      { label: 'Emisión', value: emittedWhen ? formatDate(emittedWhen) : 'Aún no emitida' },
-                    ].map((item) => (
-                      <li key={item.label} className="flex gap-3">
-                        <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-700 shrink-0 ring-4 ring-indigo-100" />
-                        <div>
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
-                          <p className="text-sm font-medium text-slate-800">{item.value}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                  {selected.rejectReason && (
-                    <p className="mt-3 text-sm text-rose-700 bg-rose-50 rounded-xl px-3 py-2">
-                      Motivo rechazo: {selected.rejectReason}
-                    </p>
-                  )}
-                </InfoSection>
-
-                {uploadDocs.length > 0 && (
-                  <InfoSection title="Expediente OCR" icon={<FileText size={14} />}>
-                    <ul className="space-y-2">
-                      {uploadDocs.map((doc) => (
-                        <li key={doc.key}>
-                          <DocLinkCard doc={doc} />
-                        </li>
-                      ))}
-                    </ul>
-                  </InfoSection>
-                )}
-
-                {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
-                  <InfoSection title="Checkout de pago" icon={<CreditCard size={14} />} accent>
-                    <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {selected.paymentSid && (
-                        <Field label="SID checkout">
-                          <span className="font-mono text-[11px] break-all">{selected.paymentSid}</span>
-                        </Field>
-                      )}
-                      {selected.paymentExpiresAt && (
-                        <Field label="Link expira">{formatDate(selected.paymentExpiresAt)}</Field>
-                      )}
-                      {selected.paymentUrl && (
-                        <Field label="URL de pago" wide>
-                          <a
-                            href={selected.paymentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-indigo-700 font-semibold hover:underline"
-                          >
-                            Abrir checkout
-                            <ExternalLink size={13} />
-                          </a>
-                        </Field>
-                      )}
-                    </dl>
-                  </InfoSection>
-                )}
-
-                <details className="revision-card px-4 py-3 group">
-                  <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
-                    <User size={14} />
-                    Datos OCR de cédulas
-                    <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
-                      {ocrBlocks.length ? `${ocrBlocks.length} documento${ocrBlocks.length === 1 ? '' : 's'}` : 'Sin datos'}
-                    </span>
-                  </summary>
-                  <div className="mt-3">
-                    {ocrBlocks.length === 0 ? (
-                      <p className="text-sm text-slate-500">Sin datos OCR de cédula en el snapshot.</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {ocrBlocks.map((block) => (
-                          <div key={block.key}>
-                            <p className="text-xs font-bold text-slate-600 mb-2">{block.label}</p>
-                            <dl className="grid grid-cols-2 gap-2">
-                              {Object.entries(block.ocr)
-                                .filter(([, v]) => v != null && String(v).trim())
-                                .slice(0, 12)
-                                .map(([k, v]) => (
-                                  <div key={k}>
-                                    <dt className="text-slate-400 uppercase text-[10px]">{k}</dt>
-                                    <dd className="text-sm font-medium text-slate-800">{String(v)}</dd>
-                                  </div>
-                                ))}
-                            </dl>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                  <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 p-3 shadow-[0_-6px_24px_rgba(9,17,51,0.1)]">
+                    <DecisionPanel
+                      compact
+                      acting={acting}
+                      rejectReason={rejectReason}
+                      onRejectReason={setRejectReason}
+                      onApprove={() => void approve(selected.id)}
+                      onReject={() => void reject(selected.id)}
+                    />
                   </div>
-                </details>
-
-                <details className="revision-card px-4 py-3">
-                  <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
-                    <ClipboardList size={14} />
-                    Scoring y preguntas
-                    <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${scoreTone(selected.scoreTotal)}`}>
-                      {selected.scoreTotal} pts
-                    </span>
-                  </summary>
-                  <ul className="mt-3 space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {(selected.scoreBreakdown ?? []).map((line) => (
-                      <li
-                        key={line.questionId}
-                        className="flex items-start justify-between gap-2 text-sm border-b border-slate-100 last:border-0 pb-2"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-medium text-slate-800">{line.label}</p>
-                          <p className="text-xs text-slate-500">Resp: {formatAnswer(line.answer)}</p>
-                        </div>
-                        <span className="font-bold text-indigo-700 shrink-0">+{line.points}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-
-                <details className="revision-card px-4 py-3">
-                  <summary
-                    className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
-                    onClick={() => setShowRawSnapshot((v) => !v)}
-                  >
-                    {showRawSnapshot ? 'Ocultar snapshot JSON' : 'Ver snapshot JSON completo'}
-                  </summary>
-                  {showRawSnapshot && (
-                    <pre className="mt-3 max-h-48 overflow-auto text-[10px] bg-slate-50 rounded-xl p-3 text-slate-700">
-                      {JSON.stringify(selected.snapshot, null, 2)}
-                    </pre>
-                  )}
-                </details>
-                  </div>
-
-                  {selected.estado === 'pending' && (
-                    <div className="hidden lg:block lg:col-span-1 min-w-0 w-full">
-                      <div className="sticky top-[7.5rem] w-full min-w-0">
-                        <DecisionPanel
-                          acting={acting}
-                          rejectReason={rejectReason}
-                          onRejectReason={setRejectReason}
-                          onApprove={() => void approve(selected.id)}
-                          onReject={() => void reject(selected.id)}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </main>

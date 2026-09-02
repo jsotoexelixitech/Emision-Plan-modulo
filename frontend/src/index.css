@@ -593,3 +593,8 @@ body {
   background: linear-gradient(135deg, #ECEFF8 0%, #ffffff 55%, #FFECEC 100%);
   box-shadow: 0 12px 32px -16px rgba(15, 26, 90, 0.2);
 }
+
+.revision-detail-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(15, 26, 90, 0.22) transparent;
+}
