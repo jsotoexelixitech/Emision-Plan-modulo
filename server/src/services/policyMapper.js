@@ -369,7 +369,7 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     return undefined;
   };
 
-  const productor = pickActor('cproductor', 'productor') ?? process.env.LAMUNDIAL_PRODUCTOR || 80080;
+  const productor = pickActor('cproductor', 'productor') ?? (process.env.LAMUNDIAL_PRODUCTOR || 80080);
   const cusuario = resolveCusuarioCoberturas(metadata);
   const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
   const tasasMeta = quoteMeta.tasas || {};
