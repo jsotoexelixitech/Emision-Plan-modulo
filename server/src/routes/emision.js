@@ -20,25 +20,31 @@ const router = express.Router();
 /** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal. */
 function withNexusMetadata(state, nexusMetadata) {
   if (!state || typeof state !== 'object') return state;
-  const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in'];
+  const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in', 'ccanalalt', 'cscanalalt'];
   const baseMeta = state.metadataCanal && typeof state.metadataCanal === 'object'
-    ? state.metadataCanal
+    ? { ...state.metadataCanal }
     : {};
+  for (const key of actorKeys) {
+    if (baseMeta[key] != null && String(baseMeta[key]).trim() !== '') continue;
+    const fromState = state[key];
+    if (fromState != null && String(fromState).trim() !== '') {
+      baseMeta[key] = fromState;
+    }
+  }
   const jwtMeta = nexusMetadata && typeof nexusMetadata === 'object' ? nexusMetadata : {};
-  const mergedMeta = { ...baseMeta, ...jwtMeta };
+  const mergedMeta = { ...jwtMeta, ...baseMeta };
 
   for (const key of actorKeys) {
-    const fromJwt = jwtMeta[key];
     const fromState = baseMeta[key];
-    const val = fromJwt != null && String(fromJwt).trim() !== ''
-      ? fromJwt
-      : fromState;
+    const fromJwt = jwtMeta[key];
+    const val = fromState != null && String(fromState).trim() !== ''
+      ? fromState
+      : fromJwt;
     if (val != null && String(val).trim() !== '') {
       mergedMeta[key] = val;
     }
   }
 
-  // JWT del iframe trae cusuario=7 (Generico). No pisa al gestor.
   const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';
   if (gestor && (mergedMeta.cusuario == 7 || mergedMeta.cusuario === '7')) {
     delete mergedMeta.cusuario;

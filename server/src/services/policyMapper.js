@@ -359,8 +359,17 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ano = parseInt(String(v.año || v.ano || ''), 10) || new Date().getFullYear();
 
   const metadata = state.metadataCanal || {};
+  const pickActor = (...keys) => {
+    for (const key of keys) {
+      for (const src of [metadata, state]) {
+        const val = src?.[key];
+        if (val != null && String(val).trim() !== '') return val;
+      }
+    }
+    return undefined;
+  };
 
-  const productor = metadata.cproductor !== undefined ? metadata.cproductor : (process.env.LAMUNDIAL_PRODUCTOR || 80080);
+  const productor = pickActor('cproductor', 'productor') ?? process.env.LAMUNDIAL_PRODUCTOR || 80080;
   const cusuario = resolveCusuarioCoberturas(metadata);
   const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
   const tasasMeta = quoteMeta.tasas || {};
@@ -368,20 +377,16 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   const ctipocanal = metadata.ctipocanal !== undefined && String(metadata.ctipocanal).trim() !== ''
     ? metadata.ctipocanal
     : undefined;
-  const ccanalalt = parseCanalAltOptional(metadata.ccanalalt_in);
-  const cscanalalt = parseCanalAltOptional(metadata.cscanalalt_in);
-  const cgestor = metadata.cgestor != null && String(metadata.cgestor).trim() !== ''
-    ? String(metadata.cgestor).trim()
-    : undefined;
-  const cgestorIn = metadata.cgestor_in != null && String(metadata.cgestor_in).trim() !== ''
-    ? String(metadata.cgestor_in).trim()
-    : undefined;
-  const centidad = metadata.centidad != null && String(metadata.centidad).trim() !== ''
-    ? String(metadata.centidad).trim().toUpperCase()
-    : undefined;
-  const citem = metadata.citem != null && String(metadata.citem).trim() !== ''
-    ? String(metadata.citem).trim()
-    : undefined;
+  const ccanalalt = parseCanalAltOptional(pickActor('ccanalalt_in', 'ccanalalt'));
+  const cscanalalt = parseCanalAltOptional(pickActor('cscanalalt_in', 'cscanalalt'));
+  const cgestorRaw = pickActor('cgestor');
+  const cgestor = cgestorRaw != null ? String(cgestorRaw).trim() : undefined;
+  const cgestorInRaw = pickActor('cgestor_in');
+  const cgestorIn = cgestorInRaw != null ? String(cgestorInRaw).trim() : undefined;
+  const centidadRaw = pickActor('centidad');
+  const centidad = centidadRaw != null ? String(centidadRaw).trim().toUpperCase() : undefined;
+  const citemRaw = pickActor('citem');
+  const citem = citemRaw != null ? String(citemRaw).trim() : undefined;
   const plan = (
     overrides.plan ||
     state.selectedPlan?.cplan ||
