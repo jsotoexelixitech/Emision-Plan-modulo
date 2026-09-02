@@ -151,6 +151,10 @@ router.get('/resolver', async (req, res) => {
 });
 
 router.get('/canal-visibility', async (req, res) => {
+  if (req.query.bridge !== '1') {
+    return res.json({ success: true, canalVisibility: null });
+  }
+
   const meta = req.nexusMetadata || {};
   const cproducto = req.query.cproducto != null ? String(req.query.cproducto).trim() : undefined;
   const cramo = req.query.cramo != null ? parseInt(String(req.query.cramo), 10) : undefined;
@@ -185,12 +189,13 @@ router.get('/planes', async (req, res) => {
 
   try {
     const result = await fetchPlanesV2(meta, ctipo, iplaca);
+    const applyCanalRules = req.query.bridge === '1';
 
     let canalVisibility = null;
     const entityCtx = resolveEntityContext(meta);
     let planesPermitidos = [];
 
-    if (entityCtx) {
+    if (applyCanalRules && entityCtx) {
       const cproducto = (meta.cproducto != null ? String(meta.cproducto).trim() : '')
         || result.planes?.[0]?.cproducto;
       const visibilityResolved = await resolvePlanesPermitidos(meta, {
@@ -200,22 +205,24 @@ router.get('/planes', async (req, res) => {
       canalVisibility = visibilityResolved.canalVisibility;
       planesPermitidos = visibilityResolved.planesPermitidos ?? [];
       console.log(
-        `[catalogo/planes] entity=${entityCtx.centidad}/${entityCtx.citem} cproducto=${cproducto || 'null'} permitidos=${planesPermitidos.length} planesV2=${result.planes?.length ?? 0}`,
+        `[catalogo/planes] bridge entity=${entityCtx.centidad}/${entityCtx.citem} cproducto=${cproducto || 'null'} permitidos=${planesPermitidos.length} planesV2=${result.planes?.length ?? 0}`,
       );
     }
 
-    const visibilityForFilter = planesPermitidos.length
+    const visibilityForFilter = applyCanalRules && planesPermitidos.length
       ? { ui: { planesPermitidos } }
-      : canalVisibility;
+      : applyCanalRules ? canalVisibility : null;
 
-    const planes = filterPlanesByVisibility(result.planes ?? [], visibilityForFilter);
+    const planes = applyCanalRules
+      ? filterPlanesByVisibility(result.planes ?? [], visibilityForFilter)
+      : (result.planes ?? []);
 
     res.json({
       success: true,
       planes,
       source: result.source,
       productor: result.request?.citem ?? result.request?.cproductor,
-      canalVisibility,
+      ...(applyCanalRules ? { canalVisibility } : {}),
     });
   } catch (err) {
     console.error('[catalogo/planes]', err.message);

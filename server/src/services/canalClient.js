@@ -118,6 +118,9 @@ async function fetchCanalVisibility(meta = {}, opts = {}) {
   const cscanalalt = parseCscanalalt(meta);
   if (cscanalalt != null) params.set('cscanalalt', String(cscanalalt));
 
+  const ccanalalt = parseCcanalalt(meta);
+  if (ccanalalt != null) params.set('ccanalalt', String(ccanalalt));
+
   const base = getBaseUrl();
   const headers = await buildAuthHeaders();
 

@@ -7,6 +7,7 @@ import {
 import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
+import { isBridgeChained } from '../../lib/bridge-session';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature, formatQuoteUsd, formatQuoteUsdMoney, formatQuoteVes, formatQuoteVesLabel, formatQuoteTasa } from '../../lib/money';
 import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig } from '../../lib/frecuencia';
@@ -83,7 +84,7 @@ export function PlansStep() {
         const label = vehicle.xcategoria_uso?.trim() || vehicle.uso || 'RCV';
         const mapped = (res.data.planes ?? []).map((p) => apiPlanToWizardPlan(p, label));
         setApiPlans(mapped);
-        if (res.data.canalVisibility) {
+        if (isBridgeChained() && res.data.canalVisibility) {
           setCanalVisibility(res.data.canalVisibility);
         }
         if (mapped.length > 0) setCategory(label);
