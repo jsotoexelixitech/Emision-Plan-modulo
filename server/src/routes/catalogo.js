@@ -17,6 +17,7 @@ const {
   filterPlanesByVisibility,
   resolveEntityContext,
   resolvePlanesPermitidos,
+  fetchCanalVisibility,
 } = require('../services/canalClient');
 
 const router = express.Router();
