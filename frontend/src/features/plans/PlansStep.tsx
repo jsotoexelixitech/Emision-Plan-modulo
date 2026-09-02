@@ -24,7 +24,7 @@ const RCV_BENEFITS = [
 function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
   return {
     cplan:     p.cplan,
-    name:      ((p.xplan_c ?? '').trim() || (p.xplan ?? '').trim() || p.cplan),
+    name:      ((p.xplan ?? '').trim() || (p.xplan_c ?? '').trim() || p.cplan),
     price:     'Tarifa La Mundial',
     priceNum:  0,
     tag:       categoryLabel,
@@ -40,6 +40,7 @@ export function PlansStep() {
   const {
     setCategory, selectedPlan, setSelectedPlan,
     vehicle, quote, quoteState, rcv, setRcv,
+    setCanalVisibility,
   } = useWizardStore();
 
   const product = getProductConfig();
@@ -82,6 +83,9 @@ export function PlansStep() {
         const label = vehicle.xcategoria_uso?.trim() || vehicle.uso || 'RCV';
         const mapped = (res.data.planes ?? []).map((p) => apiPlanToWizardPlan(p, label));
         setApiPlans(mapped);
+        if (res.data.canalVisibility) {
+          setCanalVisibility(res.data.canalVisibility);
+        }
         if (mapped.length > 0) setCategory(label);
         // No auto-seleccionamos: el usuario elige el plan explícitamente.
         setSelectedPlan(null);

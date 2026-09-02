@@ -193,9 +193,16 @@ function buildPlanesV2Body(nexusMetadata = {}, ctipoQuery, iplacaQuery) {
   // BINAC/BINACA/BINACB: usar ramo 28 en maplanes (iplaca B); evitar fila duplicada cramo 18.
   const cramo = iplaca === 'B' ? RAMO_BINACIONAL : metaCramo;
 
+  const centidad = nexusMetadata.centidad != null
+    ? String(nexusMetadata.centidad).trim().toUpperCase()
+    : 'P';
+  const citem = nexusMetadata.citem != null && nexusMetadata.citem !== ''
+    ? String(nexusMetadata.citem).trim()
+    : String(cproductor);
+
   const body = {
-    centidad: 'P',
-    citem: String(cproductor),
+    centidad,
+    citem,
     cproductor,
     cusuario: String(resolveCusuarioCoberturas(nexusMetadata)),
     cramo,

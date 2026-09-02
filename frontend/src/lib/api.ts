@@ -1,12 +1,39 @@
 import axios, { AxiosError } from 'axios';
+import type { CanalVisibility } from './canal-visibility';
 import type { DocType, OcrResult, DocumentFile, PolicyCoverageLine } from '../types';
 import { moduleApiBase } from './app-base';
-import { attachNexusTokenAxios } from './nexus-token-client';
+import { attachNexusTokenAxios, decodeNexusTokenMetadata, getNexusToken } from './nexus-token-client';
 
 const api = axios.create({ baseURL: moduleApiBase() });
 
 const NEXUS_TOKEN_KEY = 'nexus_access_token_emision';
 attachNexusTokenAxios(api, NEXUS_TOKEN_KEY);
+
+/** centidad/citem del JWT SSO — fallback si el proxy no reenvía metadata completa. */
+function appendCanalEntityQuery(qs: URLSearchParams): boolean {
+  const token = getNexusToken(NEXUS_TOKEN_KEY);
+  const meta = token ? decodeNexusTokenMetadata(token) : null;
+  if (!meta) return false;
+
+  const centidad = meta.centidad != null ? String(meta.centidad).trim().toUpperCase() : '';
+  const citemRaw = meta.citem
+    ?? (centidad === 'P' ? meta.cproductor : null)
+    ?? (centidad === 'C' ? (meta.ccanalalt_in ?? meta.ccanalalt) : null);
+  const citem = citemRaw != null && citemRaw !== '' ? String(citemRaw).trim() : '';
+
+  if (centidad) qs.set('centidad', centidad);
+  if (citem) qs.set('citem', citem);
+  if (meta.cproducto != null) qs.set('cproducto', String(meta.cproducto));
+  if (meta.cramo != null) qs.set('cramo', String(meta.cramo));
+
+  return Boolean(centidad && citem);
+}
+
+function shouldUseBridgeRules(): boolean {
+  if (typeof window === 'undefined') return false;
+  const qs = new URLSearchParams(window.location.search);
+  return Boolean(qs.get('sid'));
+}
 
 export interface UploadResponse {
   success: boolean;
@@ -541,9 +568,22 @@ export const catalogoApi = {
     const qs = new URLSearchParams();
     if (ctipo != null) qs.set('ctipo', String(ctipo));
     if (iplaca) qs.set('iplaca', iplaca);
+    const hasEntity = appendCanalEntityQuery(qs);
+    if (shouldUseBridgeRules() || hasEntity) qs.set('bridge', '1');
     const query = qs.toString();
-    return api.get<{ success: boolean; planes: PlanRcv[] }>(
+    return api.get<{ success: boolean; planes: PlanRcv[]; canalVisibility?: CanalVisibility | null }>(
       `/catalogo/planes${query ? `?${query}` : ''}`,
+    );
+  },
+  canalVisibility: (params?: { cproducto?: string; cramo?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.cproducto) qs.set('cproducto', params.cproducto);
+    if (params?.cramo != null) qs.set('cramo', String(params.cramo));
+    const hasEntity = appendCanalEntityQuery(qs);
+    if (shouldUseBridgeRules() || hasEntity) qs.set('bridge', '1');
+    const query = qs.toString();
+    return api.get<{ success: boolean; canalVisibility: CanalVisibility | null }>(
+      `/catalogo/canal-visibility${query ? `?${query}` : ''}`,
     );
   },
 };

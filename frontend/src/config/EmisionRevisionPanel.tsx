@@ -206,9 +206,25 @@ function receiptNumber(sub: Submission): string | undefined {
   return strUrl(sub.cnrecibo) ?? strUrl(sub.snapshot?.emission?.cnrecibo);
 }
 
+const PANEL_TOKEN_KEY = 'emision_revision_token';
+const REFRESH_MS = 2 * 60 * 1000;
+
 function readPanelToken(): string {
   try {
-    return new URL(window.location.href).searchParams.get('token')?.trim() || '';
+    const fromUrl = new URL(window.location.href).searchParams.get('token')?.trim();
+    if (fromUrl) {
+      try {
+        sessionStorage.setItem(PANEL_TOKEN_KEY, fromUrl);
+      } catch {
+        /* ignore */
+      }
+      return fromUrl;
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    return sessionStorage.getItem(PANEL_TOKEN_KEY)?.trim() || '';
   } catch {
     return '';
   }
@@ -218,6 +234,11 @@ function replacePanelToken(next: string) {
   const token = String(next || '').trim();
   if (!token) return;
   try {
+    sessionStorage.setItem(PANEL_TOKEN_KEY, token);
+  } catch {
+    /* ignore */
+  }
+  try {
     const url = new URL(window.location.href);
     url.searchParams.set('token', token);
     window.history.replaceState({}, '', url.toString());
@@ -226,20 +247,26 @@ function replacePanelToken(next: string) {
   }
 }
 
-const REFRESH_MS = 10 * 60 * 1000;
+async function postRefresh(path: string, current: string): Promise<string | null> {
+  const res = await fetch(`${NEXUS_URL}${path}`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: current }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.token) return null;
+  return String(data.token);
+}
 
 async function refreshRevisionToken(): Promise<boolean> {
   const current = readPanelToken();
   if (!current) return false;
   try {
-    const res = await fetch(`${NEXUS_URL}/api/funeral-submissions/refresh-token`, {
-      method: 'POST',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: current }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.token) return false;
-    replacePanelToken(String(data.token));
+    const next =
+      (await postRefresh('/api/funeral-submissions/refresh-token', current)) ||
+      (await postRefresh('/api/config/refresh-token', current));
+    if (!next) return false;
+    replacePanelToken(next);
     return true;
   } catch {
     return false;
@@ -384,22 +411,9 @@ export function EmisionRevisionPanel() {
   const [showRawSnapshot, setShowRawSnapshot] = useState(false);
   const [mobileDetail, setMobileDetail] = useState(false);
 
-  const loadList = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = filter === 'pending' ? '&estado=pending' : '';
-      const res = await fetch(
-        `${NEXUS_URL}/api/funeral-submissions?empresaId=${EMPRESA_ID}${q}&limit=200`,
-        { headers: authHeaders() },
-      );
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data.message || `Error HTTP ${res.status}`);
-        setList([]);
-        return;
-      }
-      let rows: Submission[] = data.data ?? [];
+  const applyRows = useCallback(
+    (raw: Submission[]) => {
+      let rows = raw;
       if (filter === 'history') {
         rows = rows.filter((s) => HISTORY_STATES.has(s.estado));
         rows.sort((a, b) => {
@@ -413,24 +427,45 @@ export function EmisionRevisionPanel() {
         setSelected(null);
         setMobileDetail(false);
       }
+    },
+    [filter, selected],
+  );
+
+  const loadList = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const q = filter === 'pending' ? '&estado=pending' : '';
+      const url = `${NEXUS_URL}/api/funeral-submissions?empresaId=${EMPRESA_ID}${q}&limit=200`;
+      let res = await fetch(url, { headers: authHeaders() });
+      let data = await res.json().catch(() => ({}));
+      if (res.status === 403 && (await refreshRevisionToken())) {
+        res = await fetch(url, { headers: authHeaders() });
+        data = await res.json().catch(() => ({}));
+      }
+      if (!res.ok) {
+        setError(data.message || `Error HTTP ${res.status}`);
+        setList([]);
+        return;
+      }
+      applyRows(data.data ?? []);
     } catch {
       setError('No se pudo conectar con Nexus.');
     } finally {
       setLoading(false);
     }
-  }, [filter, selected]);
+  }, [filter, applyRows]);
 
   useEffect(() => {
-    loadList();
-  }, [loadList]);
-
-  useEffect(() => {
-    void refreshRevisionToken();
+    void (async () => {
+      await refreshRevisionToken();
+      await loadList();
+    })();
     const id = window.setInterval(() => {
       void refreshRevisionToken();
     }, REFRESH_MS);
     return () => window.clearInterval(id);
-  }, []);
+  }, [loadList]);
 
   async function loadDetail(id: string) {
     const res = await fetch(
