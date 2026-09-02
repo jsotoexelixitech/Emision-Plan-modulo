@@ -28,7 +28,7 @@ const { restoreMarketplaceActor } = require('../lib/marketplace-actor-cache');
 
 function done(req, _res, next) {
   try { restoreMarketplaceActor(req); } catch { /* ignore */ }
-  return done(req, res, next);
+  return next();
 }
 
 const ENABLED         = process.env.NEXUS_AUTH_ENABLED === 'true';
