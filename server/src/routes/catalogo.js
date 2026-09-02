@@ -21,6 +21,25 @@ const {
 
 const router = express.Router();
 
+/** Fusiona metadata JWT con query (fallback cuando el proxy no reenvía el token). */
+function mergeNexusMetadata(req) {
+  const meta = { ...(req.nexusMetadata || {}) };
+  if (req.query.centidad != null && req.query.centidad !== '') {
+    meta.centidad = String(req.query.centidad).trim();
+  }
+  if (req.query.citem != null && req.query.citem !== '') {
+    meta.citem = String(req.query.citem).trim();
+  }
+  if (req.query.cproducto != null && req.query.cproducto !== '') {
+    meta.cproducto = String(req.query.cproducto).trim();
+  }
+  if (req.query.cramo != null && req.query.cramo !== '') {
+    const cramo = parseInt(String(req.query.cramo), 10);
+    if (Number.isFinite(cramo)) meta.cramo = cramo;
+  }
+  return meta;
+}
+
 function normCatalogText(s) {
   return String(s)
     .normalize('NFD')
@@ -151,7 +170,7 @@ router.get('/resolver', async (req, res) => {
 });
 
 router.get('/canal-visibility', async (req, res) => {
-  const meta = req.nexusMetadata || {};
+  const meta = mergeNexusMetadata(req);
   const applyCanalRules = req.query.bridge === '1' || resolveEntityContext(meta);
 
   if (!applyCanalRules) {
@@ -178,7 +197,7 @@ router.get('/canal-visibility', async (req, res) => {
 });
 
 router.get('/planes', async (req, res) => {
-  const meta = req.nexusMetadata || {};
+  const meta = mergeNexusMetadata(req);
   const ctipo = req.query.ctipo != null ? parseInt(String(req.query.ctipo), 10) : null;
   const iplacaRaw = req.query.iplaca != null ? String(req.query.iplaca).trim().toUpperCase() : '';
   const iplaca = iplacaRaw === 'B' || iplacaRaw === 'E' || iplacaRaw === 'N' ? iplacaRaw : undefined;
