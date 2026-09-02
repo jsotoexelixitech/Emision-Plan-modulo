@@ -10,7 +10,8 @@ export function useSessionTokenDelegation() {
 
   useEffect(() => {
     applyMetadataFromNexusToken(STORAGE_KEY, (metadata) => {
-      setMetadataCanal(metadata);
+      const current = useWizardStore.getState().metadataCanal || {};
+      setMetadataCanal({ ...current, ...metadata });
     });
 
     const searchParams = new URLSearchParams(window.location.search);
@@ -24,7 +25,8 @@ export function useSessionTokenDelegation() {
         const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
         const payload = JSON.parse(payloadStr);
         if (payload.metadata) {
-          setMetadataCanal(payload.metadata);
+          const current = useWizardStore.getState().metadataCanal || {};
+          setMetadataCanal({ ...current, ...payload.metadata });
         }
       }
     } catch {

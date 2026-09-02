@@ -20,21 +20,25 @@ const router = express.Router();
 /** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal. */
 function withNexusMetadata(state, nexusMetadata) {
   if (!state || typeof state !== 'object') return state;
-  if (!nexusMetadata || typeof nexusMetadata !== 'object' || !Object.keys(nexusMetadata).length) {
-    return state;
-  }
-  const merged = {
-    ...state,
-    metadataCanal: { ...(state.metadataCanal || {}), ...nexusMetadata },
-  };
   const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in'];
+  const baseMeta = state.metadataCanal && typeof state.metadataCanal === 'object'
+    ? state.metadataCanal
+    : {};
+  const jwtMeta = nexusMetadata && typeof nexusMetadata === 'object' ? nexusMetadata : {};
+  const mergedMeta = { ...baseMeta, ...jwtMeta };
+
   for (const key of actorKeys) {
-    const val = nexusMetadata[key];
+    const fromJwt = jwtMeta[key];
+    const fromState = baseMeta[key];
+    const val = fromJwt != null && String(fromJwt).trim() !== ''
+      ? fromJwt
+      : fromState;
     if (val != null && String(val).trim() !== '') {
-      merged.metadataCanal[key] = val;
+      mergedMeta[key] = val;
     }
   }
-  return merged;
+
+  return { ...state, metadataCanal: mergedMeta };
 }
 
 /**
