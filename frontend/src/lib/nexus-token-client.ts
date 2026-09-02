@@ -10,6 +10,7 @@
  */
 
 import type { AxiosInstance } from 'axios';
+import { rememberMarketplaceActorFromToken } from './sso-metadata';
 
 /** Lee el token SSO explícito en la query (sso-delegate, advance del bridge). */
 export function getNexusTokenFromUrl(): string | null {
@@ -54,6 +55,13 @@ export function getNexusToken(storageKey: string): string | null {
 }
 
 export function persistNexusToken(storageKey: string, token: string): void {
+  try {
+    rememberMarketplaceActorFromToken(sessionStorage.getItem(storageKey));
+  } catch {
+    /* ignore */
+  }
+  rememberMarketplaceActorFromToken(getNexusTokenFromUrl());
+  rememberMarketplaceActorFromToken(token);
   try {
     sessionStorage.setItem(storageKey, token);
   } catch {

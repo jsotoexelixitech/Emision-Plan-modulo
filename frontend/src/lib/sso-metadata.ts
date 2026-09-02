@@ -19,6 +19,8 @@ const MODULE_TOKEN_KEYS = [
   'nexus_access_token',
 ] as const;
 
+const ACTOR_SNAPSHOT_KEY = 'exelixi_marketplace_actor';
+
 function decodeTokenMetadata(token: string): Record<string, unknown> | null {
   try {
     const payloadBase64 = token.split('.')[1];
@@ -32,6 +34,53 @@ function decodeTokenMetadata(token: string): Record<string, unknown> | null {
   } catch {
     return null;
   }
+}
+
+function isActorValue(val: unknown): boolean {
+  return val != null && String(val).trim() !== '';
+}
+
+function pickActorFields(meta?: Record<string, unknown> | null): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if (!meta) return out;
+  for (const key of MARKETPLACE_ACTOR_KEYS) {
+    const val = meta[key];
+    if (isActorValue(val)) out[key] = val;
+  }
+  return out;
+}
+
+export function readMarketplaceActorSnapshot(): Record<string, unknown> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = sessionStorage.getItem(ACTOR_SNAPSHOT_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as unknown;
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : {};
+  } catch {
+    return {};
+  }
+}
+
+export function snapshotMarketplaceActor(
+  meta?: Record<string, unknown> | null,
+): Record<string, unknown> {
+  const next = { ...readMarketplaceActorSnapshot(), ...pickActorFields(meta) };
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem(ACTOR_SNAPSHOT_KEY, JSON.stringify(next));
+    } catch {
+      /* ignore */
+    }
+  }
+  return next;
+}
+
+export function rememberMarketplaceActorFromToken(token?: string | null): Record<string, unknown> {
+  if (!token) return readMarketplaceActorSnapshot();
+  return snapshotMarketplaceActor(decodeTokenMetadata(token));
 }
 
 function collectTokensFromBrowser(extraTokens: Iterable<string> = []): string[] {
@@ -93,10 +142,13 @@ export function mergeMarketplaceActorMetadata(
   extraTokens: Iterable<string> = [],
 ): Record<string, unknown> {
   const fromTokens = collectSsoMetadataFromAllTokens(extraTokens);
+  snapshotMarketplaceActor(fromTokens);
+  snapshotMarketplaceActor(base);
+  const snapshot = readMarketplaceActorSnapshot();
   const out: Record<string, unknown> = { ...(base || {}), ...fromTokens };
 
   for (const key of MARKETPLACE_ACTOR_KEYS) {
-    for (const src of [fromTokens, base || {}]) {
+    for (const src of [snapshot, fromTokens, base || {}]) {
       const val = src[key];
       if (val != null && String(val).trim() !== '') {
         out[key] = val;
@@ -105,6 +157,7 @@ export function mergeMarketplaceActorMetadata(
     }
   }
 
+  snapshotMarketplaceActor(out);
   return out;
 }
 
