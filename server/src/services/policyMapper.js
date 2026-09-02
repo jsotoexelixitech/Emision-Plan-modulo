@@ -370,7 +370,15 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
     : undefined;
   const ccanalalt = parseCanalAltOptional(metadata.ccanalalt_in);
   const cscanalalt = parseCanalAltOptional(metadata.cscanalalt_in);
-  
+  const cgestor = metadata.cgestor != null && String(metadata.cgestor).trim() !== ''
+    ? String(metadata.cgestor).trim()
+    : undefined;
+  const centidad = metadata.centidad != null && String(metadata.centidad).trim() !== ''
+    ? String(metadata.centidad).trim().toUpperCase()
+    : undefined;
+  const citem = metadata.citem != null && String(metadata.citem).trim() !== ''
+    ? String(metadata.citem).trim()
+    : undefined;
   const plan = (
     overrides.plan ||
     state.selectedPlan?.cplan ||
@@ -422,6 +430,9 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
 
     productor: productor != null ? String(productor) : undefined,
     cusuario,
+    ...(cgestor ? { cgestor } : {}),
+    ...(centidad ? { centidad } : {}),
+    ...(citem ? { citem } : {}),
     ...(ctipocanal !== undefined ? { ctipocanal } : {}),
     ccanalalt,
     cscanalalt,
@@ -618,6 +629,9 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
     cusuario: parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
+    ...(p.cgestor ? { cgestor: String(p.cgestor).trim() } : {}),
+    ...(p.centidad ? { centidad: String(p.centidad).trim().toUpperCase() } : {}),
+    ...(p.citem ? { citem: String(p.citem).trim() } : {}),
     msumaaseg,
     ifrecuencia: p.frecuencia || 'A',
     femision,

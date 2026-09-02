@@ -181,7 +181,7 @@ router.post('/policies/emit', async (req, res) => {
     const mergedState = withNexusMetadata(state, req.nexusMetadata);
     const meta = mergedState.metadataCanal || {};
     console.log(
-      `[modulo-emision/emit] metadataCanal cproductor=${meta.cproductor ?? 'default'} cusuario=${meta.cusuario ?? meta.cusuario_planes ?? 'default'} jwtKeys=${Object.keys(req.nexusMetadata || {}).join(',') || 'none'}`,
+      `[modulo-emision/emit] metadataCanal centidad=${meta.centidad ?? '?'} citem=${meta.citem ?? '?'} cproductor=${meta.cproductor ?? 'default'} cusuario=${meta.cusuario ?? meta.cusuario_planes ?? 'default'} cgestor=${meta.cgestor ?? 'none'} jwtKeys=${Object.keys(req.nexusMetadata || {}).join(',') || 'none'}`,
     );
 
     const result = await policyService.quoteAndEmit(mergedState, {
