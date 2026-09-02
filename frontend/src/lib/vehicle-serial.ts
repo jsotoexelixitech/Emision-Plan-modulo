@@ -1,5 +1,5 @@
-/** Paridad SysIP vehicle-form: required + maxlength 18 (sin mínimo VIN 17). */
-export const VEHICLE_SERIAL_MAX_LEN = 18;
+/** Sis2000 xserialcarroceria / xsercar: NVARCHAR(60). */
+export const VEHICLE_SERIAL_MAX_LEN = 60;
 
 export function normalizeVehicleSerial(raw: string): string {
   return String(raw || '')
