@@ -151,11 +151,12 @@ router.get('/resolver', async (req, res) => {
 });
 
 router.get('/canal-visibility', async (req, res) => {
-  if (req.query.bridge !== '1') {
+  const meta = req.nexusMetadata || {};
+  const applyCanalRules = req.query.bridge === '1' || resolveEntityContext(meta);
+
+  if (!applyCanalRules) {
     return res.json({ success: true, canalVisibility: null });
   }
-
-  const meta = req.nexusMetadata || {};
   const cproducto = req.query.cproducto != null ? String(req.query.cproducto).trim() : undefined;
   const cramo = req.query.cramo != null ? parseInt(String(req.query.cramo), 10) : undefined;
 
