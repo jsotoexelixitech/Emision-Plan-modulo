@@ -323,6 +323,19 @@ function collectOcrBlocks(sub: Submission): { key: string; label: string; ocr: R
     .filter((x): x is { key: string; label: string; ocr: Record<string, unknown> } => x != null);
 }
 
+function BrandRibbon({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`grid grid-cols-[68fr_18fr_14fr] h-1 rounded-full overflow-hidden ${className}`}
+      aria-hidden
+    >
+      <span className="bg-indigo-700" />
+      <span className="bg-[#2E6DBF]" />
+      <span className="bg-fuchsia-500" />
+    </div>
+  );
+}
+
 function DocLinkCard({ doc }: { doc: DocLink }) {
   const isPolicy = doc.kind === 'policy';
   return (
@@ -330,14 +343,14 @@ function DocLinkCard({ doc }: { doc: DocLink }) {
       href={doc.url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 transition-all active:scale-[0.99] ${
+      className={`group flex items-center gap-3 rounded-2xl border px-3.5 py-3 transition-all active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
         isPolicy
-          ? 'border-indigo-200 bg-gradient-to-r from-indigo-50 to-white text-indigo-950 shadow-sm hover:border-indigo-300 hover:shadow'
-          : 'border-slate-200/80 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50'
+          ? 'border-indigo-200/80 bg-gradient-to-r from-indigo-50/90 to-white text-indigo-950 shadow-sm hover:border-indigo-300 hover:shadow-md'
+          : 'border-slate-200/80 bg-white text-slate-800 hover:border-slate-300 hover:bg-slate-50/80'
       }`}
     >
       <span className={`grid place-items-center w-11 h-11 rounded-xl shrink-0 ${
-        isPolicy ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
+        isPolicy ? 'bg-indigo-700 text-white shadow-sm' : 'bg-slate-100 text-slate-600'
       }`}
       >
         {isPolicy ? <FileDown size={18} /> : <ExternalLink size={16} />}
@@ -348,7 +361,7 @@ function DocLinkCard({ doc }: { doc: DocLink }) {
           Abrir en una pestaña nueva
         </span>
       </span>
-      <span className="text-[11px] font-bold text-indigo-600 shrink-0">
+      <span className="text-[11px] font-bold text-indigo-700 shrink-0 group-hover:underline">
         Ver
       </span>
     </a>
@@ -367,20 +380,21 @@ function SectionCard({
   accent?: boolean;
 }) {
   return (
-    <section className={`rounded-2xl border p-4 sm:p-5 ${
-      accent
-        ? 'border-indigo-100 bg-indigo-50/50'
-        : 'border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+    <section className={`surface-card overflow-hidden ${
+      accent ? 'ring-1 ring-fuchsia-500/15' : ''
     }`}
     >
-      <h3 className={`text-[11px] font-black uppercase tracking-[0.14em] mb-3.5 flex items-center gap-2 ${
-        accent ? 'text-indigo-600' : 'text-slate-500'
-      }`}
-      >
-        {icon}
-        {title}
-      </h3>
-      {children}
+      <BrandRibbon />
+      <div className={`p-4 sm:p-5 ${accent ? 'bg-indigo-50/30' : 'bg-white'}`}>
+        <h3 className={`text-[11px] font-black uppercase tracking-[0.14em] mb-3.5 flex items-center gap-2 ${
+          accent ? 'text-indigo-700' : 'text-slate-500'
+        }`}
+        >
+          {icon}
+          {title}
+        </h3>
+        {children}
+      </div>
     </section>
   );
 }
@@ -552,28 +566,31 @@ export function EmisionRevisionPanel() {
       <AuroraBackground />
       <div className="pt-4 sm:pt-6 px-3 sm:px-6 lg:px-10 pb-28 lg:pb-12 max-w-6xl mx-auto relative z-10">
         <header className={`mb-4 sm:mb-6 ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
-          <div className="rounded-3xl bg-indigo-700 text-white px-5 sm:px-7 py-5 sm:py-6 shadow-[0_18px_40px_-20px_rgba(15,26,90,0.55)]">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-[0.65rem] font-bold tracking-[0.2em] text-indigo-200 uppercase mb-1.5 inline-flex items-center gap-1.5">
-                  <ShieldCheck size={12} />
-                  Mesa técnica · funerario
-                </p>
-                <h1 className="font-display text-2xl sm:text-[1.85rem] font-black tracking-tight">
-                  Autorización de pólizas
-                </h1>
-                <p className="text-sm text-indigo-100/80 mt-1.5">
-                  Empresa #{EMPRESA_ID} · {canalDisplayLabel(PANEL.canal)}
-                </p>
-              </div>
-              {filter === 'pending' && !loading && (
-                <div className="rounded-2xl bg-white/10 border border-white/15 px-4 py-3 min-w-[96px] text-center">
-                  <p className="text-2xl font-black tabular-nums leading-none">{pendingCount}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-indigo-100 mt-1 font-bold">
-                    Por revisar
+          <div className="surface-card gradient-border overflow-hidden">
+            <BrandRibbon className="rounded-none h-1.5" />
+            <div className="sidebar-gradient text-white px-5 sm:px-7 py-5 sm:py-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-[0.65rem] font-bold tracking-[0.2em] text-indigo-100/90 uppercase mb-1.5 inline-flex items-center gap-1.5">
+                    <ShieldCheck size={12} className="text-fuchsia-400" />
+                    Mesa técnica · funerario
+                  </p>
+                  <h1 className="font-display text-2xl sm:text-[1.85rem] font-black tracking-tight">
+                    Autorización de pólizas
+                  </h1>
+                  <p className="text-sm text-indigo-100/85 mt-1.5">
+                    Empresa #{EMPRESA_ID} · {canalDisplayLabel(PANEL.canal)}
                   </p>
                 </div>
-              )}
+                {filter === 'pending' && !loading && (
+                  <div className="rounded-2xl bg-white/10 border border-white/20 px-4 py-3 min-w-[96px] text-center backdrop-blur-sm">
+                    <p className="text-2xl font-black tabular-nums leading-none">{pendingCount}</p>
+                    <p className="text-[10px] uppercase tracking-wider text-indigo-100 mt-1 font-bold">
+                      Por revisar
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -585,14 +602,16 @@ export function EmisionRevisionPanel() {
         )}
 
         <div className={`flex flex-wrap items-center gap-2 mb-4 ${mobileDetail && selected ? 'hidden lg:flex' : ''}`}>
-          <div className="flex p-1 rounded-xl bg-white/80 border border-slate-200/80 shadow-sm">
+          <div className="flex p-1 rounded-xl glass-light border border-white/60 shadow-sm">
             {filterTabs.map(({ key, label }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setFilter(key)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
-                  filter === key ? 'bg-slate-900 text-white shadow' : 'text-slate-600 hover:text-slate-900'
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all min-h-[36px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
+                  filter === key
+                    ? 'bg-indigo-700 text-white shadow-md shadow-indigo-700/20'
+                    : 'text-slate-600 hover:text-indigo-900 hover:bg-white/70'
                 }`}
               >
                 {key === 'history' && <History size={12} />}
@@ -600,13 +619,13 @@ export function EmisionRevisionPanel() {
               </button>
             ))}
           </div>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-500 font-medium tabular-nums">
             {loading ? '…' : `${list.length} registro${list.length === 1 ? '' : 's'}`}
           </span>
           <button
             type="button"
             onClick={() => void loadList()}
-            className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+            className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 hover:text-indigo-900 min-h-[36px] px-2 rounded-lg hover:bg-indigo-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
           >
             <RefreshCw size={12} />
             Actualizar
@@ -614,12 +633,12 @@ export function EmisionRevisionPanel() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
-          <div className={`lg:col-span-2 bg-white/95 backdrop-blur rounded-3xl border border-slate-200/80 overflow-hidden shadow-[0_8px_30px_-18px_rgba(15,23,42,0.25)] ${
+          <div className={`lg:col-span-2 surface-card overflow-hidden ${
             mobileDetail && selected ? 'hidden lg:block' : ''
           }`}
           >
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <Inbox size={14} className="text-indigo-600" />
+            <div className="px-4 py-3 border-b border-slate-100/80 flex items-center gap-2 bg-white/90">
+              <Inbox size={14} className="text-indigo-700" />
               <p className="text-xs font-bold text-slate-600 uppercase tracking-wider">Bandeja</p>
             </div>
             {loading ? (
@@ -635,12 +654,12 @@ export function EmisionRevisionPanel() {
                     <button
                       type="button"
                       onClick={() => openSubmission(s)}
-                      className={`w-full text-left px-4 py-3.5 hover:bg-indigo-50/70 transition-colors ${
-                        selected?.id === s.id ? 'bg-indigo-50 border-l-4 border-indigo-600' : 'border-l-4 border-transparent'
+                      className={`w-full text-left px-4 py-3.5 hover:bg-indigo-50/80 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500/30 ${
+                        selected?.id === s.id ? 'bg-indigo-50 border-l-4 border-indigo-700' : 'border-l-4 border-transparent'
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <span className="grid place-items-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-800 text-xs font-black shrink-0">
+                        <span className="grid place-items-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-800 text-xs font-black shrink-0 ring-2 ring-white shadow-sm">
                           {initials(s.tomadorNombre || s.tomadorRif)}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -678,12 +697,12 @@ export function EmisionRevisionPanel() {
           }`}
           >
             {!selected ? (
-              <div className="bg-white/90 rounded-3xl border border-dashed border-slate-200 p-10 text-center shadow-sm">
-                <span className="mx-auto mb-4 grid place-items-center w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-400">
+              <div className="surface-card border border-dashed border-slate-200/90 p-10 text-center">
+                <span className="mx-auto mb-4 grid place-items-center w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 ring-4 ring-indigo-50/80">
                   <ClipboardList size={26} />
                 </span>
-                <p className="font-semibold text-slate-700">Elige una solicitud</p>
-                <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto">
+                <p className="font-semibold text-slate-800">Elige una solicitud</p>
+                <p className="text-sm text-slate-500 mt-1 max-w-xs mx-auto leading-relaxed">
                   Revisa identidad, scoring y documentos antes de autorizar el pago.
                 </p>
               </div>
@@ -692,13 +711,13 @@ export function EmisionRevisionPanel() {
                 <button
                   type="button"
                   onClick={() => setMobileDetail(false)}
-                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600"
+                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-700 min-h-[44px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
                 >
                   <ArrowLeft size={16} />
                   Volver al listado
                 </button>
 
-                <div className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 sm:p-6 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.25)]">
+                <div className="surface-card gradient-border p-4 sm:p-6 bg-white/95">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -736,7 +755,7 @@ export function EmisionRevisionPanel() {
                 </div>
 
                 {selected.estado === 'paid' && (
-                  <p className="text-sm text-indigo-800 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
+                  <p className="text-sm text-indigo-900 bg-indigo-50 border border-indigo-100 rounded-2xl px-4 py-3">
                     Póliza pagada y emitida. Quedó registrada en el histórico
                     {polNum ? ` · ${polNum}` : ''}.
                   </p>
@@ -845,7 +864,7 @@ export function EmisionRevisionPanel() {
                       { label: 'Emisión', value: emittedWhen ? formatDate(emittedWhen) : 'Aún no emitida' },
                     ].map((item) => (
                       <li key={item.label} className="flex gap-3">
-                        <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                        <span className="mt-1.5 w-2 h-2 rounded-full bg-indigo-700 shrink-0 ring-4 ring-indigo-100" />
                         <div>
                           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{item.label}</p>
                           <p className="text-sm font-medium text-slate-800">{item.value}</p>
@@ -952,7 +971,7 @@ export function EmisionRevisionPanel() {
                           <p className="font-medium text-slate-800">{line.label}</p>
                           <p className="text-xs text-slate-500">Resp: {formatAnswer(line.answer)}</p>
                         </div>
-                        <span className="font-bold text-indigo-600 shrink-0">+{line.points}</span>
+                        <span className="font-bold text-indigo-700 shrink-0">+{line.points}</span>
                       </li>
                     ))}
                   </ul>
@@ -973,7 +992,8 @@ export function EmisionRevisionPanel() {
                 </details>
 
                 {selected.estado === 'pending' && (
-                  <div className="hidden lg:block rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="hidden lg:block surface-card p-4 sm:p-5 bg-white">
+                    <BrandRibbon className="mb-4 -mt-1" />
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                       Decisión del técnico
                     </p>
@@ -982,7 +1002,7 @@ export function EmisionRevisionPanel() {
                         type="button"
                         disabled={acting}
                         onClick={() => void approve(selected.id)}
-                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-50"
+                        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-700 text-white text-sm font-bold hover:bg-indigo-800 disabled:opacity-50 min-h-[44px] shadow-md shadow-indigo-700/20 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
                       >
                         {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                         Autorizar pago
@@ -993,13 +1013,13 @@ export function EmisionRevisionPanel() {
                           placeholder="Motivo de rechazo (opcional)"
                           value={rejectReason}
                           onChange={(e) => setRejectReason(e.target.value)}
-                          className="flex-1 text-sm border border-slate-200 rounded-xl px-3"
+                          className="flex-1 text-sm border border-slate-200 rounded-xl px-3 min-h-[44px] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none"
                         />
                         <button
                           type="button"
                           disabled={acting}
                           onClick={() => void reject(selected.id)}
-                          className="inline-flex items-center gap-1 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-50"
+                          className="inline-flex items-center gap-1 px-4 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-50 min-h-[44px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500/40"
                         >
                           <X size={16} /> Rechazar
                         </button>
@@ -1014,20 +1034,21 @@ export function EmisionRevisionPanel() {
       </div>
 
       {selected?.estado === 'pending' && mobileDetail && (
-        <div className="lg:hidden fixed bottom-0 inset-x-0 z-20 border-t border-slate-200 bg-white/95 backdrop-blur px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+        <div className="lg:hidden fixed bottom-0 inset-x-0 z-20 border-t border-slate-200/90 bg-white/95 backdrop-blur-md px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-12px_32px_rgba(15,26,90,0.12)]">
+          <BrandRibbon className="mb-3 max-w-xs mx-auto" />
           <input
             type="text"
             placeholder="Motivo rechazo (opcional)"
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2 mb-2"
+            className="w-full text-sm border border-slate-200 rounded-xl px-3 py-2.5 mb-2 min-h-[44px] focus:border-indigo-400 focus:ring-2 focus:ring-indigo-500/20 outline-none"
           />
           <div className="flex gap-2">
             <button
               type="button"
               disabled={acting}
               onClick={() => void approve(selected.id)}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-indigo-700 text-white text-sm font-bold disabled:opacity-50 min-h-[44px] shadow-md shadow-indigo-700/20"
             >
               {acting ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
               Aprobar
@@ -1036,7 +1057,7 @@ export function EmisionRevisionPanel() {
               type="button"
               disabled={acting}
               onClick={() => void reject(selected.id)}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-rose-600 text-white text-sm font-bold disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-600 text-white text-sm font-bold disabled:opacity-50 min-h-[44px]"
             >
               <X size={16} /> Rechazar
             </button>
