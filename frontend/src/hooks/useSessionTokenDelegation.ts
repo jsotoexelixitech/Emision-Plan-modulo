@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useWizardStore } from '../store/wizardStore';
 import { applyMetadataFromNexusToken } from '../lib/nexus-token-client';
+import { mergeMarketplaceActorMetadata } from '../lib/sso-metadata';
 
 const STORAGE_KEY = 'nexus_access_token_emision';
 
@@ -11,7 +12,7 @@ export function useSessionTokenDelegation() {
   useEffect(() => {
     applyMetadataFromNexusToken(STORAGE_KEY, (metadata) => {
       const current = useWizardStore.getState().metadataCanal || {};
-      setMetadataCanal({ ...current, ...metadata });
+      setMetadataCanal(mergeMarketplaceActorMetadata({ ...current, ...metadata }));
     });
 
     const searchParams = new URLSearchParams(window.location.search);
@@ -26,7 +27,9 @@ export function useSessionTokenDelegation() {
         const payload = JSON.parse(payloadStr);
         if (payload.metadata) {
           const current = useWizardStore.getState().metadataCanal || {};
-          setMetadataCanal({ ...current, ...payload.metadata });
+          setMetadataCanal(
+            mergeMarketplaceActorMetadata({ ...current, ...payload.metadata }),
+          );
         }
       }
     } catch {
