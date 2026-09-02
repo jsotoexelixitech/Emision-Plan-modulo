@@ -97,7 +97,7 @@ async function createEmissionAutoViaNestApi(payload, cotizacion) {
     tasa: cotizacion.ptasa,
   };
   console.log(
-    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} cusuario=${emissionBody.cusuario ?? '?'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'} tasaCa=${emissionBody.tasaCa ?? 0} tasaPt=${emissionBody.tasaPt ?? 0} tasaPp=${emissionBody.tasaPp ?? 0}`,
+    `[nest-api][${ts}] prima emit mprimaext=${emissionBody.mprimaext} mprima=0 ifrecuencia=${emissionBody.ifrecuencia} centidad=${emissionBody.centidad ?? '?'} citem=${emissionBody.citem ?? '?'} cusuario=${emissionBody.cusuario ?? '?'} cgestor=${emissionBody.cgestor ?? 'none'} coberAdicional=${emissionBody.coberAdicional ?? 'RC'} msumaaseg=${emissionBody.msumaaseg ?? 'null'} tasaCa=${emissionBody.tasaCa ?? 0} tasaPt=${emissionBody.tasaPt ?? 0} tasaPp=${emissionBody.tasaPp ?? 0}`,
   );
 
   const emission = await emitViaNestApi(emissionBody);

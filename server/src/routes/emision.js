@@ -20,13 +20,37 @@ const router = express.Router();
 /** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal. */
 function withNexusMetadata(state, nexusMetadata) {
   if (!state || typeof state !== 'object') return state;
-  if (!nexusMetadata || typeof nexusMetadata !== 'object' || !Object.keys(nexusMetadata).length) {
-    return state;
+  const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in', 'ccanalalt', 'cscanalalt'];
+  const baseMeta = state.metadataCanal && typeof state.metadataCanal === 'object'
+    ? { ...state.metadataCanal }
+    : {};
+  for (const key of actorKeys) {
+    if (baseMeta[key] != null && String(baseMeta[key]).trim() !== '') continue;
+    const fromState = state[key];
+    if (fromState != null && String(fromState).trim() !== '') {
+      baseMeta[key] = fromState;
+    }
   }
-  return {
-    ...state,
-    metadataCanal: { ...(state.metadataCanal || {}), ...nexusMetadata },
-  };
+  const jwtMeta = nexusMetadata && typeof nexusMetadata === 'object' ? nexusMetadata : {};
+  const mergedMeta = { ...jwtMeta, ...baseMeta };
+
+  for (const key of actorKeys) {
+    const fromState = baseMeta[key];
+    const fromJwt = jwtMeta[key];
+    const val = fromState != null && String(fromState).trim() !== ''
+      ? fromState
+      : fromJwt;
+    if (val != null && String(val).trim() !== '') {
+      mergedMeta[key] = val;
+    }
+  }
+
+  const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';
+  if (gestor && (mergedMeta.cusuario == 7 || mergedMeta.cusuario === '7')) {
+    delete mergedMeta.cusuario;
+  }
+
+  return { ...state, metadataCanal: mergedMeta };
 }
 
 /**
@@ -181,7 +205,7 @@ router.post('/policies/emit', async (req, res) => {
     const mergedState = withNexusMetadata(state, req.nexusMetadata);
     const meta = mergedState.metadataCanal || {};
     console.log(
-      `[modulo-emision/emit] metadataCanal cproductor=${meta.cproductor ?? 'default'} cusuario=${meta.cusuario ?? meta.cusuario_planes ?? 'default'} jwtKeys=${Object.keys(req.nexusMetadata || {}).join(',') || 'none'}`,
+      `[modulo-emision/emit] metadataCanal centidad=${meta.centidad ?? '?'} citem=${meta.citem ?? '?'} cproductor=${meta.cproductor ?? 'default'} cusuario=${meta.cusuario ?? meta.cusuario_planes ?? 'default'} cgestor=${meta.cgestor ?? 'none'} jwtKeys=${Object.keys(req.nexusMetadata || {}).join(',') || 'none'}`,
     );
 
     const result = await policyService.quoteAndEmit(mergedState, {

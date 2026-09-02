@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useWizardStore } from '../store/wizardStore';
 import { applyMetadataFromNexusToken } from '../lib/nexus-token-client';
 import { persistProductFromHints } from '../lib/product';
+import { mergeMarketplaceActorMetadata } from '../lib/sso-metadata';
 
 const STORAGE_KEY = 'nexus_access_token_emision';
 
@@ -11,9 +12,12 @@ export function useSessionTokenDelegation() {
 
   useEffect(() => {
     applyMetadataFromNexusToken(STORAGE_KEY, (metadata) => {
-      setMetadataCanal(metadata);
-      if (metadata.product === 'funerario' || metadata.product === 'rcv') {
-        persistProductFromHints({ product: String(metadata.product) });
+      const current = useWizardStore.getState().metadataCanal || {};
+      const merged = mergeMarketplaceActorMetadata({ ...current, ...metadata });
+      setMetadataCanal(merged);
+      const product = merged.product ?? metadata.product;
+      if (product === 'funerario' || product === 'rcv') {
+        persistProductFromHints({ product: String(product) });
       }
     });
 
@@ -28,7 +32,10 @@ export function useSessionTokenDelegation() {
         const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
         const payload = JSON.parse(payloadStr);
         if (payload.metadata) {
-          setMetadataCanal(payload.metadata);
+          const current = useWizardStore.getState().metadataCanal || {};
+          setMetadataCanal(
+            mergeMarketplaceActorMetadata({ ...current, ...payload.metadata }),
+          );
         }
       }
     } catch {

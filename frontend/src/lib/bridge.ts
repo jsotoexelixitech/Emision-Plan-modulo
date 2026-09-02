@@ -29,6 +29,11 @@ import { BUILDER_PRODUCT_STORAGE_KEY, isExelixiCatalogFlow, ensureExelixiFlowQue
 import { ensureCotizadorFlowQueryParam, isCotizadorFlow } from './cotizador-flow';
 import { applyWizardStepFromUrl, defaultStepForModule, stepToModuleOrder } from './wizard-step';
 import { isFrecuenciaFraccionada } from './frecuencia';
+import {
+  enrichBridgePayloadForSave,
+  extractActorMetadataFromBridgeData,
+} from './sso-metadata';
+import { readFlowHandoff } from './flow-handoff';
 
 // ── Configuración por puerto (dev local) o hostname (HTTPS sslip.io) ───────
 const PORT_TO_ORDER: Record<string, number> = {
@@ -101,8 +106,14 @@ function getModuleTokenKey(): string {
   return PORT_TO_TOKEN_KEY[window.location.port ?? ''] ?? 'nexus_access_token';
 }
 
-const bridgeHost = () =>
-  resolveNexusApiUrl(import.meta.env?.VITE_NEXUS_API_URL as string | undefined);
+/** Flow (session/save/done) usa /nexus-api de Apache → admin :3091.
+ *  No usar /emision/nexus-api (eso es verify en :3092 y no tiene /api/flow). */
+const bridgeHost = () => {
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return `${window.location.origin}/nexus-api`;
+  }
+  return resolveNexusApiUrl(import.meta.env?.VITE_NEXUS_API_URL as string | undefined);
+};
 const QUERY_KEY   = 'sid';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -250,7 +261,7 @@ function makeBridge(): BridgeAPI {
       out.fraccionado = isFrecuenciaFraccionada(freq);
     }
 
-    return out;
+    return enrichBridgePayloadForSave(out, getModuleTokenKey());
   };
 
   // Campos cuyo valor NO debe sobrescribirse durante la hidratación.
@@ -270,6 +281,15 @@ function makeBridge(): BridgeAPI {
     }
     const set = (useWizardStore as unknown as { setState: (p: Partial<Record<string, unknown>>) => void }).setState;
     set(filtered);
+
+    const store = useWizardStore.getState();
+    const canalMeta = extractActorMetadataFromBridgeData({
+      ...(store.metadataCanal || {}),
+      ...data,
+    });
+    if (Object.keys(canalMeta).length > 0) {
+      store.setMetadataCanal(canalMeta);
+    }
   };
 
   const hydrate = async () => {
@@ -313,6 +333,12 @@ function makeBridge(): BridgeAPI {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('[bridge] hydrate failed', e);
+    }
+    const local = readFlowHandoff();
+    const storeV = (useWizardStore.getState() as { vehicle?: { cmarca?: string; cversion?: string } }).vehicle;
+    const localV = local?.vehicle as { cmarca?: string; cversion?: string } | undefined;
+    if (local && localV?.cmarca && (!storeV?.cmarca || !storeV?.cversion)) {
+      applyHydration(local);
     }
   };
 

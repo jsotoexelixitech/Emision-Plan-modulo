@@ -31,6 +31,9 @@ function mergeNexusMetadata(req) {
   if (req.query.citem != null && req.query.citem !== '') {
     meta.citem = String(req.query.citem).trim();
   }
+  if (req.query.cgestor != null && req.query.cgestor !== '') {
+    meta.cgestor = String(req.query.cgestor).trim();
+  }
   if (req.query.cproducto != null && req.query.cproducto !== '') {
     meta.cproducto = String(req.query.cproducto).trim();
   }
