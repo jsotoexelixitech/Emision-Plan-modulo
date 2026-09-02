@@ -209,7 +209,7 @@ router.get('/planes', async (req, res) => {
 
   try {
     const result = await fetchPlanesV2(meta, ctipo, iplaca);
-    const applyCanalRules = req.query.bridge === '1';
+    const applyCanalRules = req.query.bridge === '1' || Boolean(resolveEntityContext(meta));
 
     let canalVisibility = null;
     const entityCtx = resolveEntityContext(meta);
