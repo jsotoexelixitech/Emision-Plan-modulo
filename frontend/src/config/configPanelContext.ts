@@ -14,6 +14,18 @@ export type ConfigPanelContext = {
   metadata: Record<string, string>;
 };
 
+/** Parametrizador funerario solo preguntas: /config/preguntas o ?view=preguntas */
+export function isPreguntasOnlyView(): boolean {
+  try {
+    const url = new URL(window.location.href);
+    if (/\/config\/preguntas\/?$/i.test(url.pathname)) return true;
+    const v = url.searchParams.get('view') || url.searchParams.get('solo');
+    return v === 'preguntas';
+  } catch {
+    return false;
+  }
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const part = token.split('.')[1];

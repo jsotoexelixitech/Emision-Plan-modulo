@@ -97,6 +97,22 @@ router.post('/submissions', async (req, res) => {
 
     const scoring = computeHealthScore(questions, answers);
 
+    if (scoring.blocked) {
+      return res.status(422).json({
+        success: false,
+        code: 'HEALTH_BLOCKED',
+        message:
+          scoring.blockReason ||
+          'La solicitud no cumple los criterios del cuestionario de salud.',
+        scoring: {
+          total: scoring.total,
+          breakdown: scoring.breakdown,
+          blocked: true,
+          blockReason: scoring.blockReason,
+        },
+      });
+    }
+
     upsertHealthAnswers({
       sessionId,
       cplan,

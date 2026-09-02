@@ -26,6 +26,7 @@ function computeHealthScore(questions, answers) {
   let blockReason;
 
   for (const q of questions) {
+    if (q.enabled === false) continue;
     if (!isQuestionVisible(q, answers)) continue;
 
     const answer = answers[q.id];

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   Plus, Trash2, CornerDownRight, ChevronDown, ChevronRight, GitBranch,
-  RotateCcw, ChevronUp, Percent,
+  RotateCcw, ChevronUp, Percent, Power,
 } from 'lucide-react';
 
 export type HealthQuestionType = 'boolean' | 'text' | 'select';
@@ -12,6 +12,8 @@ export interface HealthQuestionDraft {
   label: string;
   description?: string;
   required?: boolean;
+  /** false = no se muestra al cliente ni en scoring (parametrizador). */
+  enabled?: boolean;
   plans: string[];
   showIf?: { field: string; equals: boolean | string };
   options?: { value: string; label: string }[];
@@ -255,6 +257,7 @@ export function FuneralHealthQuestionsEditor({
         type: 'boolean',
         label: 'Nueva pregunta',
         required: true,
+        enabled: true,
         plans: [...allPlanCodes],
         scoreIfTrue: 10,
       },
@@ -366,8 +369,12 @@ export function FuneralHealthQuestionsEditor({
         {questions.map((q, idx) => {
           const open = openId === q.id;
           const isChild = Boolean(q.showIf?.field);
+          const isActive = q.enabled !== false;
           return (
-            <li key={`${q.id}-${idx}`} className={isChild ? 'bg-violet-50/30' : ''}>
+            <li
+              key={`${q.id}-${idx}`}
+              className={`${isChild ? 'bg-violet-50/30' : ''} ${!isActive ? 'opacity-55' : ''}`}
+            >
               <div className="flex items-stretch gap-1">
                 <button
                   type="button"
@@ -406,8 +413,14 @@ export function FuneralHealthQuestionsEditor({
                         ? ` · si ${q.showIf.field}=${String(q.showIf.equals)}`
                         : ''}
                       {q.required ? ' · obligatoria' : ''}
+                      {!isActive ? ' · inactiva' : ''}
                     </span>
                   </span>
+                  {!isActive && (
+                    <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-100 text-slate-500">
+                      <Power size={10} className="inline -mt-0.5" /> Off
+                    </span>
+                  )}
                   <span className="hidden sm:inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700">
                     <Percent size={10} />
                     {scoreSummary(q)}
@@ -433,6 +446,23 @@ export function FuneralHealthQuestionsEditor({
                     <ChevronDown size={14} />
                   </button>
                 </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={isActive}
+                  aria-label={isActive ? 'Desactivar pregunta' : 'Activar pregunta'}
+                  onClick={() => update(idx, { enabled: !isActive })}
+                  className={`self-center mx-1 relative shrink-0 w-9 h-5 rounded-full transition-colors ${
+                    isActive ? 'bg-indigo-500' : 'bg-slate-300'
+                  }`}
+                  title={isActive ? 'Desactivar (no se muestra al cliente)' : 'Activar pregunta'}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                      isActive ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
                 <button
                   type="button"
                   onClick={() => remove(idx)}

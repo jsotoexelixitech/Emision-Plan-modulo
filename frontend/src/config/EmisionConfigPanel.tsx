@@ -16,7 +16,7 @@ import {
   type HealthQuestionDraft,
   type PlanOption,
 } from './FuneralHealthQuestionsEditor';
-import { canalDisplayLabel, readConfigPanelContext } from './configPanelContext';
+import { canalDisplayLabel, readConfigPanelContext, isPreguntasOnlyView } from './configPanelContext';
 
 const ALL_PLAN_CODES = ['2', '3', '4', '5', '6', '7', '8', '9'];
 const PANEL_CTX = readConfigPanelContext();
@@ -71,7 +71,9 @@ export function EmisionConfigPanel() {
     PANEL_CTX.empresaNombre ||
     `Empresa ${EMPRESA_ID}`;
 
-  const soloPreguntas = producto === 'funerario' && FUNERARIO_SOLO_PREGUNTAS;
+  const soloPreguntas =
+    producto === 'funerario' && (FUNERARIO_SOLO_PREGUNTAS || isPreguntasOnlyView());
+  const preguntasUrlOnly = producto === 'funerario' && isPreguntasOnlyView();
   const [tab, setTab] = useState<Tab>(soloPreguntas ? 'preguntas' : 'general');
   const [saved, setSaved] = useState(false);
   const [showToken, setShowToken] = useState(false);
@@ -371,7 +373,7 @@ export function EmisionConfigPanel() {
                 PARAMETRIZADOR · {producto}
               </p>
               <h1 className="font-display text-3xl sm:text-[2.5rem] font-black text-slate-900 tracking-tight leading-tight">
-                Creación de Póliza
+                {preguntasUrlOnly ? 'Preguntas de salud' : 'Creación de Póliza'}
               </h1>
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
                 {soloPreguntas

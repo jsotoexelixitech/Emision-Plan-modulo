@@ -172,6 +172,14 @@ const CATALOG = [
 
 /**
  * @param {HealthQuestion[]} catalog
+ * @returns {HealthQuestion[]}
+ */
+function filterEnabledQuestions(catalog) {
+  return (Array.isArray(catalog) ? catalog : []).filter((q) => q && q.enabled !== false);
+}
+
+/**
+ * @param {HealthQuestion[]} catalog
  * @param {string} cplan
  * @returns {HealthQuestion[]}
  */
@@ -291,7 +299,7 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     const msg = err instanceof Error ? err.message : String(err);
     console.warn(`[funeralHealthQuestions] Nexus fallback: ${msg}`);
   }
-  const filtered = filterQuestionsForPlan(catalog, cplan);
+  const filtered = filterQuestionsForPlan(filterEnabledQuestions(catalog), cplan);
   const questions = stripOrphanShowIf(filtered);
   const catalogIds = catalog.map((q) => q?.id).filter(Boolean);
   const matchedIds = new Set(questions.map((q) => q?.id));
