@@ -28,7 +28,9 @@ function parseCscanalalt(meta = {}) {
  */
 function resolveEntityContext(meta = {}) {
   const centidad = meta.centidad != null ? String(meta.centidad).trim().toUpperCase() : '';
-  const citemRaw = meta.citem ?? (centidad === 'C' ? (meta.ccanalalt_in ?? meta.ccanalalt) : null);
+  const citemRaw = meta.citem
+    ?? (centidad === 'P' ? meta.cproductor : null)
+    ?? (centidad === 'C' ? (meta.ccanalalt_in ?? meta.ccanalalt) : null);
   const citem = citemRaw != null && citemRaw !== '' ? String(citemRaw).trim() : '';
 
   if (centidad && citem) {
@@ -47,6 +49,48 @@ function resolveEntityContext(meta = {}) {
   }
 
   return null;
+}
+
+function normalizeCplan(code) {
+  return String(code ?? '').trim();
+}
+
+/**
+ * Planes permitidos vía spBuscaPlanProducto (fallback si /canal/visibility no responde).
+ * @param {Record<string, unknown>} meta
+ * @param {string} cproducto
+ * @returns {Promise<string[]>}
+ */
+async function fetchPlanesPermitidosProducto(meta = {}, cproducto) {
+  const entity = resolveEntityContext(meta);
+  if (!entity || !cproducto) return [];
+
+  const base = getBaseUrl();
+  const headers = await buildAuthHeaders();
+
+  const response = await axios.post(
+    `${base}/api/v1/valrep/planes/producto`,
+    {
+      cproducto: String(cproducto).trim(),
+      centidad: entity.centidad,
+      citem: entity.citem,
+    },
+    { headers, timeout: TIMEOUT, validateStatus: () => true },
+  );
+
+  if (response.status >= 400) {
+    console.warn(
+      `[planes/producto] nest-api status=${response.status} centidad=${entity.centidad} citem=${entity.citem} cproducto=${cproducto}`,
+    );
+    return [];
+  }
+
+  const planRows = response.data?.data?.plan ?? response.data?.plan ?? [];
+  if (!Array.isArray(planRows)) return [];
+
+  return planRows
+    .map((row) => normalizeCplan(row.cplan ?? row.CPLAN))
+    .filter((c) => c.length > 0);
 }
 
 /**
@@ -100,8 +144,35 @@ async function fetchCanalVisibility(meta = {}, opts = {}) {
 function filterPlanesByVisibility(planes, canalVisibility) {
   const allowed = canalVisibility?.ui?.planesPermitidos;
   if (!Array.isArray(allowed) || !allowed.length) return planes;
-  const set = new Set(allowed.map((c) => String(c).trim()));
-  return planes.filter((p) => set.has(String(p.cplan ?? '').trim()));
+  const set = new Set(allowed.map((c) => normalizeCplan(c)));
+  const filtered = planes.filter((p) => set.has(normalizeCplan(p.cplan)));
+  return filtered.length > 0 ? filtered : planes;
+}
+
+/**
+ * Resuelve lista de cplans permitidos: visibility API o spBuscaPlanProducto directo.
+ * @param {Record<string, unknown>} meta
+ * @param {{ cproducto?: string, cramo?: number }} opts
+ * @returns {Promise<{ canalVisibility: object|null, planesPermitidos: string[] }>}
+ */
+async function resolvePlanesPermitidos(meta = {}, opts = {}) {
+  const cproducto = (opts.cproducto ?? meta.cproducto) != null
+    ? String(opts.cproducto ?? meta.cproducto).trim()
+    : '';
+
+  const canalVisibility = await fetchCanalVisibility(meta, opts);
+  let planesPermitidos = canalVisibility?.ui?.planesPermitidos ?? [];
+
+  if ((!planesPermitidos || !planesPermitidos.length) && cproducto) {
+    planesPermitidos = await fetchPlanesPermitidosProducto(meta, cproducto);
+    if (planesPermitidos.length) {
+      console.log(
+        `[canal/planes] fallback spBuscaPlanProducto centidad=${meta.centidad ?? '?'} citem=${meta.citem ?? meta.cproductor ?? '?'} cproducto=${cproducto} → ${planesPermitidos.length} plan(es)`,
+      );
+    }
+  }
+
+  return { canalVisibility, planesPermitidos };
 }
 
 module.exports = {
@@ -109,4 +180,6 @@ module.exports = {
   filterPlanesByVisibility,
   parseCcanalalt,
   resolveEntityContext,
+  resolvePlanesPermitidos,
+  fetchPlanesPermitidosProducto,
 };

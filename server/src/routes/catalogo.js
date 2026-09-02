@@ -14,9 +14,9 @@ const {
 } = require('../services/nestApiClient');
 const { fetchPlanesV2, resolvePlanesParams } = require('../services/planesClient');
 const {
-  fetchCanalVisibility,
   filterPlanesByVisibility,
   resolveEntityContext,
+  resolvePlanesPermitidos,
 } = require('../services/canalClient');
 
 const router = express.Router();
@@ -188,16 +188,27 @@ router.get('/planes', async (req, res) => {
 
     let canalVisibility = null;
     const entityCtx = resolveEntityContext(meta);
+    let planesPermitidos = [];
+
     if (entityCtx) {
       const cproducto = (meta.cproducto != null ? String(meta.cproducto).trim() : '')
         || result.planes?.[0]?.cproducto;
-      canalVisibility = await fetchCanalVisibility(meta, {
+      const visibilityResolved = await resolvePlanesPermitidos(meta, {
         cproducto: cproducto || undefined,
         cramo: resolved.cramo,
       });
+      canalVisibility = visibilityResolved.canalVisibility;
+      planesPermitidos = visibilityResolved.planesPermitidos ?? [];
+      console.log(
+        `[catalogo/planes] entity=${entityCtx.centidad}/${entityCtx.citem} cproducto=${cproducto || 'null'} permitidos=${planesPermitidos.length} planesV2=${result.planes?.length ?? 0}`,
+      );
     }
 
-    const planes = filterPlanesByVisibility(result.planes ?? [], canalVisibility);
+    const visibilityForFilter = planesPermitidos.length
+      ? { ui: { planesPermitidos } }
+      : canalVisibility;
+
+    const planes = filterPlanesByVisibility(result.planes ?? [], visibilityForFilter);
 
     res.json({
       success: true,
