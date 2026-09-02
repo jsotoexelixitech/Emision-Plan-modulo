@@ -24,7 +24,7 @@ const RCV_BENEFITS = [
 function apiPlanToWizardPlan(p: PlanRcv, categoryLabel: string): Plan {
   return {
     cplan:     p.cplan,
-    name:      ((p.xplan_c ?? '').trim() || (p.xplan ?? '').trim() || p.cplan),
+    name:      ((p.xplan ?? '').trim() || (p.xplan_c ?? '').trim() || p.cplan),
     price:     'Tarifa La Mundial',
     priceNum:  0,
     tag:       categoryLabel,

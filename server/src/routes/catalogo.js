@@ -16,6 +16,7 @@ const { fetchPlanesV2, resolvePlanesParams } = require('../services/planesClient
 const {
   fetchCanalVisibility,
   filterPlanesByVisibility,
+  resolveEntityContext,
 } = require('../services/canalClient');
 
 const router = express.Router();
@@ -186,11 +187,12 @@ router.get('/planes', async (req, res) => {
     const result = await fetchPlanesV2(meta, ctipo, iplaca);
 
     let canalVisibility = null;
-    const ccanalalt = meta.ccanalalt_in ?? meta.ccanalalt;
-    if (ccanalalt != null && ccanalalt !== '') {
-      const firstPlan = result.planes?.[0];
+    const entityCtx = resolveEntityContext(meta);
+    if (entityCtx) {
+      const cproducto = (meta.cproducto != null ? String(meta.cproducto).trim() : '')
+        || result.planes?.[0]?.cproducto;
       canalVisibility = await fetchCanalVisibility(meta, {
-        cproducto: firstPlan?.cproducto ?? meta.cproducto,
+        cproducto: cproducto || undefined,
         cramo: resolved.cramo,
       });
     }

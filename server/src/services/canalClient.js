@@ -22,16 +22,50 @@ function parseCscanalalt(meta = {}) {
 }
 
 /**
- * @param {Record<string, unknown>} meta Nexus metadata (ccanalalt_in)
+ * Resuelve entidad Sis2000 desde metadata SSO (gestor P, canal C, o legacy ccanalalt).
+ * @param {Record<string, unknown>} meta
+ * @returns {{ centidad: string, citem: string } | null}
+ */
+function resolveEntityContext(meta = {}) {
+  const centidad = meta.centidad != null ? String(meta.centidad).trim().toUpperCase() : '';
+  const citemRaw = meta.citem ?? (centidad === 'C' ? (meta.ccanalalt_in ?? meta.ccanalalt) : null);
+  const citem = citemRaw != null && citemRaw !== '' ? String(citemRaw).trim() : '';
+
+  if (centidad && citem) {
+    return { centidad, citem };
+  }
+
+  const ccanalalt = parseCcanalalt(meta);
+  if (ccanalalt) {
+    return { centidad: 'C', citem: String(ccanalalt) };
+  }
+
+  const productor = meta.cproductor;
+  const cproducto = meta.cproducto != null ? String(meta.cproducto).trim() : '';
+  if (productor != null && productor !== '' && cproducto) {
+    return { centidad: 'P', citem: String(productor).trim() };
+  }
+
+  return null;
+}
+
+/**
+ * @param {Record<string, unknown>} meta Nexus metadata
  * @param {{ cproducto?: string, cramo?: number }} [opts]
  * @returns {Promise<object|null>}
  */
 async function fetchCanalVisibility(meta = {}, opts = {}) {
-  const ccanalalt = parseCcanalalt(meta);
-  if (!ccanalalt) return null;
+  const entity = resolveEntityContext(meta);
+  if (!entity) return null;
 
-  const params = new URLSearchParams({ ccanalalt: String(ccanalalt) });
-  const cproducto = opts.cproducto != null ? String(opts.cproducto).trim() : '';
+  const params = new URLSearchParams({
+    centidad: entity.centidad,
+    citem: entity.citem,
+  });
+
+  const cproducto = (opts.cproducto ?? meta.cproducto) != null
+    ? String(opts.cproducto ?? meta.cproducto).trim()
+    : '';
   if (cproducto) params.set('cproducto', cproducto);
 
   const cramo = opts.cramo != null ? parseInt(String(opts.cramo), 10) : null;
@@ -50,7 +84,7 @@ async function fetchCanalVisibility(meta = {}, opts = {}) {
 
   if (response.status >= 400) {
     console.warn(
-      `[canal/visibility] nest-api status=${response.status} ccanalalt=${ccanalalt}`,
+      `[canal/visibility] nest-api status=${response.status} centidad=${entity.centidad} citem=${entity.citem}`,
     );
     return null;
   }
@@ -74,4 +108,5 @@ module.exports = {
   fetchCanalVisibility,
   filterPlanesByVisibility,
   parseCcanalalt,
+  resolveEntityContext,
 };
