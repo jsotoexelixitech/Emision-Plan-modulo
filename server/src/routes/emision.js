@@ -38,6 +38,12 @@ function withNexusMetadata(state, nexusMetadata) {
     }
   }
 
+  // JWT del iframe trae cusuario=7 (Generico). No pisa al gestor.
+  const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';
+  if (gestor && (mergedMeta.cusuario == 7 || mergedMeta.cusuario === '7')) {
+    delete mergedMeta.cusuario;
+  }
+
   return { ...state, metadataCanal: mergedMeta };
 }
 
