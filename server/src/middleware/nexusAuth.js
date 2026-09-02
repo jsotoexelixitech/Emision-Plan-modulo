@@ -24,6 +24,12 @@
  * se intenta extraer el empresaId para fines de logging/aislamiento.
  */
 const jwt = require('jsonwebtoken');
+const { restoreMarketplaceActor } = require('../lib/marketplace-actor-cache');
+
+function done(req, _res, next) {
+  try { restoreMarketplaceActor(req); } catch { /* ignore */ }
+  return done(req, res, next);
+}
 
 const ENABLED         = process.env.NEXUS_AUTH_ENABLED === 'true';
 const SECRET          = process.env.TENANT_TOKEN_SECRET || '';
@@ -90,7 +96,7 @@ async function nexusAuth(req, res, next) {
       } catch { /* ignorar token malformado en bypass */ }
     }
 
-    return next();
+    return done(req, res, next);
   }
   // -----------------------------------
 
@@ -106,7 +112,7 @@ async function nexusAuth(req, res, next) {
         }
       } catch { /* ignore */ }
     }
-    return next();
+    return done(req, res, next);
   }
 
   if (!SECRET) {
@@ -118,7 +124,7 @@ async function nexusAuth(req, res, next) {
   }
 
   if (!token) {
-    if (isInternalProxy) return next();
+    if (isInternalProxy) return done(req, res, next);
     return res.status(401).json({
       success: false,
       code: 'NEXUS_TOKEN_MISSING',
@@ -151,7 +157,7 @@ async function nexusAuth(req, res, next) {
       if (payload.canal) {
         req.nexusMetadata = { ...req.nexusMetadata, canal: payload.canal };
       }
-      return next();
+      return done(req, res, next);
     }
 
     if (payload.type !== 'tenant_access') {
@@ -207,7 +213,7 @@ async function nexusAuth(req, res, next) {
     } catch { /* heartbeat no crítico: continuar si nexus-api no responde */ }
     // ────────────────────────────────────────────────────────────────────────
 
-    return next();
+    return done(req, res, next);
   } catch (err) {
     return res.status(401).json({
       success: false,
