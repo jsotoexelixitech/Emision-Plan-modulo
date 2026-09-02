@@ -398,14 +398,14 @@ function ScoringCard({ total, breakdown }: { total: number; breakdown: ScoreLine
           {total} pts
         </span>
       </div>
-      <ul className="p-3 space-y-1.5 max-h-52 overflow-y-auto">
+      <ul className="p-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
         {breakdown.length === 0 ? (
-          <li className="text-sm text-slate-500 py-2">Sin desglose de preguntas.</li>
+          <li className="text-sm text-slate-500 py-2 sm:col-span-2">Sin desglose de preguntas.</li>
         ) : (
           breakdown.map((line) => (
             <li
               key={line.questionId}
-              className="flex items-start justify-between gap-2 text-xs border-b border-slate-100 last:border-0 pb-1.5"
+              className="flex items-start justify-between gap-2 text-xs border-b border-slate-100 pb-1.5"
             >
               <div className="min-w-0">
                 <p className="font-semibold text-slate-800 leading-snug">{line.label}</p>
@@ -464,7 +464,7 @@ function CompactSummaryCard({
                 {selected.tomadorEmail && (
                   <span className="inline-flex items-center gap-1 min-w-0">
                     <Mail size={11} className="text-indigo-400 shrink-0" />
-                    <span className="truncate max-w-[200px]">{selected.tomadorEmail}</span>
+                    <span className="truncate max-w-[200px] xl:max-w-[320px]">{selected.tomadorEmail}</span>
                   </span>
                 )}
               </div>
@@ -484,7 +484,7 @@ function CompactSummaryCard({
           </div>
         </div>
 
-        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2 mt-3 pt-3 border-t border-slate-100 text-xs">
+        <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-x-4 gap-y-2 mt-3 pt-3 border-t border-slate-100 text-xs">
           <div>
             <dt className="text-[9px] font-bold text-slate-400 uppercase">Plan</dt>
             <dd className="font-semibold text-slate-800 mt-0.5 leading-snug">
@@ -789,7 +789,7 @@ export function EmisionRevisionPanel() {
     <div className="revision-shell min-h-screen overflow-x-hidden">
       <header className={`sticky top-0 z-30 bg-white shadow-sm ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
         <BrandBar />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
           <div className="flex flex-wrap items-center justify-between gap-4 py-4">
             <div className="flex items-center gap-4 min-w-0">
               <MundialLogo />
@@ -821,7 +821,7 @@ export function EmisionRevisionPanel() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-8">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-5 pb-28 lg:pb-8">
         {error && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" /> {error}
@@ -860,7 +860,7 @@ export function EmisionRevisionPanel() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6">
-          <aside className={`lg:col-span-4 revision-card overflow-hidden flex flex-col lg:max-h-[calc(100vh-13rem)] ${
+          <aside className={`lg:col-span-3 xl:col-span-3 revision-card overflow-hidden flex flex-col ${
             mobileDetail && selected ? 'hidden lg:flex' : ''
           }`}
           >
@@ -920,7 +920,7 @@ export function EmisionRevisionPanel() {
             </div>
           </aside>
 
-          <main className={`lg:col-span-8 min-h-[320px] min-w-0 ${
+          <main className={`lg:col-span-9 xl:col-span-9 min-h-[320px] min-w-0 ${
             !(mobileDetail && selected) ? 'hidden lg:block' : ''
           }`}
           >
@@ -977,8 +977,8 @@ export function EmisionRevisionPanel() {
                   </p>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 items-start min-w-0">
-                  <div className="lg:col-span-3 space-y-3 min-w-0 lg:max-h-[calc(100vh-11rem)] lg:overflow-y-auto revision-detail-scroll">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start min-w-0">
+                  <div className="lg:col-span-8 xl:col-span-9 space-y-4 min-w-0">
                     <CompactSummaryCard
                       selected={selected}
                       primaLabel={primaLabel}
@@ -988,141 +988,143 @@ export function EmisionRevisionPanel() {
                       emittedWhen={emittedWhen}
                     />
 
-                    <details
-                      className="revision-card px-4 py-3 group"
-                      open={policyDocs.length > 0 || uploadDocs.length > 0}
-                    >
-                      <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
-                        <FileDown size={14} />
-                        Documentos y enlaces
-                        <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
-                          {policyDocs.length + uploadDocs.length} archivo
-                          {policyDocs.length + uploadDocs.length === 1 ? '' : 's'}
-                        </span>
-                      </summary>
-                      <div className="mt-3 space-y-3">
-                        {policyDocs.length === 0 && uploadDocs.length === 0 ? (
-                          <p className="text-xs text-slate-500">
-                            {selected.estado === 'paid'
-                              ? 'Sin PDF de póliza registrado.'
-                              : 'Cuadro de póliza y expediente OCR aparecen tras pago/emisión.'}
-                          </p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {policyDocs.map((doc) => (
-                              <li key={doc.key}>
-                                <DocLinkCard doc={doc} />
-                              </li>
-                            ))}
-                            {uploadDocs.map((doc) => (
-                              <li key={doc.key}>
-                                <DocLinkCard doc={doc} />
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
-                          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-xs">
-                            {selected.paymentUrl && (
-                              <div className="sm:col-span-2">
-                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Checkout</dt>
-                                <dd>
-                                  <a
-                                    href={selected.paymentUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-indigo-700 font-semibold hover:underline"
-                                  >
-                                    Abrir link de pago
-                                    <ExternalLink size={12} />
-                                  </a>
-                                </dd>
-                              </div>
-                            )}
-                            {selected.paymentExpiresAt && (
-                              <div>
-                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Expira</dt>
-                                <dd className="font-medium text-slate-800">{formatDate(selected.paymentExpiresAt)}</dd>
-                              </div>
-                            )}
-                            {selected.paymentSid && (
-                              <div>
-                                <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">SID</dt>
-                                <dd className="font-mono text-[10px] text-slate-700 break-all">{selected.paymentSid}</dd>
-                              </div>
-                            )}
-                          </dl>
-                        )}
-                      </div>
-                    </details>
-
-                    <details className="revision-card px-4 py-3">
-                      <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
-                        <User size={14} />
-                        Datos OCR de cédulas
-                        <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
-                          {ocrBlocks.length ? `${ocrBlocks.length} doc.` : 'Sin datos'}
-                        </span>
-                      </summary>
-                      <div className="mt-3">
-                        {ocrBlocks.length === 0 ? (
-                          <p className="text-xs text-slate-500">Sin datos OCR en el snapshot.</p>
-                        ) : (
-                          <div className="space-y-3 max-h-40 overflow-y-auto">
-                            {ocrBlocks.map((block) => (
-                              <div key={block.key}>
-                                <p className="text-[10px] font-bold text-slate-600 mb-1">{block.label}</p>
-                                <dl className="grid grid-cols-2 gap-1.5">
-                                  {Object.entries(block.ocr)
-                                    .filter(([, v]) => v != null && String(v).trim())
-                                    .slice(0, 8)
-                                    .map(([k, v]) => (
-                                      <div key={k}>
-                                        <dt className="text-slate-400 uppercase text-[9px]">{k}</dt>
-                                        <dd className="text-xs font-medium text-slate-800">{String(v)}</dd>
-                                      </div>
-                                    ))}
-                                </dl>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </details>
-
-                    <details className="revision-card px-4 py-3">
-                      <summary
-                        className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
-                        onClick={() => setShowRawSnapshot((v) => !v)}
-                      >
-                        {showRawSnapshot ? 'Ocultar JSON' : 'Ver snapshot JSON'}
-                      </summary>
-                      {showRawSnapshot && (
-                        <pre className="mt-2 max-h-36 overflow-auto text-[10px] bg-slate-50 rounded-lg p-2 text-slate-700">
-                          {JSON.stringify(selected.snapshot, null, 2)}
-                        </pre>
-                      )}
-                    </details>
-                  </div>
-
-                  <div className="lg:col-span-2 min-w-0 space-y-3">
-                    <div className="lg:sticky lg:top-[7.5rem] space-y-3">
-                      {selected.estado === 'pending' && (
-                        <div className="hidden lg:block">
-                          <DecisionPanel
-                            acting={acting}
-                            rejectReason={rejectReason}
-                            onRejectReason={setRejectReason}
-                            onApprove={() => void approve(selected.id)}
-                            onReject={() => void reject(selected.id)}
-                          />
-                        </div>
-                      )}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <ScoringCard
                         total={selected.scoreTotal}
                         breakdown={selected.scoreBreakdown ?? []}
                       />
+
+                      <div className="revision-card overflow-hidden min-w-0">
+                        <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50/90 border-b border-slate-100">
+                          <FileDown size={14} className="text-indigo-700" />
+                          <h3 className="text-[11px] font-black uppercase tracking-[0.12em] text-indigo-900">
+                            Documentos y enlaces
+                          </h3>
+                          <span className="ml-auto text-[10px] font-semibold text-slate-400">
+                            {policyDocs.length + uploadDocs.length} archivo
+                            {policyDocs.length + uploadDocs.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <div className="p-3">
+                          {policyDocs.length === 0 && uploadDocs.length === 0 ? (
+                            <p className="text-xs text-slate-500">
+                              {selected.estado === 'paid'
+                                ? 'Sin PDF de póliza registrado.'
+                                : 'Cuadro de póliza y expediente OCR aparecen tras pago/emisión.'}
+                            </p>
+                          ) : (
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {policyDocs.map((doc) => (
+                                <li key={doc.key}>
+                                  <DocLinkCard doc={doc} />
+                                </li>
+                              ))}
+                              {uploadDocs.map((doc) => (
+                                <li key={doc.key}>
+                                  <DocLinkCard doc={doc} />
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {(selected.paymentUrl || selected.paymentSid || selected.paymentExpiresAt) && (
+                            <dl className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 pt-3 mt-3 border-t border-slate-100 text-xs">
+                              {selected.paymentUrl && (
+                                <div className="sm:col-span-2 xl:col-span-3">
+                                  <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Checkout</dt>
+                                  <dd>
+                                    <a
+                                      href={selected.paymentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-indigo-700 font-semibold hover:underline"
+                                    >
+                                      Abrir link de pago
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  </dd>
+                                </div>
+                              )}
+                              {selected.paymentExpiresAt && (
+                                <div>
+                                  <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">Expira</dt>
+                                  <dd className="font-medium text-slate-800">{formatDate(selected.paymentExpiresAt)}</dd>
+                                </div>
+                              )}
+                              {selected.paymentSid && (
+                                <div>
+                                  <dt className="text-[9px] font-bold text-slate-400 uppercase mb-0.5">SID</dt>
+                                  <dd className="font-mono text-[10px] text-slate-700 break-all">{selected.paymentSid}</dd>
+                                </div>
+                              )}
+                            </dl>
+                          )}
+                        </div>
+                      </div>
                     </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <details className="revision-card px-4 py-3 min-w-0">
+                        <summary className="text-xs font-bold text-slate-600 uppercase tracking-wider cursor-pointer flex items-center gap-2">
+                          <User size={14} />
+                          Datos OCR de cédulas
+                          <span className="ml-auto text-[10px] font-semibold text-slate-400 normal-case">
+                            {ocrBlocks.length ? `${ocrBlocks.length} doc.` : 'Sin datos'}
+                          </span>
+                        </summary>
+                        <div className="mt-3">
+                          {ocrBlocks.length === 0 ? (
+                            <p className="text-xs text-slate-500">Sin datos OCR en el snapshot.</p>
+                          ) : (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {ocrBlocks.map((block) => (
+                                <div key={block.key} className="rounded-lg border border-slate-100 bg-slate-50/50 p-2.5">
+                                  <p className="text-[10px] font-bold text-slate-600 mb-1.5">{block.label}</p>
+                                  <dl className="grid grid-cols-2 gap-x-2 gap-y-1">
+                                    {Object.entries(block.ocr)
+                                      .filter(([, v]) => v != null && String(v).trim())
+                                      .slice(0, 8)
+                                      .map(([k, v]) => (
+                                        <div key={k}>
+                                          <dt className="text-slate-400 uppercase text-[9px]">{k}</dt>
+                                          <dd className="text-xs font-medium text-slate-800">{String(v)}</dd>
+                                        </div>
+                                      ))}
+                                  </dl>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </details>
+
+                      <details className="revision-card px-4 py-3 min-w-0">
+                        <summary
+                          className="text-xs font-bold text-slate-500 hover:text-indigo-600 uppercase tracking-wider cursor-pointer"
+                          onClick={() => setShowRawSnapshot((v) => !v)}
+                        >
+                          {showRawSnapshot ? 'Ocultar JSON' : 'Ver snapshot JSON'}
+                        </summary>
+                        {showRawSnapshot && (
+                          <pre className="mt-2 max-h-48 overflow-auto text-[10px] bg-slate-50 rounded-lg p-2 text-slate-700">
+                            {JSON.stringify(selected.snapshot, null, 2)}
+                          </pre>
+                        )}
+                      </details>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-4 xl:col-span-3 min-w-0">
+                    {selected.estado === 'pending' && (
+                      <div className="hidden lg:block lg:sticky lg:top-[7.5rem]">
+                        <DecisionPanel
+                          acting={acting}
+                          rejectReason={rejectReason}
+                          onRejectReason={setRejectReason}
+                          onApprove={() => void approve(selected.id)}
+                          onReject={() => void reject(selected.id)}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
 
