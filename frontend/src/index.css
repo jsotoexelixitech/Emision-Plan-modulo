@@ -536,3 +536,57 @@ body {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(9, 17, 51, 0.10), transparent);
 }
+
+/* ============ MESA TÉCNICA — panel revisión funerario ============ */
+.revision-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(46, 109, 191, 0.07), transparent 42%),
+    radial-gradient(circle at 88% 100%, rgba(232, 79, 81, 0.05), transparent 38%),
+    linear-gradient(180deg, #f7f8fc 0%, #eceff6 100%);
+}
+
+.revision-brand-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #091133 0%, #0F1A5A 38%, #2E6DBF 68%, #E84F51 100%);
+}
+
+.revision-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 26, 90, 0.08);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 8px 28px -14px rgba(9, 17, 51, 0.14);
+}
+
+.revision-inbox-item {
+  background: #ffffff;
+  border: 1px solid rgba(15, 26, 90, 0.07);
+  box-shadow: 0 2px 8px -4px rgba(9, 17, 51, 0.08);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.revision-inbox-item:hover {
+  border-color: rgba(15, 26, 90, 0.18);
+  box-shadow: 0 6px 20px -10px rgba(9, 17, 51, 0.18);
+}
+
+.revision-inbox-item--active {
+  border-color: #0F1A5A;
+  box-shadow:
+    0 0 0 1px #0F1A5A,
+    0 10px 28px -12px rgba(15, 26, 90, 0.28);
+  transform: translateY(-1px);
+}
+
+.revision-empty-icon {
+  background: linear-gradient(135deg, #ECEFF8 0%, #ffffff 55%, #FFECEC 100%);
+  box-shadow: 0 12px 32px -16px rgba(15, 26, 90, 0.2);
+}
+
+.revision-decision-card {
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fd 100%);
+  border: 1px solid rgba(15, 26, 90, 0.1);
+  box-shadow: 0 12px 40px -20px rgba(9, 17, 51, 0.22);
+}
