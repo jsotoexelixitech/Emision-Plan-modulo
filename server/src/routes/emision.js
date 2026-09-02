@@ -17,44 +17,55 @@ const { clasificarDiligencia } = require('../services/diligenciaService');
 
 const router = express.Router();
 
-/** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal. */
+function decodeJwtMetadata(token) {
+  if (!token || typeof token !== 'string') return {};
+  try {
+    const part = token.replace(/^Bearer\s+/i, '').split('.')[1];
+    if (!part) return {};
+    const json = Buffer.from(part.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    const payload = JSON.parse(json);
+    return payload.metadata && typeof payload.metadata === 'object' ? payload.metadata : {};
+  } catch {
+    return {};
+  }
+}
+
+function preferGestorCode(...vals) {
+  const codes = vals
+    .map((v) => (v != null ? String(v).trim() : ''))
+    .filter(Boolean);
+  if (!codes.length) return '';
+  return codes.find((c) => c.includes('-')) || codes[0];
+}
+
+/** Fusiona metadata SSO del JWT (nexusAuth) + tokens del state. */
 function withNexusMetadata(state, nexusMetadata) {
   if (!state || typeof state !== 'object') return state;
   const actorKeys = ['cgestor', 'cgestor_in', 'centidad', 'citem', 'cproductor', 'ccanalalt_in', 'cscanalalt_in', 'ccanalalt', 'cscanalalt'];
-  const baseMeta = state.metadataCanal && typeof state.metadataCanal === 'object'
-    ? { ...state.metadataCanal }
-    : {};
-  for (const key of actorKeys) {
-    if (baseMeta[key] != null && String(baseMeta[key]).trim() !== '') continue;
-    const fromState = state[key];
-    if (fromState != null && String(fromState).trim() !== '') {
-      baseMeta[key] = fromState;
-    }
+  const sources = [];
+  if (nexusMetadata && typeof nexusMetadata === 'object') sources.push(nexusMetadata);
+  if (state.metadataCanal && typeof state.metadataCanal === 'object') sources.push(state.metadataCanal);
+  sources.push(state);
+  for (const key of ['nexus_token', 'nexusToken']) {
+    if (typeof state[key] === 'string') sources.push(decodeJwtMetadata(state[key]));
   }
-  const jwtMeta = nexusMetadata && typeof nexusMetadata === 'object' ? nexusMetadata : {};
-  const mergedMeta = { ...jwtMeta, ...baseMeta };
 
+  const mergedMeta = { ...(state.metadataCanal || {}), ...(nexusMetadata || {}) };
   for (const key of actorKeys) {
-    const fromState = baseMeta[key];
-    const fromJwt = jwtMeta[key];
-    const sa = fromState != null ? String(fromState).trim() : '';
-    const sb = fromJwt != null ? String(fromJwt).trim() : '';
-    let val = sa || sb;
-    if ((key === 'cgestor' || key === 'cgestor_in') && sa && sb) {
-      if (sb.startsWith(`${sa}-`)) val = sb;
-      else if (sa.startsWith(`${sb}-`)) val = sa;
-      else if (sa.includes('-') && !sb.includes('-')) val = sa;
-      else if (sb.includes('-') && !sa.includes('-')) val = sb;
-    }
+    const vals = sources.map((src) => src?.[key]);
+    const val = (key === 'cgestor' || key === 'cgestor_in')
+      ? preferGestorCode(...vals)
+      : (vals.find((v) => v != null && String(v).trim() !== '') ?? '');
     if (val) mergedMeta[key] = val;
   }
 
   const gestor = mergedMeta.cgestor != null ? String(mergedMeta.cgestor).trim() : '';
-  if (gestor && (mergedMeta.cusuario == 7 || mergedMeta.cusuario === '7')) {
-    delete mergedMeta.cusuario;
+  if (gestor) {
+    mergedMeta.cusuario = 7;
+    state.cgestor = gestor;
   }
 
-  return { ...state, metadataCanal: mergedMeta };
+  return { ...state, metadataCanal: mergedMeta, ...(gestor ? { cgestor: gestor } : {}) };
 }
 
 /**

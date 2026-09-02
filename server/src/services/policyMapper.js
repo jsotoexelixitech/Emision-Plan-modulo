@@ -370,7 +370,6 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   };
 
   const productor = pickActor('cproductor', 'productor') ?? (process.env.LAMUNDIAL_PRODUCTOR || 80080);
-  const cusuario = resolveCusuarioCoberturas(metadata);
   const quoteMeta = overrides.quoteMeta || state.quoteMeta || {};
   const tasasMeta = quoteMeta.tasas || {};
   const cramo = resolveRcvCramo(v, metadata);
@@ -388,6 +387,8 @@ function buildEmissionRequest(state, cotizacion, overrides = {}) {
   };
   const cgestor = preferGestor(pickActor('cgestor'), metadata.cgestor, state.cgestor);
   const cgestorIn = preferGestor(pickActor('cgestor_in'), metadata.cgestor_in, state.cgestor_in);
+  // Gestor marketplace: adpoliza.cusuario = 7 (Generico). 1422 es solo cotización.
+  const cusuario = cgestor ? 7 : resolveCusuarioCoberturas(metadata);
   const centidadRaw = pickActor('centidad');
   const centidad = centidadRaw != null ? String(centidadRaw).trim().toUpperCase() : undefined;
   const citemRaw = pickActor('citem');
@@ -642,7 +643,7 @@ function toLaMundialEmissionPayload(p, _cotizacion) {
     cterm_y_cod: parseInt(p.dec_term_y_cod || '1', 10),
     cproductor: parseInt(p.productor || process.env.LAMUNDIAL_PRODUCTOR || 80080, 10),
     ctipocanal: p.ctipocanal ?? 'E',
-    cusuario: parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
+    cusuario: p.cgestor ? 7 : parseInt(p.cusuario || resolveCusuarioCoberturas({}), 10),
     ...(p.cgestor ? { cgestor: String(p.cgestor).trim() } : {}),
     ...(p.cgestor_in ? { cgestor_in: String(p.cgestor_in).trim() } : {}),
     ...(p.centidad ? { centidad: String(p.centidad).trim().toUpperCase() } : {}),
