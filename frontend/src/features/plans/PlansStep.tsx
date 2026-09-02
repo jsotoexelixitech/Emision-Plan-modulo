@@ -7,7 +7,6 @@ import {
 import type { Plan } from '../../types';
 import { type PlanRcv, catalogoApi, quotePolicy, getFrecuenciasByPlan, type CatalogItem } from '../../lib/api';
 import { getProductConfig, RCV_RAMO_BINACIONAL } from '../../lib/product';
-import { isBridgeChained } from '../../lib/bridge-session';
 import { AnimatedCounter } from '../../components/ui/AnimatedCounter';
 import { vehicleSignature, formatQuoteUsd, formatQuoteUsdMoney, formatQuoteVes, formatQuoteVesLabel, formatQuoteTasa } from '../../lib/money';
 import { resolveFrecuenciaAmounts, resolveRcvQuoteBasis, rcvQuoteIncludesFrecuenciaSig } from '../../lib/frecuencia';
