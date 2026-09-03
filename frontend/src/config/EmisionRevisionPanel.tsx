@@ -135,18 +135,35 @@ const OCR_DOC_LABELS: Record<string, string> = {
   pasaporte: 'Pasaporte',
 };
 
+/** Uploads OCR viven en `/ocr/files/...`, no en `/emision/files/...`. */
 function resolveDocUrl(url: string): string {
   const trimmed = url.trim();
   if (!trimmed) return trimmed;
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  if (trimmed.startsWith('/')) {
+
+  const withOcrFilesPrefix = (pathname: string): string => {
+    if (pathname.startsWith('/ocr/files/')) return pathname;
+    if (pathname.startsWith('/files/')) return `/ocr${pathname}`;
+    const filesAt = pathname.indexOf('/files/');
+    if (filesAt >= 0) return `/ocr${pathname.slice(filesAt)}`;
+    return pathname;
+  };
+
+  if (/^https?:\/\//i.test(trimmed)) {
     try {
-      return `${window.location.origin}${trimmed}`;
+      const u = new URL(trimmed);
+      u.pathname = withOcrFilesPrefix(u.pathname);
+      return u.toString();
     } catch {
       return trimmed;
     }
   }
-  return trimmed;
+
+  const path = withOcrFilesPrefix(trimmed.startsWith('/') ? trimmed : `/${trimmed}`);
+  try {
+    return `${window.location.origin}${path}`;
+  } catch {
+    return path;
+  }
 }
 
 function strUrl(v: unknown): string | undefined {
