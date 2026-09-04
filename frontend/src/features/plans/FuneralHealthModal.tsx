@@ -156,7 +156,8 @@ export function FuneralHealthModal({
               Cuestionario de salud
             </h2>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Responde según el plan seleccionado. Los datos se guardan antes de continuar al pago.
+              Declara el estado de salud del asegurado para este plan. Los campos con * son obligatorios.
+              Tus respuestas quedan en el expediente; un técnico las revisa antes del pago.
             </p>
           </div>
           <button
@@ -164,7 +165,7 @@ export function FuneralHealthModal({
             onClick={onClose}
             disabled={saving}
             className="flex-shrink-0 w-11 h-11 rounded-xl bg-white border border-slate-200 grid place-items-center text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors disabled:opacity-40 touch-manipulation"
-            aria-label="Cerrar"
+            aria-label="Cerrar cuestionario y volver al plan"
           >
             <X size={16} />
           </button>

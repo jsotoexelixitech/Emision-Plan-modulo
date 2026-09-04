@@ -325,8 +325,9 @@ export function FuneralHealthQuestionsEditor({
             Preguntas · {questions.length}
           </p>
           <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
-            Agrega, quita o edita. El <strong className="font-semibold text-slate-600">%</strong> es el
-            puntaje que suma al técnico. Tras guardar, el cliente ve estas mismas preguntas.
+            Pulsa una fila para editarla. El <strong className="font-semibold text-slate-600">%</strong> lo
+            ve solo el técnico. Tras <strong className="font-semibold text-slate-600">Guardar</strong>, el
+            cliente ve las preguntas <em>visibles</em> de este canal.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -334,7 +335,7 @@ export function FuneralHealthQuestionsEditor({
             type="button"
             onClick={restoreDefaults}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-xs font-bold hover:bg-slate-50 transition-colors"
-            title="Volver a las preguntas y % de fábrica"
+            title="Sustituye el cuestionario actual por las preguntas de fábrica. Hay que Guardar para aplicar."
           >
             <RotateCcw size={13} /> Defaults
           </button>
@@ -342,15 +343,26 @@ export function FuneralHealthQuestionsEditor({
             type="button"
             onClick={addQuestion}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors"
+            title="Agrega una pregunta al final. Recuerda Guardar."
           >
             <Plus size={14} /> Nueva
           </button>
         </div>
       </div>
+      <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-[11px] text-slate-600 leading-relaxed space-y-0.5">
+        <p>
+          <strong className="font-semibold text-slate-700">Interruptor:</strong> On = el cliente la ve.
+          Off = queda en este panel pero no sale en el flujo. El historial de casos ya enviados no cambia.
+        </p>
+        <p>
+          <strong className="font-semibold text-slate-700">Papelera:</strong> la quita del catálogo.
+          No borra respuestas de solicitudes anteriores.
+        </p>
+      </div>
 
       {questions.length === 0 && (
         <div className="text-center py-8 text-slate-500 text-sm rounded-xl border border-dashed border-slate-200 bg-slate-50">
-          No hay preguntas. Agrega una o restaura defaults.
+          No hay preguntas. Pulsa Nueva o Defaults. Luego Guardar.
         </div>
       )}
 
@@ -369,6 +381,7 @@ export function FuneralHealthQuestionsEditor({
                   type="button"
                   onClick={() => setOpenId(open ? null : q.id)}
                   className="flex-1 min-w-0 flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-slate-50/80 transition-colors"
+                  title={open ? 'Cerrar edición' : 'Abrir para editar texto, planes, % y condición'}
                 >
                   <span className="text-slate-400 shrink-0">
                     {open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
@@ -396,17 +409,23 @@ export function FuneralHealthQuestionsEditor({
                     </span>
                     <span className="block text-[10px] text-slate-400 truncate">
                       Planes {plansSummary(q.plans, planOptions)}
-                      {q.showIf?.field ? ' · condicional' : ''}
-                      {q.required ? ' · obligatoria' : ''}
-                      {!isActive ? ' · inactiva' : ''}
+                      {q.showIf?.field ? ' · solo si responde otra' : ''}
+                      {q.required ? ' · obligatoria' : ' · opcional'}
+                      {!isActive ? ' · oculta al cliente' : ''}
                     </span>
                   </span>
                   {!isActive && (
-                    <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-100 text-slate-500">
-                      <Power size={10} className="inline -mt-0.5" /> Off
+                    <span
+                      className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-slate-200 bg-slate-100 text-slate-500"
+                      title="El cliente no la ve. Activa el interruptor para mostrarla de nuevo."
+                    >
+                      <Power size={10} className="inline -mt-0.5" /> Oculta
                     </span>
                   )}
-                  <span className="hidden sm:inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700">
+                  <span
+                    className="hidden sm:inline-flex items-center gap-1 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md border border-indigo-100 bg-indigo-50 text-indigo-700"
+                    title="Puntaje que suma en mesa técnica. El cliente no lo ve."
+                  >
                     <Percent size={10} />
                     {scoreSummary(q)}
                   </span>
@@ -417,7 +436,7 @@ export function FuneralHealthQuestionsEditor({
                     onClick={() => move(idx, -1)}
                     disabled={idx === 0}
                     className="px-1.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20"
-                    title="Subir"
+                    title="Subir en el orden que ve el cliente"
                   >
                     <ChevronUp size={14} />
                   </button>
@@ -426,33 +445,48 @@ export function FuneralHealthQuestionsEditor({
                     onClick={() => move(idx, 1)}
                     disabled={idx === questions.length - 1}
                     className="px-1.5 py-0.5 text-slate-300 hover:text-slate-600 disabled:opacity-20"
-                    title="Bajar"
+                    title="Bajar en el orden que ve el cliente"
                   >
                     <ChevronDown size={14} />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isActive}
-                  aria-label={isActive ? 'Desactivar pregunta' : 'Activar pregunta'}
-                  onClick={() => update(idx, { enabled: !isActive })}
-                  className={`self-center mx-1 relative shrink-0 w-9 h-5 rounded-full transition-colors ${
-                    isActive ? 'bg-indigo-500' : 'bg-slate-300'
-                  }`}
-                  title={isActive ? 'Desactivar (no se muestra al cliente)' : 'Activar pregunta'}
-                >
-                  <span
-                    className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                      isActive ? 'translate-x-4' : 'translate-x-0'
+                <span className="self-center flex flex-col items-center justify-center px-1 min-w-[3.4rem]">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isActive}
+                    aria-label={
+                      isActive
+                        ? 'Ocultar al cliente. La pregunta sigue en este panel y en el historial.'
+                        : 'Mostrar de nuevo al cliente'
+                    }
+                    onClick={() => update(idx, { enabled: !isActive })}
+                    className={`relative shrink-0 w-9 h-5 rounded-full transition-colors ${
+                      isActive ? 'bg-indigo-500' : 'bg-slate-300'
                     }`}
-                  />
-                </button>
+                    title={
+                      isActive
+                        ? 'Visible al cliente. Clic para ocultarla (no se borra; el historial no cambia).'
+                        : 'Oculta al cliente. Clic para volver a mostrarla en el flujo.'
+                    }
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                        isActive ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className={`text-[8px] font-black uppercase tracking-wide mt-0.5 ${
+                    isActive ? 'text-indigo-600' : 'text-slate-400'
+                  }`}>
+                    {isActive ? 'Visible' : 'Oculta'}
+                  </span>
+                </span>
                 <button
                   type="button"
                   onClick={() => remove(idx)}
                   className="px-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-colors"
-                  title="Eliminar"
+                  title="Eliminar del catálogo. Las solicitudes ya enviadas conservan la respuesta."
                 >
                   <Trash2 size={15} />
                 </button>
@@ -462,10 +496,11 @@ export function FuneralHealthQuestionsEditor({
                 <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-slate-100 bg-slate-50/50">
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5">
                     <div className="sm:col-span-4">
-                      <label className={lbl}>Tipo</label>
+                      <label className={lbl}>Tipo de respuesta</label>
                       <select
                         className={inp}
                         value={q.type}
+                        title="Cómo contesta el cliente: sí/no, texto o una lista"
                         onChange={(e) => {
                           const type = e.target.value as HealthQuestionType;
                           const patch: Partial<HealthQuestionDraft> = { type };
@@ -484,11 +519,14 @@ export function FuneralHealthQuestionsEditor({
                       >
                         <option value="boolean">Sí / No</option>
                         <option value="text">Texto libre</option>
-                        <option value="select">Selección</option>
+                        <option value="select">Lista de opciones</option>
                       </select>
                     </div>
                     <div className="sm:col-span-8 flex items-end gap-3 pb-0.5">
-                      <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600">
+                      <label
+                        className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600"
+                        title="Si está marcada, el cliente no puede continuar sin responder"
+                      >
                         <input
                           type="checkbox"
                           checked={!!q.required}
@@ -502,6 +540,7 @@ export function FuneralHealthQuestionsEditor({
                           type="button"
                           onClick={() => addFollowUp(idx)}
                           className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-700 hover:text-violet-900"
+                          title="Crea una pregunta de texto que solo aparece si responde Sí"
                         >
                           <CornerDownRight size={12} />
                           Detalle al Sí
@@ -511,33 +550,37 @@ export function FuneralHealthQuestionsEditor({
                   </div>
 
                   <div>
-                    <label className={lbl}>Texto de la pregunta</label>
+                    <label className={lbl}>Texto que lee el cliente</label>
                     <input
                       className={inp}
                       value={q.label}
                       onChange={(e) => update(idx, { label: e.target.value })}
+                      placeholder="Ej. ¿Fuma o ha fumado en los últimos 12 meses?"
                     />
                   </div>
 
                   <div>
-                    <label className={lbl}>Ayuda (opcional)</label>
+                    <label className={lbl}>Ayuda bajo la pregunta (opcional)</label>
                     <input
                       className={inp}
                       value={q.description ?? ''}
                       onChange={(e) => update(idx, { description: e.target.value })}
-                      placeholder="Texto secundario bajo la pregunta"
+                      placeholder="Aclaración corta. El técnico no la usa para puntuar."
                     />
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 space-y-2.5">
                     <p className="text-[10px] font-black uppercase tracking-wider text-indigo-600 inline-flex items-center gap-1">
                       <Percent size={11} />
-                      Puntaje (%) · lo ve el técnico
+                      Puntaje para mesa técnica
+                    </p>
+                    <p className="text-[11px] text-slate-500 -mt-1">
+                      El cliente no ve estos %. Solo aparecen en el desglose del técnico.
                     </p>
                     {q.type === 'boolean' && (
                       <div className="grid grid-cols-2 gap-2">
                         <div>
-                          <label className={lbl}>Si responde Sí</label>
+                          <label className={lbl}>% si responde Sí</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -555,7 +598,7 @@ export function FuneralHealthQuestionsEditor({
                           </div>
                         </div>
                         <div>
-                          <label className={lbl}>Si responde No</label>
+                          <label className={lbl}>% si responde No</label>
                           <div className="relative">
                             <input
                               type="number"
@@ -576,7 +619,7 @@ export function FuneralHealthQuestionsEditor({
                     )}
                     {q.type === 'text' && (
                       <div>
-                        <label className={lbl}>Si escribe algo</label>
+                        <label className={lbl}>% si escribe algo</label>
                         <div className="relative max-w-[10rem]">
                           <input
                             type="number"
@@ -596,13 +639,14 @@ export function FuneralHealthQuestionsEditor({
                     )}
                     {q.type === 'select' && (
                       <div className="space-y-2">
-                        <p className="text-[11px] text-slate-500">Cada opción puede tener su propio %.</p>
+                        <p className="text-[11px] text-slate-500">Valor interno · texto que ve el cliente · % del técnico.</p>
                         {(q.options ?? []).map((opt, oi) => (
                           <div key={`${opt.value}-${oi}`} className="grid grid-cols-[1fr_1fr_5.5rem] gap-1.5">
                             <input
                               className={`${inp} font-mono text-xs`}
                               value={opt.value}
-                              placeholder="valor"
+                              placeholder="clave"
+                              title="Valor interno (no lo ve el cliente)"
                               onChange={(e) => {
                                 const options = [...(q.options ?? [])];
                                 const prev = options[oi].value;
@@ -618,7 +662,8 @@ export function FuneralHealthQuestionsEditor({
                             <input
                               className={inp}
                               value={opt.label}
-                              placeholder="Etiqueta"
+                              placeholder="Texto al cliente"
+                              title="Lo que lee el cliente en la lista"
                               onChange={(e) => {
                                 const options = [...(q.options ?? [])];
                                 options[oi] = { ...options[oi], label: e.target.value };
@@ -659,7 +704,10 @@ export function FuneralHealthQuestionsEditor({
                     {q.type === 'boolean' && (
                       <div className="pt-1 border-t border-indigo-100 space-y-2">
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
-                          Bloqueo automático
+                          Bloquear el envío
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Si se cumple, el cliente no puede continuar. El caso no llega a mesa técnica.
                         </p>
                         <div className="flex flex-wrap gap-3">
                           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
@@ -686,7 +734,7 @@ export function FuneralHealthQuestionsEditor({
                             className={inp}
                             value={q.blockReason ?? ''}
                             onChange={(e) => update(idx, { blockReason: e.target.value || undefined })}
-                            placeholder="Motivo que verá el cliente / técnico"
+                            placeholder="Mensaje que verá el cliente si se bloquea"
                           />
                         )}
                       </div>
@@ -695,7 +743,7 @@ export function FuneralHealthQuestionsEditor({
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className={lbl + ' mb-0'}>Planes del módulo (dónde aplica)</label>
+                      <label className={lbl + ' mb-0'}>En qué planes aparece</label>
                       <div className="flex gap-2">
                         <button
                           type="button"
@@ -748,14 +796,14 @@ export function FuneralHealthQuestionsEditor({
 
                   <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-2.5 space-y-2">
                     <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">
-                      Condición (otra pregunta del cuestionario)
+                      Mostrar solo si… (pregunta previa)
                     </p>
                     <p className="text-[11px] text-slate-500 -mt-1">
-                      No elige el plan. Define si esta pregunta aparece según la respuesta de otra.
+                      Independiente del plan. Sirve para un detalle que solo sale si respondió de cierta forma.
                     </p>
                     <div className="flex flex-wrap items-end gap-2">
                       <div className="flex-1 min-w-[160px]">
-                        <label className={lbl}>Se despliega si</label>
+                        <label className={lbl}>Esta pregunta aparece si</label>
                         <select
                           className={inp}
                           value={q.showIf?.field ?? ''}
@@ -776,8 +824,7 @@ export function FuneralHealthQuestionsEditor({
                           <option value="">Siempre visible</option>
                           {parentOptionsFor(idx).map((p) => (
                             <option key={p.id} value={p.id}>
-                              {(p.label || p.id).slice(0, 60)}
-                              {p.label ? ` · ${p.id}` : ''}
+                              {(p.label || 'Pregunta').slice(0, 70)}
                             </option>
                           ))}
                         </select>

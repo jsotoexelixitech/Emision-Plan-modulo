@@ -397,7 +397,7 @@ export function EmisionConfigPanel() {
               </h1>
               <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">
                 {soloPreguntas
-                  ? 'Arma el cuestionario: texto, planes, % de riesgo y si se bloquea. Lo que guardes es lo que ve el cliente y el técnico.'
+                  ? 'Arma el cuestionario del canal. El interruptor oculta sin borrar; la papelera sí quita del catálogo. El historial de casos ya enviados no se altera. Guarda para que el cliente lo vea.'
                   : 'Configura hacia dónde se envían los datos al emitir una póliza, el formato, la autenticación y el mapeado de campos.'}
               </p>
               <div className="mt-3 inline-flex flex-wrap items-center gap-2 text-[11px] font-semibold">
@@ -552,8 +552,8 @@ export function EmisionConfigPanel() {
                         </p>
                         <p className="text-[11px] text-slate-400">
                           {canalLocked
-                            ? 'Fijo por el enlace del integrador'
-                            : 'General = si el SSO no envía canal'}
+                            ? 'Este enlace trae un canal fijo; el cuestionario es solo de ese canal'
+                            : 'Cada canal tiene su lista. General se usa si el SSO no manda canal'}
                         </p>
                       </div>
                       {canalLocked ? (
@@ -582,6 +582,7 @@ export function EmisionConfigPanel() {
                                   key={k}
                                   type="button"
                                   onClick={() => switchCanal(k)}
+                                  title={`Editar cuestionario del canal ${canalDisplayLabel(k)}`}
                                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${
                                     active
                                       ? 'bg-slate-900 text-white'
@@ -600,7 +601,8 @@ export function EmisionConfigPanel() {
                               className="w-[7.5rem] text-xs border-0 border-b border-slate-200 rounded-none px-1 py-1 outline-none focus:border-slate-400 bg-transparent placeholder:text-slate-300"
                               value={newCanalName}
                               onChange={(e) => setNewCanalName(e.target.value)}
-                              placeholder="Nuevo canal…"
+                              placeholder="Nombre del canal"
+                              title="Crea otro cuestionario (mismo producto, distinto canal SSO)"
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') {
                                   e.preventDefault();
@@ -613,6 +615,7 @@ export function EmisionConfigPanel() {
                               onClick={addCanal}
                               disabled={!newCanalName.trim()}
                               className="text-xs font-bold text-indigo-600 hover:text-indigo-800 disabled:opacity-30 disabled:hover:text-indigo-600"
+                              title="Crear canal con copia del cuestionario General"
                             >
                               +
                             </button>
@@ -844,10 +847,20 @@ export function EmisionConfigPanel() {
                 </div>
               )}
               <div className="flex gap-3 w-full sm:w-auto sm:ml-auto">
-                <button onClick={() => { if (confirm('¿Restaurar configuración original?')) { healthQuestionsDirty.current = false; resetConfig(); } }} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm">
+                <button
+                  onClick={() => { if (confirm('¿Restaurar el cuestionario de fábrica? Se pierden altas, bajas y textos de este panel hasta que vuelvas a guardar.')) { healthQuestionsDirty.current = false; resetConfig(); } }}
+                  disabled={saving}
+                  title="Vuelve a las preguntas de fábrica. Hay que Guardar si quieres dejarlo así."
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:border-slate-300 hover:bg-slate-50 transition-all disabled:opacity-50 shadow-sm"
+                >
                   <RotateCcw size={15} /> Restaurar defaults
                 </button>
-                <button onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-8 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  title="Guarda en Nexus. Sin esto el cliente y el técnico no ven los cambios."
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-2 py-2.5 px-8 rounded-xl font-bold text-sm bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all disabled:opacity-50"
+                >
                   {saving ? <><Loader2 size={16} className="animate-spin" /> Guardando...</> : saved ? <><CheckCircle2 size={16} /> ¡Guardado!</> : <><Save size={16} /> Guardar cambios</>}
                 </button>
               </div>
