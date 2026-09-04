@@ -283,13 +283,18 @@ export function FuneralHealthQuestionsEditor({
       return;
     }
     const id = `detalle_${parent.id}_${Date.now().toString(36).slice(-4)}`;
+    const equals =
+      parent.type === 'select' && parent.options?.[0]
+        ? parent.options[0].value
+        : true;
     const child: HealthQuestionDraft = {
       id,
       type: 'text',
       label: `Detalle de: ${parent.label}`,
       required: true,
+      enabled: true,
       plans: [...parent.plans],
-      showIf: { field: parent.id, equals: true },
+      showIf: { field: parent.id, equals },
       scoreIfFilled: 5,
     };
     const next = [...questions];
@@ -353,6 +358,11 @@ export function FuneralHealthQuestionsEditor({
         <p>
           <strong className="font-semibold text-slate-700">Interruptor:</strong> On = el cliente la ve.
           Off = queda en este panel pero no sale en el flujo. El historial de casos ya enviados no cambia.
+        </p>
+        <p>
+          <strong className="font-semibold text-slate-700">Cajón de detalle:</strong> no es un tipo
+          aparte. Abre la pregunta Sí/No o Lista → <em>Agregar cajón de texto</em>. El cliente solo
+          lo ve si responde Sí (o la opción que indiques).
         </p>
         <p>
           <strong className="font-semibold text-slate-700">Papelera:</strong> la quita del catálogo.
@@ -535,17 +545,6 @@ export function FuneralHealthQuestionsEditor({
                         />
                         Obligatoria
                       </label>
-                      {q.type === 'boolean' && (
-                        <button
-                          type="button"
-                          onClick={() => addFollowUp(idx)}
-                          className="inline-flex items-center gap-1 text-[11px] font-bold text-violet-700 hover:text-violet-900"
-                          title="Crea una pregunta de texto que solo aparece si responde Sí"
-                        >
-                          <CornerDownRight size={12} />
-                          Detalle al Sí
-                        </button>
-                      )}
                     </div>
                   </div>
 
@@ -567,6 +566,120 @@ export function FuneralHealthQuestionsEditor({
                       onChange={(e) => update(idx, { description: e.target.value })}
                       placeholder="Aclaración corta. El técnico no la usa para puntuar."
                     />
+                  </div>
+
+                  {(q.type === 'boolean' || q.type === 'select') && !isChild && (
+                    <div className="rounded-lg border border-violet-200 bg-violet-50/70 p-2.5">
+                      <p className="text-[10px] font-black uppercase tracking-wide text-violet-700">
+                        Cajón de detalle
+                      </p>
+                      <p className="text-[11px] text-slate-600 mt-0.5 mb-2 leading-relaxed">
+                        No es un tipo más. Crea un recuadro de texto que el cliente solo ve si
+                        {q.type === 'boolean' ? ' responde Sí' : ' elige una opción'}.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => addFollowUp(idx)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
+                      >
+                        <CornerDownRight size={14} />
+                        {questions.some((x, i) => i !== idx && x.showIf?.field === q.id && x.type === 'text')
+                          ? 'Ir al cajón de texto'
+                          : q.type === 'boolean'
+                            ? 'Agregar cajón de texto si responde Sí'
+                            : 'Agregar cajón de texto al elegir una opción'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-2.5 space-y-2">
+                    <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">
+                      Cajón ligado / mostrar solo si…
+                    </p>
+                    <p className="text-[11px] text-slate-500 -mt-1">
+                      {isChild
+                        ? 'Esta pregunta es el cajón: solo se abre si la de arriba tiene esa respuesta.'
+                        : 'Déjalo en «Siempre visible» salvo que esta fila sea el detalle de otra.'}
+                    </p>
+                    <div className="flex flex-wrap items-end gap-2">
+                      <div className="flex-1 min-w-[160px]">
+                        <label className={lbl}>Esta pregunta aparece si</label>
+                        <select
+                          className={inp}
+                          value={q.showIf?.field ?? ''}
+                          onChange={(e) => {
+                            const field = e.target.value;
+                            if (!field) {
+                              update(idx, { showIf: undefined });
+                              return;
+                            }
+                            const parent = questions.find((p) => p.id === field);
+                            const equals =
+                              parent?.type === 'select' && parent.options?.[0]
+                                ? parent.options[0].value
+                                : true;
+                            update(idx, { showIf: { field, equals } });
+                          }}
+                        >
+                          <option value="">Siempre visible</option>
+                          {parentOptionsFor(idx).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {(p.label || 'Pregunta').slice(0, 70)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-28">
+                        <label className={lbl}>Respuesta</label>
+                        <select
+                          className={inp}
+                          disabled={!q.showIf?.field}
+                          value={q.showIf ? String(q.showIf.equals) : 'true'}
+                          onChange={(e) => {
+                            if (!q.showIf?.field) return;
+                            const raw = e.target.value;
+                            const equals =
+                              raw === 'true' ? true : raw === 'false' ? false : raw;
+                            update(idx, { showIf: { field: q.showIf.field, equals } });
+                          }}
+                        >
+                          {equalsChoices(q.showIf?.field).map((o) => (
+                            <option key={o.value} value={o.value}>{o.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {(() => {
+                      const parentId = q.showIf?.field;
+                      if (!parentId) return null;
+                      const parent = questions.find((p) => p.id === parentId);
+                      if (!parent) {
+                        return (
+                          <p className="text-[11px] text-rose-600 font-semibold">
+                            La pregunta a la que está ligada ya no está en la lista. En el flujo no se verá.
+                          </p>
+                        );
+                      }
+                      const overlap = (q.plans || []).filter((p) => parent.plans.includes(p));
+                      if (overlap.length === 0) {
+                        return (
+                          <p className="text-[11px] text-amber-700 font-semibold">
+                            Sin planes en común con «{parent.label || parentId}»
+                            ({plansSummary(parent.plans, planOptions)}).
+                            En esos planes este cajón no podrá mostrarse.
+                          </p>
+                        );
+                      }
+                      if (parent.plans.length < allPlanCodes.length) {
+                        return (
+                          <p className="text-[11px] text-slate-500">
+                            Solo visible en planes donde también esté «{parent.label || parentId}»
+                            ({plansSummary(parent.plans, planOptions)}), y si responde {String(q.showIf?.equals)}.
+                          </p>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 p-2.5 space-y-2.5">
@@ -792,94 +905,6 @@ export function FuneralHealthQuestionsEditor({
                         </label>
                       ))}
                     </div>
-                  </div>
-
-                  <div className="rounded-lg border border-violet-100 bg-violet-50/40 p-2.5 space-y-2">
-                    <p className="text-[10px] font-bold text-violet-700 uppercase tracking-wide">
-                      Mostrar solo si… (pregunta previa)
-                    </p>
-                    <p className="text-[11px] text-slate-500 -mt-1">
-                      Independiente del plan. Sirve para un detalle que solo sale si respondió de cierta forma.
-                    </p>
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div className="flex-1 min-w-[160px]">
-                        <label className={lbl}>Esta pregunta aparece si</label>
-                        <select
-                          className={inp}
-                          value={q.showIf?.field ?? ''}
-                          onChange={(e) => {
-                            const field = e.target.value;
-                            if (!field) {
-                              update(idx, { showIf: undefined });
-                              return;
-                            }
-                            const parent = questions.find((p) => p.id === field);
-                            const equals =
-                              parent?.type === 'select' && parent.options?.[0]
-                                ? parent.options[0].value
-                                : true;
-                            update(idx, { showIf: { field, equals } });
-                          }}
-                        >
-                          <option value="">Siempre visible</option>
-                          {parentOptionsFor(idx).map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {(p.label || 'Pregunta').slice(0, 70)}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="w-28">
-                        <label className={lbl}>Respuesta</label>
-                        <select
-                          className={inp}
-                          disabled={!q.showIf?.field}
-                          value={q.showIf ? String(q.showIf.equals) : 'true'}
-                          onChange={(e) => {
-                            if (!q.showIf?.field) return;
-                            const raw = e.target.value;
-                            const equals =
-                              raw === 'true' ? true : raw === 'false' ? false : raw;
-                            update(idx, { showIf: { field: q.showIf.field, equals } });
-                          }}
-                        >
-                          {equalsChoices(q.showIf?.field).map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    {(() => {
-                      const parentId = q.showIf?.field;
-                      if (!parentId) return null;
-                      const parent = questions.find((p) => p.id === parentId);
-                      if (!parent) {
-                        return (
-                          <p className="text-[11px] text-rose-600 font-semibold">
-                            La pregunta padre «{parentId}» no existe en esta lista. En el flujo no se verá.
-                          </p>
-                        );
-                      }
-                      const overlap = (q.plans || []).filter((p) => parent.plans.includes(p));
-                      if (overlap.length === 0) {
-                        return (
-                          <p className="text-[11px] text-amber-700 font-semibold">
-                            Sin planes en común con «{parent.label || parentId}»
-                            ({plansSummary(parent.plans, planOptions)}).
-                            En esos planes esta pregunta no podrá mostrarse.
-                          </p>
-                        );
-                      }
-                      if (parent.plans.length < allPlanCodes.length) {
-                        return (
-                          <p className="text-[11px] text-slate-500">
-                            Solo visible en planes donde también esté «{parent.label || parentId}»
-                            ({plansSummary(parent.plans, planOptions)}), y si responde {String(q.showIf?.equals)}.
-                          </p>
-                        );
-                      }
-                      return null;
-                    })()}
                   </div>
                 </div>
               )}
