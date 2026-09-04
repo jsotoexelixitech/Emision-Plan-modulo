@@ -9,16 +9,24 @@ export function ToggleSwitch({ checked, onChange, label, description }: ToggleSw
   return (
     <div
       className={`
-        rounded-2xl p-4 transition-all duration-300
+        rounded-2xl p-4 transition-all duration-300 cursor-pointer touch-manipulation min-h-[52px]
         ${checked
           ? 'bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200/70'
           : 'bg-slate-50 border border-slate-200'
         }
       `}
+      onClick={() => onChange(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onChange(!checked);
+        }
+      }}
+      role="presentation"
     >
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className={`font-bold text-sm ${checked ? 'text-indigo-900' : 'text-slate-700'}`}>
+          <p className={`font-bold text-sm leading-snug ${checked ? 'text-indigo-900' : 'text-slate-700'}`}>
             {label}
           </p>
           {description && (
@@ -31,9 +39,13 @@ export function ToggleSwitch({ checked, onChange, label, description }: ToggleSw
           type="button"
           role="switch"
           aria-checked={checked}
-          onClick={() => onChange(!checked)}
+          aria-label={label}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange(!checked);
+          }}
           className={`
-            relative flex-shrink-0 w-12 h-7 rounded-full transition-all duration-300 cursor-pointer outline-none
+            relative flex-shrink-0 w-12 h-7 min-w-[48px] rounded-full transition-all duration-300 cursor-pointer outline-none
             focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2
             ${checked
               ? 'bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_4px_14px_rgba(15, 26, 90,0.35)]'

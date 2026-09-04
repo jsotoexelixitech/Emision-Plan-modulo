@@ -468,7 +468,7 @@ function CompactSummaryCard({
                 </span>
                 <span className="text-[10px] text-slate-400 font-mono">#{selected.id.slice(0, 8)}</span>
               </div>
-              <h2 className="font-display text-lg sm:text-xl font-black text-indigo-900 leading-tight truncate">
+              <h2 className="font-display text-lg sm:text-xl font-black text-indigo-900 leading-tight break-words">
                 {selected.tomadorNombre || 'Tomador'}
               </h2>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
@@ -479,9 +479,9 @@ function CompactSummaryCard({
                   </span>
                 )}
                 {selected.tomadorEmail && (
-                  <span className="inline-flex items-center gap-1 min-w-0">
+                  <span className="inline-flex items-center gap-1 min-w-0 max-w-full">
                     <Mail size={11} className="text-indigo-400 shrink-0" />
-                    <span className="truncate max-w-[200px] xl:max-w-[320px]">{selected.tomadorEmail}</span>
+                    <span className="break-all">{selected.tomadorEmail}</span>
                   </span>
                 )}
               </div>
@@ -807,16 +807,17 @@ export function EmisionRevisionPanel() {
       <header className={`sticky top-0 z-30 bg-white shadow-sm ${mobileDetail && selected ? 'hidden lg:block' : ''}`}>
         <BrandBar />
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10">
-          <div className="flex flex-wrap items-center justify-between gap-4 py-4">
-            <div className="flex items-center gap-4 min-w-0">
-              <MundialLogo />
+          <div className="flex flex-wrap items-center justify-between gap-3 py-3 sm:py-4">
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+              <span className="sm:hidden"><MundialLogo compact /></span>
+              <span className="hidden sm:inline-flex"><MundialLogo /></span>
               <div className="hidden sm:block w-px h-11 bg-slate-200 shrink-0" aria-hidden />
               <div className="min-w-0">
                 <p className="text-[10px] font-bold tracking-[0.18em] text-fuchsia-500 uppercase inline-flex items-center gap-1.5">
                   <ShieldCheck size={11} />
                   Mesa técnica · Funerario
                 </p>
-                <h1 className="font-display text-xl sm:text-2xl text-indigo-900 leading-tight">
+                <h1 className="font-display text-lg sm:text-2xl text-indigo-900 leading-tight">
                   Autorización de pólizas
                 </h1>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -825,10 +826,10 @@ export function EmisionRevisionPanel() {
               </div>
             </div>
             {filter === 'pending' && !loading && (
-              <div className="flex items-center gap-3 rounded-2xl bg-indigo-700 text-white px-5 py-3 shadow-lg shadow-indigo-700/20">
+              <div className="flex items-center gap-2 rounded-xl sm:rounded-2xl bg-indigo-700 text-white px-3 py-2 sm:px-5 sm:py-3 shadow-lg shadow-indigo-700/20">
                 <div className="text-right">
-                  <p className="text-3xl font-black tabular-nums leading-none">{pendingCount}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-indigo-200 mt-1 font-bold">
+                  <p className="text-xl sm:text-3xl font-black tabular-nums leading-none">{pendingCount}</p>
+                  <p className="text-[9px] sm:text-[10px] uppercase tracking-wider text-indigo-200 mt-0.5 sm:mt-1 font-bold">
                     Por revisar
                   </p>
                 </div>
@@ -838,30 +839,36 @@ export function EmisionRevisionPanel() {
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-5 pb-28 lg:pb-8">
+      <div className={`max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-5 lg:pb-8 ${
+        mobileDetail && selected?.estado === 'pending'
+          ? 'pb-[calc(15rem+env(safe-area-inset-bottom))]'
+          : 'pb-8'
+      }`}>
         {error && (
           <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 flex items-start gap-2">
             <AlertTriangle size={16} className="shrink-0 mt-0.5" /> {error}
           </div>
         )}
 
-        <div className={`flex flex-wrap items-center gap-3 mb-5 ${mobileDetail && selected ? 'hidden lg:flex' : ''}`}>
-          <div className="inline-flex p-1 rounded-xl bg-white border border-slate-200 shadow-sm">
-            {filterTabs.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setFilter(key)}
-                className={`px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all min-h-[40px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
-                  filter === key
-                    ? 'bg-indigo-700 text-white shadow-md'
-                    : 'text-slate-600 hover:text-indigo-900 hover:bg-slate-50'
-                }`}
-              >
-                {key === 'history' && <History size={12} />}
-                {label}
-              </button>
-            ))}
+        <div className={`flex flex-wrap items-center gap-2 sm:gap-3 mb-4 sm:mb-5 ${mobileDetail && selected ? 'hidden lg:flex' : ''}`}>
+          <div className="w-full sm:w-auto overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="inline-flex p-1 rounded-xl bg-white border border-slate-200 shadow-sm min-w-min">
+              {filterTabs.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setFilter(key)}
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 transition-all min-h-[44px] touch-manipulation whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
+                    filter === key
+                      ? 'bg-indigo-700 text-white shadow-md'
+                      : 'text-slate-600 hover:text-indigo-900 hover:bg-slate-50'
+                  }`}
+                >
+                  {key === 'history' && <History size={12} />}
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <span className="text-xs text-slate-500 font-semibold tabular-nums">
             {loading ? '…' : `${list.length} registro${list.length === 1 ? '' : 's'}`}
@@ -869,7 +876,7 @@ export function EmisionRevisionPanel() {
           <button
             type="button"
             onClick={() => void loadList()}
-            className="ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 min-h-[40px] px-3 rounded-lg border border-indigo-100 bg-white hover:bg-indigo-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
+            className="sm:ml-auto inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 hover:text-indigo-900 min-h-[44px] px-3 rounded-lg border border-indigo-100 bg-white hover:bg-indigo-50 transition-colors touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40"
           >
             <RefreshCw size={13} />
             Actualizar
@@ -903,7 +910,7 @@ export function EmisionRevisionPanel() {
                     key={s.id}
                     type="button"
                     onClick={() => openSubmission(s)}
-                    className={`revision-inbox-item w-full text-left rounded-xl p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
+                    className={`revision-inbox-item w-full text-left rounded-xl p-3 min-h-[72px] touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 ${
                       selected?.id === s.id ? 'revision-inbox-item--active' : ''
                     }`}
                   >
@@ -961,7 +968,7 @@ export function EmisionRevisionPanel() {
                 <button
                   type="button"
                   onClick={() => setMobileDetail(false)}
-                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 min-h-[40px] px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
+                  className="lg:hidden inline-flex items-center gap-1.5 text-sm font-bold text-indigo-700 min-h-[44px] px-1 touch-manipulation focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 rounded-lg"
                 >
                   <ArrowLeft size={16} />
                   Volver al listado
@@ -1103,7 +1110,7 @@ export function EmisionRevisionPanel() {
                                       .map(([k, v]) => (
                                         <div key={k}>
                                           <dt className="text-slate-400 uppercase text-[9px]">{k}</dt>
-                                          <dd className="text-xs font-medium text-slate-800">{String(v)}</dd>
+                                          <dd className="text-xs font-medium text-slate-800 break-words">{String(v)}</dd>
                                         </div>
                                       ))}
                                   </dl>
@@ -1146,7 +1153,7 @@ export function EmisionRevisionPanel() {
                 </div>
 
                 {selected.estado === 'pending' && (
-                  <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 p-3 shadow-[0_-6px_24px_rgba(9,17,51,0.1)]">
+                  <div className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-6px_24px_rgba(9,17,51,0.1)]">
                     <DecisionPanel
                       compact
                       acting={acting}

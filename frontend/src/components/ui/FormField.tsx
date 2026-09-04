@@ -29,7 +29,7 @@ export function Field({ label, error, hint, full, children, className }: FieldPr
 }
 
 const inputBase =
-  'w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-sm text-slate-900 outline-none ' +
+  'w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-base sm:text-sm text-slate-900 outline-none ' +
   'transition-all duration-200 ' +
   'focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 ' +
   'placeholder:text-slate-300 ' +

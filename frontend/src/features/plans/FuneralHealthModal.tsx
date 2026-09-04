@@ -136,7 +136,7 @@ export function FuneralHealthModal({
         aria-hidden
       />
 
-      <div className="relative w-full sm:max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col bg-white rounded-t-3xl sm:rounded-3xl shadow-[0_32px_80px_-20px_rgba(9,17,51,0.45)] overflow-hidden animate-spring-in">
+      <div className="relative w-full sm:max-w-2xl max-h-[92dvh] sm:max-h-[88dvh] flex flex-col bg-white rounded-t-3xl sm:rounded-3xl shadow-[0_32px_80px_-20px_rgba(9,17,51,0.45)] overflow-hidden animate-spring-in">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-slate-100 bg-gradient-to-br from-indigo-50/80 via-white to-white">
           <div className="min-w-0">
@@ -155,7 +155,7 @@ export function FuneralHealthModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="flex-shrink-0 w-9 h-9 rounded-xl bg-white border border-slate-200 grid place-items-center text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors disabled:opacity-40"
+            className="flex-shrink-0 w-11 h-11 rounded-xl bg-white border border-slate-200 grid place-items-center text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors disabled:opacity-40 touch-manipulation"
             aria-label="Cerrar"
           >
             <X size={16} />
@@ -232,7 +232,7 @@ export function FuneralHealthModal({
                     <select
                       value={String(answers[q.id] ?? '')}
                       onChange={(e) => setAnswer(q.id, e.target.value)}
-                      className="w-full px-3.5 py-2.5 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-900"
+                      className="w-full px-3.5 py-2.5 min-h-[44px] border border-slate-200 rounded-xl bg-white text-base sm:text-sm font-medium text-slate-900"
                     >
                       <option value="">— Seleccionar —</option>
                       {(q.options ?? []).map((o) => (
@@ -248,8 +248,8 @@ export function FuneralHealthModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 sm:px-7 py-4 border-t border-slate-100 bg-white/95 backdrop-blur-md flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
+        <div className="px-5 sm:px-7 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-white/95 backdrop-blur-md flex items-center justify-between gap-3 flex-wrap">
+          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
             <ShieldCheck size={13} className="text-emerald-500" />
             <span className="font-medium">Respuestas almacenadas de forma segura</span>
           </div>
@@ -261,7 +261,7 @@ export function FuneralHealthModal({
               variant="primary"
               onClick={handleSubmit}
               disabled={saving || loadingQuestions || visibleQuestions.length === 0}
-              className="flex-1 sm:flex-none min-w-[160px] btn-shine"
+              className="flex-1 sm:flex-none sm:min-w-[160px] btn-shine"
             >
               {saving ? (
                 <>

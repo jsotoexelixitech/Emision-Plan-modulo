@@ -47,18 +47,18 @@ export function EmissionPlanShell({
         <TopProgressBar />
       </div>
 
-      <main className="flex-1 min-h-screen pt-[72px] lg:pt-10 px-4 sm:px-6 lg:px-10 pb-32 lg:pb-12">
+      <main className="flex-1 min-h-screen pt-[72px] lg:pt-10 px-4 sm:px-6 lg:px-10 pb-[calc(7.5rem+env(safe-area-inset-bottom))] lg:pb-12">
         <div className="max-w-5xl mx-auto">
           {!hideStepper && <TopStepper />}
 
-          <header className="mb-8 animate-fade-in">
+          <header className="mb-6 sm:mb-8 animate-fade-in">
             <div className="flex items-start justify-between gap-4 flex-wrap">
               <div className="min-w-0">
                 <p className="text-[0.68rem] font-black tracking-[0.22em] gradient-text-indigo uppercase mb-2 inline-flex items-center gap-1.5">
                   <Sparkles size={11} className="text-indigo-500" />
                   {eyebrow ?? 'Paso 04 · Cobertura'}
                 </p>
-                <h1 className="font-display text-3xl sm:text-[2.5rem] font-black text-slate-900 tracking-tight leading-tight">
+                <h1 className="font-display text-[1.7rem] sm:text-[2.5rem] font-black text-slate-900 tracking-tight leading-tight">
                   {title ?? 'Elige tu plan ideal'}
                 </h1>
                 <p className="text-slate-500 text-sm mt-2 max-w-xl leading-relaxed">{subtitle}</p>
@@ -67,7 +67,7 @@ export function EmissionPlanShell({
           </header>
 
           <section className="surface-card overflow-hidden step-enter">
-            <div className="p-6 sm:p-8 lg:p-10">{children}</div>
+            <div className="p-4 sm:p-8 lg:p-10">{children}</div>
 
             {!hideFooterBar && (
               <div className="hidden md:flex items-center justify-between gap-4 px-8 lg:px-10 py-5 border-t border-slate-100/80 bg-gradient-to-b from-slate-50/50 to-white/40 backdrop-blur-sm">
@@ -93,7 +93,7 @@ export function EmissionPlanShell({
       </main>
 
       {!hideContinuar && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 py-3 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-8px_24px_rgba(15,23,42,0.08)]">
           <Button
             variant="primary"
             className="w-full"
