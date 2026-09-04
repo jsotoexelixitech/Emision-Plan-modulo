@@ -171,11 +171,41 @@ const CATALOG = [
 ];
 
 /**
+ * @param {unknown} q
+ * @returns {boolean}
+ */
+function isQuestionEnabled(q) {
+  if (!q || typeof q !== 'object') return false;
+  const v = q.enabled;
+  if (v === false || v === 0) return false;
+  if (typeof v === 'string' && /^(false|0|off|no|hidden)$/i.test(v.trim())) return false;
+  return true;
+}
+
+/**
+ * Si General tiene una pregunta Off, el canal del SSO no debe mostrarla.
+ * @param {HealthQuestion[]} questions
+ * @param {HealthQuestion[]|null|undefined} defaultList
+ * @returns {HealthQuestion[]}
+ */
+function applyDisabledFromDefault(questions, defaultList) {
+  const list = Array.isArray(questions) ? questions : [];
+  if (!Array.isArray(defaultList) || defaultList.length === 0) return list;
+  const off = new Set(
+    defaultList
+      .filter((q) => q && !isQuestionEnabled(q) && q.id != null)
+      .map((q) => String(q.id)),
+  );
+  if (off.size === 0) return list;
+  return list.map((q) => (q && off.has(String(q.id)) ? { ...q, enabled: false } : q));
+}
+
+/**
  * @param {HealthQuestion[]} catalog
  * @returns {HealthQuestion[]}
  */
 function filterEnabledQuestions(catalog) {
-  return (Array.isArray(catalog) ? catalog : []).filter((q) => q && q.enabled !== false);
+  return (Array.isArray(catalog) ? catalog : []).filter((q) => isQuestionEnabled(q));
 }
 
 /**
@@ -273,6 +303,16 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
       });
       const hit = pickHealthQuestionsForCanal(cfg, canalKey);
       if (!hit) continue;
+      const defaultList =
+        cfg?.healthQuestionsByCanal &&
+        typeof cfg.healthQuestionsByCanal === 'object' &&
+        !Array.isArray(cfg.healthQuestionsByCanal) &&
+        Array.isArray(cfg.healthQuestionsByCanal.default)
+          ? cfg.healthQuestionsByCanal.default
+          : Array.isArray(cfg?.healthQuestions)
+            ? cfg.healthQuestions
+            : [];
+      hit.questions = applyDisabledFromDefault(hit.questions, defaultList);
       // Prioridad: match exacto de canal en la empresa del JWT
       if (hit.source === 'nexus-canal' && eid === primaryEmpresa) {
         picked = hit;
@@ -301,6 +341,7 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
   }
   const filtered = filterQuestionsForPlan(filterEnabledQuestions(catalog), cplan);
   const questions = stripOrphanShowIf(filtered);
+  const disabledCount = catalog.filter((q) => q && !isQuestionEnabled(q)).length;
   const catalogIds = catalog.map((q) => q?.id).filter(Boolean);
   const matchedIds = new Set(questions.map((q) => q?.id));
   const skippedIds = catalogIds.filter((id) => !matchedIds.has(id));
@@ -309,7 +350,7 @@ async function resolveQuestionsForPlan(cplan, opts = {}) {
     .map((q) => q.id)
     .filter(Boolean);
   console.log(
-    `[funeralHealthQuestions] cplan=${cplan} canal=${canalKey}→${resolvedCanal} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length}` +
+    `[funeralHealthQuestions] cplan=${cplan} canal=${canalKey}→${resolvedCanal} empresa=${empresaId} source=${source} catalog=${catalog.length} matched=${questions.length} off=${disabledCount}` +
       (strippedShowIf.length ? ` strippedShowIf=${strippedShowIf.join(',')}` : ''),
   );
   return {

@@ -237,6 +237,7 @@ export function EmisionConfigPanel() {
         id: String(q.id || '').trim() || `pregunta_${Date.now().toString(36)}`,
         label: String(q.label || '').trim() || 'Pregunta',
         plans: plans.length > 0 ? plans : [...fallbackCodes],
+        enabled: q.enabled !== false,
       };
       if (!next.showIf?.field) delete next.showIf;
       if (next.type === 'select') {
@@ -320,6 +321,19 @@ export function EmisionConfigPanel() {
         const cleaned = k === canalKey ? cleanedQuestions : cleanQuestions(list || []);
         if (k === canalKey || cleaned.length > 0) {
           byCanalPayload[k] = cleaned;
+        }
+      }
+      // Off en General (o en el canal del enlace) también apaga el mismo id en los demás canales.
+      const sourceList = byCanalPayload[canalKey] ?? cleanedQuestions;
+      const offIds = new Set(
+        sourceList.filter((q) => q.enabled === false).map((q) => String(q.id)),
+      );
+      if (offIds.size > 0) {
+        for (const k of Object.keys(byCanalPayload)) {
+          if (k === canalKey) continue;
+          byCanalPayload[k] = byCanalPayload[k].map((q) =>
+            offIds.has(String(q.id)) ? { ...q, enabled: false } : q,
+          );
         }
       }
     }
