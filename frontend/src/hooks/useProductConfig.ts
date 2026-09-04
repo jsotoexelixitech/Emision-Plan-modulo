@@ -119,6 +119,14 @@ export function useProductConfig(empresaId: number, producto: string, modulo: st
       }
       // Merge con lo cargado: un PUT parcial no debe borrar otras claves
       const payload = { ...(config ?? {}), ...newConfig };
+      // Si el panel envía canales de preguntas pero no el array legacy, no reenviar
+      // el catálogo viejo (hacía reaparecer preguntas eliminadas).
+      if (
+        newConfig.healthQuestionsByCanal &&
+        !Object.prototype.hasOwnProperty.call(newConfig, 'healthQuestions')
+      ) {
+        delete payload.healthQuestions;
+      }
       const res = await fetch(`${NEXUS_URL}/api/config/${empresaId}/${producto}/${modulo}`, {
         method: 'PUT',
         headers: authHeaders({ 'Content-Type': 'application/json' }),

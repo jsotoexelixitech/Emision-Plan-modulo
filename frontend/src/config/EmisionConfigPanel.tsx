@@ -180,28 +180,34 @@ export function EmisionConfigPanel() {
       const by: Record<string, HealthQuestionDraft[]> = {};
       if (rawBy && typeof rawBy === 'object' && !Array.isArray(rawBy)) {
         for (const [k, v] of Object.entries(rawBy)) {
-          if (Array.isArray(v) && v.length > 0) by[k] = enrichHealthQuestionScores(v);
+          if (Array.isArray(v)) by[k] = enrichHealthQuestionScores(v);
         }
       }
-      if (!by.default?.length) {
+      const hasSavedCanals = Object.keys(by).length > 0;
+      // Solo sembrar fábrica si no hay catálogo guardado. Si ya hay canales,
+      // no rellenar default con el listado viejo (reaparecían preguntas borradas).
+      if (!hasSavedCanals) {
         by.default = enrichHealthQuestionScores(
           Array.isArray(legacy) && legacy.length > 0 ? legacy : seed,
         );
       }
-      setHealthByCanal(by);
-      // Preferir canal de la URL/token; si aún no existe en config, se crea al cambiar
       const fromUrl = PANEL_CTX.canal || 'default';
-      const canal = by[fromUrl] ? fromUrl : by[activeCanal] ? activeCanal : 'default';
-      if (!by[fromUrl] && fromUrl !== 'default') {
-        by[fromUrl] = (by.default ?? seed).map((q) => ({
+      if (canalLocked && fromUrl !== 'default' && !Object.prototype.hasOwnProperty.call(by, fromUrl)) {
+        const base = (by.default?.length ? by.default : seed).map((q) => ({
           ...q,
           plans: [...(q.plans || [])],
         }));
-        setHealthByCanal({ ...by });
+        by[fromUrl] = base;
       }
-      const useCanal = by[fromUrl] ? fromUrl : canal;
+      const useCanal = Object.prototype.hasOwnProperty.call(by, fromUrl)
+        ? fromUrl
+        : by[activeCanal]
+          ? activeCanal
+          : (by.default ? 'default' : (Object.keys(by)[0] || 'default'));
+      if (!by[useCanal]) by[useCanal] = seed;
+      setHealthByCanal({ ...by });
       setActiveCanal(useCanal);
-      setHealthQuestions(by[useCanal] ?? by.default ?? seed);
+      setHealthQuestions(by[useCanal]);
     } else if (!healthQuestionsDirty.current && producto !== 'funerario') {
       setHealthQuestions([]);
     }
@@ -305,10 +311,16 @@ export function EmisionConfigPanel() {
         alert('No hay preguntas de salud para guardar. Agrega al menos una o restaura defaults.');
         return;
       }
-      // Solo el canal activo (el de la URL del integrador); Nexus hace merge por clave
-      byCanalPayload = { [canalKey]: cleanedQuestions };
-      if (canalKey === 'default') {
-        byCanalPayload.default = cleanedQuestions;
+      const snapshot: Record<string, HealthQuestionDraft[]> = {
+        ...healthByCanal,
+        [canalKey]: healthQuestions,
+      };
+      byCanalPayload = {};
+      for (const [k, list] of Object.entries(snapshot)) {
+        const cleaned = k === canalKey ? cleanedQuestions : cleanQuestions(list || []);
+        if (k === canalKey || cleaned.length > 0) {
+          byCanalPayload[k] = cleaned;
+        }
       }
     }
     // Modo solo-preguntas: no reenviar ajustes/API/mapeador (evita pisar config ajena).
@@ -354,7 +366,12 @@ export function EmisionConfigPanel() {
           },
     );
     if (ok) {
-      healthQuestionsDirty.current = false;
+      if (byCanalPayload && cleanedQuestions) {
+        setHealthByCanal(byCanalPayload);
+        setHealthQuestions(cleanedQuestions);
+      }
+      // Queda dirty para que el setConfig del PUT no vuelva a hidratar el catálogo viejo.
+      healthQuestionsDirty.current = true;
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     }
