@@ -516,6 +516,19 @@ export function FuneralHealthQuestionsEditor({
 
               {open && (
                 <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-slate-100 bg-slate-50/50">
+                  {q.showIf?.field && (
+                    <p className="mt-2.5 text-[12px] font-semibold text-violet-900 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 leading-snug">
+                      Esto no aparece solo. El cliente primero ve «
+                      {questions.find((p) => p.id === q.showIf?.field)?.label || 'la pregunta ligada'}
+                      ». Este cajón solo se abre si responde{' '}
+                      {q.showIf.equals === true
+                        ? 'Sí'
+                        : q.showIf.equals === false
+                          ? 'No'
+                          : String(q.showIf.equals)}
+                      .
+                    </p>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5">
                     <div className="sm:col-span-4">
                       <label className={lbl}>Tipo de respuesta</label>
