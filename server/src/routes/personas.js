@@ -15,27 +15,34 @@ const personasMapper = require('../services/personasMapper');
 const { assertPersonasCanEmit } = require('../services/assertPersonasCanEmit');
 const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
 const {
-  recordFuneralEmission,
-  recordFuneralEmissionBySid,
+  recordFuneralEmissionFlexible,
 } = require('../services/nexusFuneralSubmission');
 
-function resolveFuneralSubmissionId(state) {
-  const payload = state?.checkoutPayload && typeof state.checkoutPayload === 'object'
-    ? state.checkoutPayload
-    : {};
-  const canal = state?.metadataCanal && typeof state.metadataCanal === 'object'
-    ? state.metadataCanal
-    : {};
-  return String(
-    state?.funeralSubmissionId
-    || payload.funeralSubmissionId
-    || canal.funeralSubmissionId
-    || '',
-  ).trim();
+function asRecord(value) {
+  return value && typeof value === 'object' ? value : {};
 }
 
-function resolvePaymentSid(state) {
-  return String(state?.paymentSid || state?.sid || '').trim();
+/** Refs para persistir la póliza en Nexus (cualquier empresa). */
+function resolveFuneralRefs(state) {
+  const payload = asRecord(state?.checkoutPayload);
+  const canal = asRecord(state?.metadataCanal);
+  return {
+    submissionId: String(
+      state?.funeralSubmissionId
+      || payload.funeralSubmissionId
+      || canal.funeralSubmissionId
+      || '',
+    ).trim(),
+    paymentSid: String(state?.paymentSid || state?.sid || payload.paymentSid || '').trim(),
+    sessionId: String(
+      state?.originSessionId
+      || payload.originSessionId
+      || canal.originSessionId
+      || state?.sessionId
+      || payload.sessionId
+      || '',
+    ).trim(),
+  };
 }
 
 /** Fusiona metadata SSO del JWT (nexusAuth) en state.metadataCanal — igual que RCV. */
@@ -286,18 +293,20 @@ router.post('/emision', async (req, res) => {
         ptasa: cotizacion.ptasa,
       },
     };
-    const submissionId = resolveFuneralSubmissionId(state);
-    const paymentSid = resolvePaymentSid(state);
+    const funeralRefs = resolveFuneralRefs(state);
     try {
-      let saved = null;
-      if (submissionId) {
-        saved = await recordFuneralEmission(submissionId, emissionRecord);
-      }
-      if (!saved && paymentSid) {
-        saved = await recordFuneralEmissionBySid(paymentSid, emissionRecord);
-      }
+      const saved = await recordFuneralEmissionFlexible(funeralRefs, emissionRecord);
       if (!saved) {
-        console.warn('[personas/emision] póliza emitida sin URL en historial (falta funeralSubmissionId/sid)');
+        console.warn(
+          `[personas/emision] póliza ${emissionRecord.cnpoliza} sin historial`
+          + ` (id=${funeralRefs.submissionId || '-'} sid=${funeralRefs.paymentSid || '-'}`
+          + ` session=${funeralRefs.sessionId || '-'})`,
+        );
+      } else {
+        console.log(
+          `[personas/emision] historial funerario id=${saved.id} empresa=${saved.empresaId}`
+          + ` cnpoliza=${saved.cnpoliza}`,
+        );
       }
     } catch (err) {
       console.warn('[personas/emision] no se pudo guardar URL en historial:', err?.message || err);

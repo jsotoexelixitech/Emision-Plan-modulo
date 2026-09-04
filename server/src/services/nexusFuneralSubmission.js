@@ -72,7 +72,10 @@ async function createFuneralSubmission(payload) {
  */
 async function postEmission(path, payload) {
   const apiKey = getApiKey();
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn('[nexusFuneralSubmission] NEXUS_API_KEY ausente: no se guarda URL de póliza');
+    return null;
+  }
 
   let lastErr = '';
   for (const base of nexusBases()) {
@@ -105,9 +108,8 @@ async function postEmission(path, payload) {
   return null;
 }
 
-async function recordFuneralEmission(submissionId, emission) {
-  if (!submissionId) return null;
-  return postEmission(`${encodeURIComponent(submissionId)}/emission`, {
+function emissionPayload(emission) {
+  return {
     cnpoliza: emission.cnpoliza,
     cnrecibo: emission.cnrecibo,
     urlpoliza: emission.urlpoliza,
@@ -116,25 +118,63 @@ async function recordFuneralEmission(submissionId, emission) {
     url_club_arys: emission.url_club_arys,
     emittedAt: emission.emittedAt,
     quote: emission.quote,
-    empresaId: emission.empresaId,
-  });
+  };
+}
+
+async function recordFuneralEmission(submissionId, emission) {
+  if (!submissionId) return null;
+  return postEmission(`${encodeURIComponent(submissionId)}/emission`, emissionPayload(emission));
 }
 
 async function recordFuneralEmissionBySid(paymentSid, emission) {
   if (!paymentSid) return null;
   return postEmission('emission-by-sid', {
     paymentSid,
-    cnpoliza: emission.cnpoliza,
-    cnrecibo: emission.cnrecibo,
-    urlpoliza: emission.urlpoliza,
-    url_ingreso_caja: emission.url_ingreso_caja,
-    emittedAt: emission.emittedAt,
-    quote: emission.quote,
+    ...emissionPayload(emission),
   });
+}
+
+/**
+ * Registra la póliza en cualquier empresa: busca por UUID, SID de pago o SID OCR.
+ * @param {{ submissionId?: string, paymentSid?: string, sessionId?: string }} refs
+ * @param {object} emission
+ * @returns {Promise<object|null>}
+ */
+async function recordFuneralEmissionFlexible(refs, emission) {
+  const submissionId = String(refs?.submissionId ?? '').trim();
+  const paymentSid = String(refs?.paymentSid ?? '').trim();
+  const sessionId = String(refs?.sessionId ?? '').trim();
+  if (!submissionId && !paymentSid && !sessionId) return null;
+
+  const payload = {
+    id: submissionId || undefined,
+    paymentSid: paymentSid || undefined,
+    sessionId: sessionId || undefined,
+    originSessionId: sessionId || undefined,
+    ...emissionPayload(emission),
+  };
+
+  const unified = await postEmission('record-emission', payload);
+  if (unified) return unified;
+
+  if (submissionId) {
+    const byId = await recordFuneralEmission(submissionId, emission);
+    if (byId) return byId;
+  }
+  if (paymentSid) {
+    const bySid = await recordFuneralEmissionBySid(paymentSid, emission);
+    if (bySid) return bySid;
+  }
+  if (sessionId && sessionId !== paymentSid) {
+    const byOrigin = await recordFuneralEmissionBySid(sessionId, emission);
+    if (byOrigin) return byOrigin;
+  }
+  return null;
 }
 
 module.exports = {
   createFuneralSubmission,
   recordFuneralEmission,
   recordFuneralEmissionBySid,
+  recordFuneralEmissionFlexible,
 };
