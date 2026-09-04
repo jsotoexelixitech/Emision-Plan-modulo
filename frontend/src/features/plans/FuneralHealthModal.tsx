@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { Plan, PolicyQuote } from '../../types';
 import type { HealthQuestion } from '../../lib/api';
-import { Field, Textarea } from '../../components/ui/FormField';
+import { Textarea, Select } from '../../components/ui/FormField';
 import { ToggleSwitch } from '../../components/ui/ToggleSwitch';
 import { Button } from '../../components/ui/Button';
 
@@ -52,6 +52,14 @@ function validateAnswers(
     }
   }
   return errors;
+}
+
+function questionCardClass(hasError: boolean, filled: boolean): string {
+  const ring = hasError ? 'ring-1 ring-rose-300' : '';
+  const tone = filled
+    ? 'bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200/70'
+    : 'bg-slate-50 border border-slate-200';
+  return `rounded-2xl p-4 ${tone} ${ring}`;
 }
 
 export function FuneralHealthModal({
@@ -200,6 +208,8 @@ export function FuneralHealthModal({
           ) : (
             visibleQuestions.map((q, idx) => {
               const nested = Boolean(q.showIf?.field);
+              const err = errors[q.id];
+              const label = (q.label || '').trim() || 'Pregunta';
               return (
               <div
                 key={q.id}
@@ -207,39 +217,53 @@ export function FuneralHealthModal({
                 style={{ animationDelay: `${idx * 40}ms` }}
               >
                 {q.type === 'boolean' ? (
-                  <div className={errors[q.id] ? 'rounded-2xl ring-1 ring-rose-300' : ''}>
+                  <div className={err ? 'rounded-2xl ring-1 ring-rose-300' : ''}>
                     <ToggleSwitch
                       checked={answers[q.id] === true}
                       onChange={(v) => setAnswer(q.id, v)}
-                      label={q.label}
+                      label={`${label}${q.required ? ' *' : ''}`}
                       description={q.description}
                     />
-                    {errors[q.id] && (
-                      <p className="text-xs text-rose-500 font-medium mt-1.5 ml-1">{errors[q.id]}</p>
+                    {err && (
+                      <p className="text-xs text-rose-500 font-medium mt-1.5 ml-1">{err}</p>
                     )}
                   </div>
                 ) : q.type === 'text' ? (
-                  <Field label={`${q.label}${q.required ? ' *' : ''}`} error={errors[q.id]} full>
+                  <div className={questionCardClass(Boolean(err), Boolean(String(answers[q.id] ?? '').trim()))}>
+                    <p className="font-bold text-sm text-slate-700 leading-snug">
+                      {label}{q.required ? ' *' : ''}
+                    </p>
+                    {q.description && (
+                      <p className="mt-1 text-[0.78rem] leading-relaxed text-slate-500">{q.description}</p>
+                    )}
                     <Textarea
+                      className="mt-3"
                       value={String(answers[q.id] ?? '')}
                       onChange={(e) => setAnswer(q.id, e.target.value)}
-                      placeholder={q.description ?? ''}
                       rows={3}
                     />
-                  </Field>
+                    {err && <p className="text-xs text-rose-500 font-medium mt-1.5">{err}</p>}
+                  </div>
                 ) : (
-                  <Field label={`${q.label}${q.required ? ' *' : ''}`} error={errors[q.id]}>
-                    <select
+                  <div className={questionCardClass(Boolean(err), Boolean(String(answers[q.id] ?? '').trim()))}>
+                    <p className="font-bold text-sm text-slate-700 leading-snug">
+                      {label}{q.required ? ' *' : ''}
+                    </p>
+                    {q.description && (
+                      <p className="mt-1 text-[0.78rem] leading-relaxed text-slate-500">{q.description}</p>
+                    )}
+                    <Select
+                      className="mt-3"
                       value={String(answers[q.id] ?? '')}
                       onChange={(e) => setAnswer(q.id, e.target.value)}
-                      className="w-full px-3.5 py-2.5 min-h-[44px] border border-slate-200 rounded-xl bg-white text-base sm:text-sm font-medium text-slate-900"
                     >
                       <option value="">— Seleccionar —</option>
                       {(q.options ?? []).map((o) => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
-                    </select>
-                  </Field>
+                    </Select>
+                    {err && <p className="text-xs text-rose-500 font-medium mt-1.5">{err}</p>}
+                  </div>
                 )}
               </div>
               );
@@ -248,20 +272,20 @@ export function FuneralHealthModal({
         </div>
 
         {/* Footer */}
-        <div className="px-5 sm:px-7 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-white/95 backdrop-blur-md flex items-center justify-between gap-3 flex-wrap">
-          <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
-            <ShieldCheck size={13} className="text-emerald-500" />
+        <div className="px-5 sm:px-7 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] border-t border-slate-100 bg-white/95 backdrop-blur-md flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-slate-500 order-2 sm:order-1">
+            <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
             <span className="font-medium">Respuestas almacenadas de forma segura</span>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button variant="secondary" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none">
+          <div className="flex items-center gap-2 w-full sm:w-auto sm:ml-auto order-1 sm:order-2">
+            <Button variant="secondary" onClick={onClose} disabled={saving} className="flex-1 sm:flex-none min-w-[7.5rem]">
               Volver
             </Button>
             <Button
               variant="primary"
               onClick={handleSubmit}
               disabled={saving || loadingQuestions || visibleQuestions.length === 0}
-              className="flex-1 sm:flex-none sm:min-w-[160px] btn-shine"
+              className="flex-1 sm:flex-none sm:min-w-[11.5rem] btn-shine"
             >
               {saving ? (
                 <>

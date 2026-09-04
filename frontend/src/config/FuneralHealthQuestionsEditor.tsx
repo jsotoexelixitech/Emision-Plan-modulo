@@ -178,17 +178,6 @@ function scoreSummary(q: HealthQuestionDraft): string {
   return bits.join(' · ') || 'sin %';
 }
 
-function slugId(label: string): string {
-  const base = label
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 40);
-  return base || `pregunta_${Date.now().toString(36)}`;
-}
-
 function plansSummary(
   plans: string[],
   planOptions: PlanOption[],
@@ -405,13 +394,9 @@ export function FuneralHealthQuestionsEditor({
                       )}
                       {q.label || '(sin texto)'}
                     </span>
-                    <span className="block text-[10px] text-slate-400 font-mono truncate">
-                      {q.id}
-                      {' · '}
-                      planes {plansSummary(q.plans, planOptions)}
-                      {q.showIf?.field
-                        ? ` · si ${q.showIf.field}=${String(q.showIf.equals)}`
-                        : ''}
+                    <span className="block text-[10px] text-slate-400 truncate">
+                      Planes {plansSummary(q.plans, planOptions)}
+                      {q.showIf?.field ? ' · condicional' : ''}
                       {q.required ? ' · obligatoria' : ''}
                       {!isActive ? ' · inactiva' : ''}
                     </span>
@@ -477,16 +462,6 @@ export function FuneralHealthQuestionsEditor({
                 <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-slate-100 bg-slate-50/50">
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 pt-2.5">
                     <div className="sm:col-span-4">
-                      <label className={lbl}>ID</label>
-                      <input
-                        className={`${inp} font-mono text-xs`}
-                        value={q.id}
-                        onChange={(e) =>
-                          update(idx, { id: e.target.value.trim() || slugId(q.label) })
-                        }
-                      />
-                    </div>
-                    <div className="sm:col-span-3">
                       <label className={lbl}>Tipo</label>
                       <select
                         className={inp}
@@ -512,7 +487,7 @@ export function FuneralHealthQuestionsEditor({
                         <option value="select">Selección</option>
                       </select>
                     </div>
-                    <div className="sm:col-span-5 flex items-end gap-3 pb-0.5">
+                    <div className="sm:col-span-8 flex items-end gap-3 pb-0.5">
                       <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-slate-600">
                         <input
                           type="checkbox"

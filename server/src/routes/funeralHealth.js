@@ -12,6 +12,19 @@ const { isFunerarioCplan } = require('../lib/funerarioPlan');
 
 const router = express.Router();
 
+function toClientQuestion(q) {
+  if (!q || typeof q !== 'object') return q;
+  return {
+    id: q.id,
+    type: q.type,
+    label: q.label,
+    description: q.description,
+    required: q.required,
+    showIf: q.showIf,
+    options: q.options,
+  };
+}
+
 function rejectNonFunerarioPlan(res, cplan) {
   return res.status(400).json({
     success: false,
@@ -60,7 +73,7 @@ router.get('/health-questions', async (req, res) => {
     res.json({
       success: true,
       cplan,
-      questions,
+      questions: questions.map(toClientQuestion),
       source,
       count: questions.length,
       catalogCount,

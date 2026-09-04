@@ -222,12 +222,15 @@ export function EmisionConfigPanel() {
   };
   const removeMapEntry = (idx: number) => { setApiMap(p => p.filter((_, i) => i !== idx)); setSaved(false); };
 
+  const fallbackCodes = funeralPlanOptions.map((p) => p.code);
   const cleanQuestions = (list: HealthQuestionDraft[]): HealthQuestionDraft[] =>
     list.map((q) => {
       const plans = (q.plans || []).map(String).filter(Boolean);
       const next: HealthQuestionDraft = {
         ...q,
-        plans: plans.length > 0 ? plans : [...ALL_PLAN_CODES],
+        id: String(q.id || '').trim() || `pregunta_${Date.now().toString(36)}`,
+        label: String(q.label || '').trim() || 'Pregunta',
+        plans: plans.length > 0 ? plans : [...fallbackCodes],
       };
       if (!next.showIf?.field) delete next.showIf;
       if (next.type === 'select') {
