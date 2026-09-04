@@ -303,6 +303,16 @@ export function FuneralHealthQuestionsEditor({
     setOpenId(id);
   };
 
+  const removeFollowUp = (parentIdx: number) => {
+    const parentId = questions[parentIdx]?.id;
+    if (!parentId) return;
+    const next = questions.filter(
+      (q, i) => !(i !== parentIdx && q.showIf?.field === parentId && q.type === 'text'),
+    );
+    onChange(next);
+    setOpenId(questions[parentIdx]?.id ?? null);
+  };
+
   const remove = (idx: number) => {
     const id = questions[idx]?.id;
     onChange(questions.filter((_, i) => i !== idx));
@@ -574,21 +584,37 @@ export function FuneralHealthQuestionsEditor({
                         Cajón de detalle
                       </p>
                       <p className="text-[11px] text-slate-600 mt-0.5 mb-2 leading-relaxed">
-                        No es un tipo más. Crea un recuadro de texto que el cliente solo ve si
-                        {q.type === 'boolean' ? ' responde Sí' : ' elige una opción'}.
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => addFollowUp(idx)}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
-                      >
-                        <CornerDownRight size={14} />
                         {questions.some((x, i) => i !== idx && x.showIf?.field === q.id && x.type === 'text')
-                          ? 'Ir al cajón de texto'
-                          : q.type === 'boolean'
-                            ? 'Agregar cajón de texto si responde Sí'
-                            : 'Agregar cajón de texto al elegir una opción'}
-                      </button>
+                          ? 'Ya hay un cajón. Puedes ir a editarlo, ocultarlo (interruptor) o quitarlo. No está fijo en esta pregunta.'
+                          : `No es un tipo más. Crea un recuadro de texto que el cliente solo ve si${
+                              q.type === 'boolean' ? ' responde Sí' : ' elige una opción'
+                            }.`}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => addFollowUp(idx)}
+                          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-violet-600 text-white text-xs font-bold hover:bg-violet-700 transition-colors"
+                        >
+                          <CornerDownRight size={14} />
+                          {questions.some((x, i) => i !== idx && x.showIf?.field === q.id && x.type === 'text')
+                            ? 'Ir al cajón de texto'
+                            : q.type === 'boolean'
+                              ? 'Agregar cajón de texto si responde Sí'
+                              : 'Agregar cajón de texto al elegir una opción'}
+                        </button>
+                        {questions.some((x, i) => i !== idx && x.showIf?.field === q.id && x.type === 'text') && (
+                          <button
+                            type="button"
+                            onClick={() => removeFollowUp(idx)}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-rose-200 bg-white text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
+                            title="Quita el recuadro de detalle. La pregunta Sí/No se queda."
+                          >
+                            <Trash2 size={13} />
+                            Quitar cajón
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
 
