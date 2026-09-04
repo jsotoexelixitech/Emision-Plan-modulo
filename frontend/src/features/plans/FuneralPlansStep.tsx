@@ -31,7 +31,7 @@ function apiPlanToWizardPlan(p: PlanPer): Plan {
 export function FuneralPlansStep() {
   const {
     funeral, selectedPlan, setSelectedPlan, setCategory,
-    quote, quoteState,
+    quote, quoteState, quoteError,
   } = useWizardStore();
 
   const product = getProductConfig();
@@ -140,9 +140,18 @@ export function FuneralPlansStep() {
       })
       .catch((err: unknown) => {
         if (activeSigRef.current !== quoteSig) return;
-        const message = (err as { message?: string })?.message ?? 'No pudimos obtener la tarifa.';
+        const ax = err as { response?: { data?: { message?: string } }; message?: string };
+        const message =
+          ax.response?.data?.message?.trim()
+          || ax.message
+          || 'No pudimos obtener la tarifa.';
         useWizardStore.getState().setQuoteState('error', message);
-        toast.warning('Cotización no disponible', 'Reintenta en unos segundos.', 5000);
+        const ageIssue = /edad/i.test(message);
+        toast.warning(
+          ageIssue ? 'Edad fuera de rango del plan' : 'Cotización no disponible',
+          message,
+          9000,
+        );
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [quoteSig]);
@@ -268,10 +277,10 @@ export function FuneralPlansStep() {
                 <h3 className="font-display font-black text-slate-900 text-xl sm:text-2xl leading-tight break-words">{selectedPlan.name}</h3>
                 <p className="text-xs text-slate-500 mt-1.5 leading-relaxed max-w-md">{selectedPlan.desc}</p>
                 {quoteState === 'error' && (
-                  <span className="mt-3 inline-flex items-center gap-1 text-[0.6rem] font-black text-rose-700 bg-rose-50 px-2 py-1 rounded-md border border-rose-200 uppercase tracking-wider">
-                    <AlertTriangle size={11} strokeWidth={2.4} />
-                    Cotización pendiente
-                  </span>
+                  <p className="mt-3 text-xs font-semibold text-rose-700 bg-rose-50 px-3 py-2 rounded-md border border-rose-200 leading-relaxed normal-case">
+                    <AlertTriangle size={12} strokeWidth={2.4} className="inline mr-1 -mt-0.5" />
+                    {quoteError || 'Este plan no admite la edad o el parentesco del asegurado.'}
+                  </p>
                 )}
               </div>
 

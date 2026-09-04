@@ -12,6 +12,7 @@
 const express = require('express');
 const personasClient = require('../services/personasClient');
 const personasMapper = require('../services/personasMapper');
+const { resolveNedadAsegurado } = personasMapper;
 const { assertPersonasCanEmit } = require('../services/assertPersonasCanEmit');
 const { resolveIngresoCajaAfterPayment } = require('../services/collectionAfterPayment');
 const {
@@ -61,18 +62,6 @@ const router = express.Router();
 
 const DEFAULT_RAMO = parseInt(process.env.LAMUNDIAL_RAMO_PERSON, 10) || 9;
 
-/** Calcula la edad (años cumplidos) a partir de una fecha ISO (yyyy-mm-dd). */
-function edadDesdeFecha(fechaIso) {
-  if (!fechaIso) return null;
-  const d = new Date(fechaIso);
-  if (Number.isNaN(d.getTime())) return null;
-  const hoy = new Date();
-  let edad = hoy.getFullYear() - d.getFullYear();
-  const m = hoy.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < d.getDate())) edad--;
-  return edad >= 0 ? edad : null;
-}
-
 /**
  * Normaliza un asegurado del front al formato de la API:
  *   { cparen, xrif_asegurado, nedad_asegurado }
@@ -81,11 +70,7 @@ function edadDesdeFecha(fechaIso) {
 function mapAsegurado(a) {
   const cparen = Number(a.cparen ?? a.parentesco ?? 0) || 0;
   const xrif = String(a.xrif_asegurado ?? a.identificacion ?? '').replace(/\D/g, '');
-  const nedad =
-    a.nedad_asegurado != null
-      ? Number(a.nedad_asegurado)
-      : edadDesdeFecha(a.fechaNac ?? a.fnac ?? a.fecha_nacimiento);
-  return { cparen, xrif_asegurado: xrif, nedad_asegurado: nedad };
+  return { cparen, xrif_asegurado: xrif, nedad_asegurado: resolveNedadAsegurado(a) };
 }
 
 // ── GET /planes ─────────────────────────────────────────────────────────────
@@ -136,11 +121,15 @@ router.post('/cotizacion', async (req, res) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error('[personas/cotizacion]', msg);
-    res.status(502).json({
+    const edades = asegurados
+      .map((a) => `${a.xrif_asegurado || '?'} (${a.nedad_asegurado} años, parentesco ${a.cparen})`)
+      .join('; ');
+    console.error('[personas/cotizacion]', msg, edades);
+    const isAge = /criterios de edad/i.test(msg);
+    res.status(isAge ? 422 : 502).json({
       success: false,
-      code: err.code || 'LAMUNDIAL_PERSON_ERROR',
-      message: `No se pudo cotizar: ${msg}`,
+      code: err.code || (isAge ? 'PERSONAS_AGE' : 'LAMUNDIAL_PERSON_ERROR'),
+      message: `No se pudo cotizar: ${msg}${edades ? ` Edad calculada: ${edades}.` : ''}`,
     });
   }
 });
