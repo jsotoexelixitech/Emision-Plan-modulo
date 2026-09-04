@@ -428,8 +428,10 @@ export function FuneralHealthQuestionsEditor({
                       {q.label || '(sin texto)'}
                     </span>
                     <span className="block text-[10px] text-slate-400 truncate">
-                      Planes {plansSummary(q.plans, planOptions)}
-                      {q.showIf?.field ? ' · solo si responde otra' : ''}
+                      {allPlanCodes.length > 0 && q.plans.length < allPlanCodes.length
+                        ? `Solo ${plansSummary(q.plans, planOptions)}`
+                        : `Planes ${plansSummary(q.plans, planOptions)}`}
+                      {q.showIf?.field ? ' · cajón (solo si responde otra)' : ''}
                       {q.required ? ' · obligatoria' : ' · opcional'}
                       {!isActive ? ' · oculta al cliente' : ''}
                     </span>
@@ -931,6 +933,22 @@ export function FuneralHealthQuestionsEditor({
                         </label>
                       ))}
                     </div>
+                    {allPlanCodes.length > 0 && q.plans.length < allPlanCodes.length && (
+                      <p className="text-[11px] text-amber-800 font-semibold mt-2 leading-relaxed">
+                        El cliente no la verá si elige un plan que no esté marcado.
+                        Faltan:{' '}
+                        {planOptions
+                          .filter((p) => !q.plans.includes(p.code))
+                          .map((p) => p.label)
+                          .join(' · ') || 'ninguno'}
+                        . Pulsa «Todos» si debe salir en todos.
+                      </p>
+                    )}
+                    {q.plans.length === 0 && (
+                      <p className="text-[11px] text-rose-600 font-semibold mt-2">
+                        Sin planes: no saldrá en ningún flujo. Marca al menos uno o pulsa Todos.
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
